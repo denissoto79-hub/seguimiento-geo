@@ -869,11 +869,7 @@ tr:hover .act-btns { opacity:1 }
 
 <script>
   // Funciones puente — disponibles inmediatamente al cargar
-function doLogin() {
-  const sb = window._sbInstance;
-  if (!sb) { setTimeout(doLogin, 100); return; }
-  _doLoginInternal();
-}
+// doLogin bridge removed - async version in use
 function resetPwd() {
   if (!window._sbInstance) { setTimeout(resetPwd, 100); return; }
   _resetPwdInternal();
@@ -992,7 +988,7 @@ function setDD(id, vals, keepFirst = true, addNew = false) {
   if (cur && [...s.options].some(o => o.value === cur)) s.value = cur;
 }
 
-function populateDDs() {
+function _DISABLED_populateDDs_old() {
   const a = get();
   const plantas = uniq(a, 'PLANTA');
   const projs   = uniq(a, 'PROYECTO');
@@ -1037,7 +1033,7 @@ function goPage(id, el) {
   document.getElementById('tb-title').textContent = T[id] || id;
   closeDr();
 }
-function switchMod(key, el) {
+function _DISABLED_switchMod_sync(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tb-mod').textContent  = MOD_LBL[key];
@@ -1289,16 +1285,11 @@ function renderActs() {
 }
 function srt(f) { const s = MS[ACTIVE]; if (s.sF === f) s.sA = !s.sA; else { s.sF = f; s.sA = true; } renderActs(); }
 
-function markDone(id) {
-  const r = get().find(a => a._id === id); if (!r) return;
-  r.ESTADO = 'REALIZADA'; r.AVANCE = 100; r['FECHA COMPLETADA'] = tds();
-  renderActs(); renderDash();
-  notify('✅ ' + r['CÓDIGO'] + ' marcada como realizada · ' + r['FECHA COMPLETADA']);
+function _DISABLED_markDone_sync(id) {
+  // DISABLED - use async markDone below
 }
-function delAct(id) {
-  if (!confirm('¿Eliminar esta actividad?')) return;
-  MS[ACTIVE].acts = MS[ACTIVE].acts.filter(a => a._id !== id);
-  renderActs(); renderDash(); renderProjs(); notify('🗑️ Actividad eliminada');
+function _DISABLED_delAct_sync(id) {
+  // DISABLED - use async delAct below
 }
 
 // ── Gantt ──────────────────────────────────────────────────────────
@@ -1852,7 +1843,9 @@ function openModal(id = null) {
 }
 function closeMo() { document.getElementById('mo-act').classList.remove('open'); editingId = null; }
 
-function saveAct() {
+function _DISABLED_saveAct_sync() {
+  // DISABLED - use async saveAct below
+  return;
   const name = document.getElementById('m-act').value.trim(); if (!name) { notify('⚠ La actividad necesita un nombre', true); return; }
   const est = document.getElementById('m-est').value || 'PLANIFICADA';
   let avance = parseInt(document.getElementById('m-avance').value) || 0;
@@ -1869,8 +1862,8 @@ function saveAct() {
   if (est === 'REPROGRAMADA') {
     const det = document.getElementById('m-repdet').value.trim();
     if (det) { detRep = (detRep ? detRep + '\n' : '') + `[${tds()}] ` + det; cntRep++; }
-    if (nfc) newFin = nfc;   // Nueva fecha de cierre reemplaza Fecha Fin
-    finalEst = 'EN CURSO';   // Reprogramada → vuelve a EN CURSO
+    if (nfc) newFin = nfc;
+    finalEst = 'EN CURSO';
   }
 
   const obj = {
@@ -2374,7 +2367,7 @@ const _origProjDr = openProjDr;
 // PATCHED saveAct — record change history
 // ══════════════════════════════════════════════════════════════════
 // _origSaveAct reference removed — new async saveAct above takes precedence
-function saveActWithHistory() {
+function _DISABLED_saveActWithHistory() {
   const existingId = editingId;
   const before = existingId !== null ? { ...get().find(a => a._id === existingId) } : null;
   _origSaveAct();
@@ -2391,12 +2384,12 @@ function saveActWithHistory() {
     }
   }
 }
-saveAct = saveActWithHistory;
+// // saveAct reassignment disabled // DISABLED - async version in use
 
 // ══════════════════════════════════════════════════════════════════
 // PATCHED handleImport — add/replace mode
 // ══════════════════════════════════════════════════════════════════
-function handleImport(e) {
+function _DISABLED_handleImport_sync(e) {
   const file = e.target.files[0]; if (!file) return;
   if (typeof XLSX === 'undefined') { notify('⚠ SheetJS no disponible', true); return; }
   const modeEl = document.querySelector('input[name="import-mode"]:checked');
