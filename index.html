@@ -1315,7 +1315,7 @@ function renderGantt() {
     if (!r['FECHA INICIO'] || !r['FECHA FIN']) return false;
     if (pla && r.PLANTA     !== pla) return false;
     if (prj && r.PROYECTO   !== prj) return false;
-    if (est && r.ESTADO     !== est) return false;
+    if (est && (r.ESTADO||'').toUpperCase() !== est.toUpperCase()) return false;
     if (res && r.RESPONSABLE!== res) return false;
     const mS = new Date(r['FECHA INICIO']).getMonth(), mE = new Date(r['FECHA FIN']).getMonth();
     return !(mE < fromM || mS > toM);
@@ -1371,7 +1371,7 @@ function renderCal() {
   const fd = new Date(calY, calM, 1).getDay(), dim = new Date(calY, calM + 1, 0).getDate(), dip = new Date(calY, calM, 0).getDate();
   const filt = get().filter(r => {
     if (!r['FECHA INICIO'] || !r['FECHA FIN']) return false;
-    if (est && r.ESTADO     !== est) return false;
+    if (est && (r.ESTADO||'').toUpperCase() !== est.toUpperCase()) return false;
     if (pla && r.PLANTA     !== pla) return false;
     if (res && r.RESPONSABLE!== res) return false;
     return true;
@@ -2677,7 +2677,7 @@ async function loadModFromDB(key) {
     'FECHA FIN':    r.fecha_fin,
     'FECHA COMPLETADA': r.fecha_completada,
     'ESTADO':   r.estado,
-    'AVANCE':   r.avance,
+    'AVANCE':   Number(r.avance) || 0,
     'OBSERVACIONES': r.observaciones,
     'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
     'DETALLE DE REPROGRAMACION': r.detalle_reprog,
@@ -3344,41 +3344,95 @@ async function handleImport(e) {
   const reader = new FileReader();
   reader.onload = async ev => {
     try {
-      const wb = XLSX.read(ev.target.result, { type:'array' });
+      // Parse Excel with date conversion
+      const wb = XLSX.read(ev.target.result, { type:'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'', raw: false, dateNF: 'yyyy-mm-dd' });
+
+      if (!rows.length) { notify('⚠ El archivo está vacío o no tiene el formato correcto', true); return; }
+
+      // Helper to parse date safely
+      function parseDate(v) {
+        if (!v || v === '' || v === 'null') return null;
+        if (v instanceof Date) return v.toISOString().split('T')[0];
+        const s = String(v).trim();
+        // Already YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+        // DD/MM/YYYY
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+          const [d,m,y] = s.split('/');
+          return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        }
+        // Try native parse
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+        return null;
+      }
+
+      notify('⏳ Procesando ' + rows.length + ' registros...', false);
+
       if (mode === 'replace') {
-        if (!confirm(`¿Reemplazar TODOS los datos del módulo "${MOD_LBL[ACTIVE]}"? Esta acción no se puede deshacer.`)) return;
-        await _sb.from('actividades').delete().eq('modulo', ACTIVE);
+        if (!confirm('¿Reemplazar TODOS los datos del módulo "' + MOD_LBL[ACTIVE] + '"?\nEsta acción no se puede deshacer.')) return;
+        const { error: delErr } = await _sb.from('actividades').delete().eq('modulo', ACTIVE);
+        if (delErr) { notify('⚠ Error al limpiar: ' + delErr.message, true); return; }
       }
-      let cnt = 0;
+
+      // Build batch rows
+      const batch = [];
       for (const row of rows) {
-        if (!row.ACTIVIDAD) continue;
-        await _sb.from('actividades').insert({
-          modulo: ACTIVE,
-          codigo: row['CÓDIGO']||'',
-          anio:   Number(row['AÑO'])||new Date().getFullYear(),
-          actividad: String(row.ACTIVIDAD||''),
-          planta: String(row.PLANTA||''),
-          proyecto: String(row.PROYECTO||row['PROYECTO DE INVESTIGACION']||''),
-          responsable: String(row.RESPONSABLE||''),
-          fecha_inicio: row['FECHA INICIO']?String(row['FECHA INICIO']).substring(0,10):null,
-          fecha_fin:    row['FECHA FIN']?String(row['FECHA FIN']).substring(0,10):null,
-          fecha_completada: row['FECHA COMPLETADA']?String(row['FECHA COMPLETADA']).substring(0,10):null,
-          estado: row.ESTADO||'PLANIFICADA',
-          avance: Number(String(row.AVANCE||0).replace('%',''))||0,
-          observaciones: String(row.OBSERVACIONES||''),
-          cant_reprog: Number(row['CANTIDAD DE REPROGRAMACIONES'])||0,
-          detalle_reprog: String(row['DETALLE DE REPROGRAMACION']||''),
-          nueva_fecha_cierre: row['NUEVA FECHA DE CIERRE']?String(row['NUEVA FECHA DE CIERRE']).substring(0,10):null,
-          created_by: CURRENT_USER?.id
-        }); cnt++;
+        const activ = String(row['ACTIVIDAD'] || row['actividad'] || '').trim();
+        if (!activ) continue;
+        batch.push({
+          modulo:      ACTIVE,
+          codigo:      String(row['CÓDIGO'] || row['CODIGO'] || '').trim(),
+          anio:        parseInt(row['AÑO'] || row['ANO'] || new Date().getFullYear()) || new Date().getFullYear(),
+          actividad:   activ,
+          planta:      String(row['PLANTA'] || '').trim(),
+          proyecto:    String(row['PROYECTO'] || row['PROYECTO DE INVESTIGACION'] || '').trim(),
+          responsable: String(row['RESPONSABLE'] || '').trim(),
+          fecha_inicio:      parseDate(row['FECHA INICIO']),
+          fecha_fin:         parseDate(row['FECHA FIN']),
+          fecha_completada:  parseDate(row['FECHA COMPLETADA']),
+          nueva_fecha_cierre:parseDate(row['NUEVA FECHA DE CIERRE']),
+          estado:      String(row['ESTADO'] || 'PLANIFICADA').trim().toUpperCase(),
+          avance:      parseInt(String(row['AVANCE'] || '0').replace(/[^0-9]/g,'')) || 0,
+          observaciones:  String(row['OBSERVACIONES'] || '').trim(),
+          cant_reprog:    parseInt(row['CANTIDAD DE REPROGRAMACIONES']) || 0,
+          detalle_reprog: String(row['DETALLE DE REPROGRAMACION'] || '').trim(),
+          subtasks:    [],
+          attachments: [],
+          created_by:  CURRENT_USER?.id
+        });
       }
+
+      if (!batch.length) { notify('⚠ No se encontraron filas válidas con columna ACTIVIDAD', true); return; }
+
+      // Insert in chunks of 50 to avoid payload limits
+      const CHUNK = 50;
+      let inserted = 0;
+      for (let i = 0; i < batch.length; i += CHUNK) {
+        const chunk = batch.slice(i, i + CHUNK);
+        const { data: insData, error: insErr } = await _sb.from('actividades').insert(chunk).select('id');
+        if (insErr) {
+          notify('⚠ Error en inserción (chunk ' + (i/CHUNK+1) + '): ' + insErr.message, true);
+          console.error('Insert error:', insErr, 'Chunk sample:', chunk[0]);
+          return;
+        }
+        inserted += (insData || chunk).length;
+      }
+
+      // Reload module to show new data
       await loadModFromDB(ACTIVE);
-      notify('✅ ' + cnt + ' actividades ' + (mode==='replace'?'cargadas (reemplazo)':'añadidas'));
-    } catch (err) { notify('⚠ Error: ' + err.message, true); }
+      const modeLabel = mode === 'replace' ? 'cargadas (reemplazo)' : 'añadidas';
+      notify('✅ ' + inserted + ' actividades ' + modeLabel + ' en ' + MOD_LBL[ACTIVE]);
+
+    } catch (err) {
+      notify('⚠ Error inesperado: ' + err.message, true);
+      console.error('handleImport error:', err);
+    }
   };
-  reader.readAsArrayBuffer(file); e.target.value = '';
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
 }
 
 // saveNewMod — admin only, also save to DB
