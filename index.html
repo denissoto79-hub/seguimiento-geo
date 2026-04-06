@@ -422,7 +422,7 @@ tr:hover .act-btns { opacity:1 }
     <div style="text-align:right;margin-bottom:20px">
       <button onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
     </div>
-    <button onclick="doLogin()" id="lg-btn" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
+    <button id="lg-btn" onclick="doLogin()" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
     <div style="text-align:center;margin-top:20px;font-size:10px;color:#6e7681">GEO Automotriz &middot; Sistema de Seguimiento de Gesti&#243;n</div>
   </div>
 </div>
@@ -868,6 +868,16 @@ tr:hover .act-btns { opacity:1 }
 </div>
 
 <script>
+  // Funciones puente — disponibles inmediatamente al cargar
+function doLogin() {
+  const sb = window._sbInstance;
+  if (!sb) { setTimeout(doLogin, 100); return; }
+  _doLoginInternal();
+}
+function resetPwd() {
+  if (!window._sbInstance) { setTimeout(resetPwd, 100); return; }
+  _resetPwdInternal();
+}
 // ═══════════════════════════════════════════════════════════
 // SUPABASE CONFIG — replace with your credentials
 // ═══════════════════════════════════════════════════════════
@@ -2090,7 +2100,6 @@ function exportData() {
 // ══════════════════════════════════════════════════════════════════
 // NOTIFICATIONS SYSTEM
 // ══════════════════════════════════════════════════════════════════
-let NOTIFICATIONS = [];
 
 function tsNow() {
   const d = new Date();
