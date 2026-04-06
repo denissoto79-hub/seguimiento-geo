@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Seguimiento de Gestión</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -352,6 +352,45 @@ tr:hover .act-btns { opacity:1 }
 .color-swatch.sel { border-color:var(--text); transform:scale(1.15) }
 @keyframes slideIn { from { transform:translateX(60px); opacity:0 } to { transform:translateX(0); opacity:1 } }
 ::-webkit-scrollbar       { width:5px; height:5px }
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+  #sidebar { width:0 !important; overflow:hidden }
+  #sidebar.mobile-open { width:220px !important }
+  #main { margin-left:0 !important }
+  .topbar { padding:0 12px }
+  .tb-title { font-size:16px }
+  .tb-mod { display:none }
+  .content { padding:12px 10px }
+  .kpi-grid { grid-template-columns:repeat(2,1fr); gap:8px }
+  .kpi-val { font-size:24px }
+  .cg.g3, .cg.g2 { grid-template-columns:1fr }
+  .projs-grid { grid-template-columns:1fr }
+  .cal-grid { gap:2px }
+  .cal-cell { min-height:60px; padding:4px }
+  .cal-evt { font-size:8px }
+  .table-wrap { max-height:360px }
+  .drawer { width:100% !important }
+  .modal { width:100% !important; max-width:100vw; border-radius:14px 14px 0 0; position:fixed; bottom:0; margin:0 }
+  .mo-overlay { align-items:flex-end }
+  .fg2 { grid-template-columns:1fr }
+  .fg2 .fg-full { grid-column:1 }
+  .filter-bar { padding:10px }
+  .fg select, .fg input[type=text] { min-width:100px; font-size:11px }
+  .gantt-inner { min-width:600px }
+  #notif-panel { width:calc(100vw - 20px); right:10px }
+  .rep-kpis { grid-template-columns:repeat(2,1fr) }
+  .users-grid { grid-template-columns:1fr }
+  /* Mobile hamburger */
+  #mobile-menu-btn { display:flex !important }
+}
+@media (min-width:769px) {
+  #mobile-menu-btn { display:none !important }
+  #mobile-overlay { display:none !important }
+}
+#mobile-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.5); z-index:99;
+}
 ::-webkit-scrollbar-track { background:var(--bg) }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px }
 ::-webkit-scrollbar-thumb:hover { background:var(--text2) }
@@ -359,111 +398,32 @@ tr:hover .act-btns { opacity:1 }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- ══════════════════════════════════════════ -->
-<!-- PANTALLA DE LOGIN                          -->
-<!-- ══════════════════════════════════════════ -->
-<div id="login-screen" style="
-  position:fixed; inset:0; background:#0d1117;
-  display:flex; align-items:center; justify-content:center;
-  z-index:9999; font-family:'Barlow',sans-serif;
-">
-  <div style="
-    background:#161b22; border:1px solid #21262d;
-    border-radius:16px; padding:40px; width:380px;
-    box-shadow:0 20px 60px rgba(0,0,0,.7);
-  ">
-    <div style="text-align:center; margin-bottom:32px">
-      <div style="
-        font-family:'Barlow Condensed',sans-serif;
-        font-size:13px; color:#8b949e; letter-spacing:.1em;
-        text-transform:uppercase; margin-bottom:6px;
-      ">GEO Automotriz</div>
-      <div style="
-        font-family:'Barlow Condensed',sans-serif;
-        font-size:30px; font-weight:700; color:#38bdf8;
-        letter-spacing:.06em; text-transform:uppercase;
-      ">Seguimiento</div>
-      <div style="
-        font-family:'Barlow Condensed',sans-serif;
-        font-size:13px; font-weight:700; color:#38bdf8;
-        letter-spacing:.06em; text-transform:uppercase;
-        opacity:.7;
-      ">de Gestión</div>
+
+<!-- Mobile overlay -->
+<div id="mobile-overlay" onclick="closeMobileSB()"></div>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen" style="position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'Barlow',sans-serif;padding:16px">
+  <div style="background:#161b22;border:1px solid #21262d;border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
+    <div style="text-align:center;margin-bottom:30px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8b949e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">GEO Automotriz</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;line-height:1">Seguimiento</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;opacity:.65">de Gesti&#243;n</div>
     </div>
-
-    <div id="login-error" style="
-      display:none; background:rgba(239,68,68,.15);
-      border:1px solid rgba(239,68,68,.3);
-      border-radius:8px; padding:10px 14px;
-      font-size:12px; color:#ef4444; margin-bottom:16px;
-      line-height:1.5;
-    "></div>
-
-    <div style="margin-bottom:14px">
-      <div style="
-        font-size:9px; font-weight:700; text-transform:uppercase;
-        letter-spacing:.07em; color:#8b949e; margin-bottom:6px;
-      ">Email</div>
-      <input id="login-email" type="email"
-        placeholder="usuario@geoautomotriz.com"
-        style="
-          width:100%; background:#1c2333;
-          border:1px solid #21262d; color:#e6edf3;
-          padding:11px 13px; border-radius:8px;
-          font-size:13px; font-family:'Barlow',sans-serif;
-          outline:none; transition:border-color .15s; box-sizing:border-box;
-        "
-        onfocus="this.style.borderColor='#38bdf8'"
-        onblur="this.style.borderColor='#21262d'"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"
-      >
+    <div id="login-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#ef4444;margin-bottom:14px;line-height:1.5"></div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Email</div>
+      <input id="lg-email" type="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
     </div>
-
     <div style="margin-bottom:8px">
-      <div style="
-        font-size:9px; font-weight:700; text-transform:uppercase;
-        letter-spacing:.07em; color:#8b949e; margin-bottom:6px;
-      ">Contraseña</div>
-      <input id="login-pass" type="password"
-        placeholder="••••••••"
-        style="
-          width:100%; background:#1c2333;
-          border:1px solid #21262d; color:#e6edf3;
-          padding:11px 13px; border-radius:8px;
-          font-size:13px; font-family:'Barlow',sans-serif;
-          outline:none; transition:border-color .15s; box-sizing:border-box;
-        "
-        onfocus="this.style.borderColor='#38bdf8'"
-        onblur="this.style.borderColor='#21262d'"
-        onkeydown="if(event.key==='Enter')doLogin()"
-      >
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Contrase&#241;a</div>
+      <input id="lg-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-
-    <div style="text-align:right; margin-bottom:22px">
-      <button onclick="resetPassword()" style="
-        font-size:11px; color:#8b949e; background:transparent;
-        border:none; cursor:pointer; font-family:'Barlow',sans-serif;
-        transition:color .15s;
-      "
-        onmouseover="this.style.color='#38bdf8'"
-        onmouseout="this.style.color='#8b949e'"
-      >¿Olvidaste tu contraseña?</button>
+    <div style="text-align:right;margin-bottom:20px">
+      <button onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
     </div>
-
-    <button onclick="doLogin()" id="login-btn" style="
-      width:100%; padding:12px; background:#38bdf8; color:#000;
-      border:none; border-radius:8px; font-size:13px; font-weight:700;
-      font-family:'Barlow Condensed',sans-serif; letter-spacing:.06em;
-      text-transform:uppercase; cursor:pointer; transition:all .2s;
-    "
-      onmouseover="this.style.background='#7dd3fc'"
-      onmouseout="this.style.background='#38bdf8'"
-    >Ingresar al Sistema</button>
-
-    <div style="
-      text-align:center; margin-top:24px;
-      font-size:10px; color:#6e7681;
-    ">GEO Automotriz · Sistema de Seguimiento de Gestión</div>
+    <button onclick="doLogin()" id="lg-btn" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
+    <div style="text-align:center;margin-top:20px;font-size:10px;color:#6e7681">GEO Automotriz &middot; Sistema de Seguimiento de Gesti&#243;n</div>
   </div>
 </div>
 
@@ -514,6 +474,7 @@ tr:hover .act-btns { opacity:1 }
 <div id="main">
   <div class="topbar">
     <div class="tb-left">
+      <button id="mobile-menu-btn" onclick="toggleMobileSB()" style="display:none;background:transparent;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 8px;margin-right:4px">☰</button>
       <span class="tb-title" id="tb-title">Dashboard</span>
       <span class="tb-badge" id="tb-badge">&#8212;</span>
       <span class="tb-mod"   id="tb-mod">Plan de Automatizaci&#243;n</span>
@@ -907,224 +868,14 @@ tr:hover .act-btns { opacity:1 }
 </div>
 
 <script>
-  // ════════════════════════════════════════════════════
-// SUPABASE AUTH CONFIG
-// ════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://qvefghpqlzcmuitrrhtj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2ZWZnaHBxbHpjbXVpdHJyaHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDI5MTAsImV4cCI6MjA5MTAxODkxMH0.tPobkYZe3angsGqsW_tU5kKHruAWH5vmZASWlhSEgd8';
-const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+// ═══════════════════════════════════════════════════════════
+// SUPABASE CONFIG — replace with your credentials
+// ═══════════════════════════════════════════════════════════
+const SB_URL = 'https://qvefghpqlzcmuitrrhtj.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2ZWZnaHBxbHpjbXVpdHJyaHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDI5MTAsImV4cCI6MjA5MTAxODkxMH0.tPobkYZe3angsGqsW_tU5kKHruAWH5vmZASWlhSEgd8';
+const _sb = window.supabase.createClient(SB_URL, SB_KEY);
 let CURRENT_USER = null;
 
-// ── Login ─────────────────────────────────────────
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const btn   = document.getElementById('login-btn');
-  const err   = document.getElementById('login-error');
-
-  err.style.display = 'none';
-
-  if (!email || !pass) {
-    err.textContent = 'Por favor completa el email y la contraseña.';
-    err.style.display = 'block';
-    return;
-  }
-
-  btn.textContent = 'Verificando...';
-  btn.disabled    = true;
-  btn.style.opacity = '0.7';
-
-  const { data, error } = await _sb.auth.signInWithPassword({
-    email, password: pass
-  });
-
-  if (error) {
-    let msg = 'Email o contraseña incorrectos.';
-    if (error.message.includes('Email not confirmed'))
-      msg = 'Email no confirmado. Contacta al administrador.';
-    if (error.message.includes('Too many requests'))
-      msg = 'Demasiados intentos. Espera unos minutos.';
-    err.textContent = msg;
-    err.style.display = 'block';
-    btn.textContent = 'Ingresar al Sistema';
-    btn.disabled    = false;
-    btn.style.opacity = '1';
-    return;
-  }
-
-  // Obtener perfil del usuario
-  const { data: profile, error: profErr } = await _sb
-    .from('profiles')
-    .select('*')
-    .eq('id', data.user.id)
-    .single();
-
-  if (profErr || !profile) {
-    err.textContent = 'Usuario sin perfil asignado. Contacta al administrador.';
-    err.style.display = 'block';
-    await _sb.auth.signOut();
-    btn.textContent = 'Ingresar al Sistema';
-    btn.disabled    = false;
-    btn.style.opacity = '1';
-    return;
-  }
-
-  // Guardar usuario en memoria
-  CURRENT_USER = {
-    id:       data.user.id,
-    email:    data.user.email,
-    name:     profile.name,
-    role:     profile.role,
-    modules:  profile.modules || [],
-    perms:    profile.perms   || {},
-    color:    profile.avatar_color || '#38bdf8',
-    initials: profile.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase()
-  };
-
-  applyUserToUI();
-  applyPermissions();
-
-  document.getElementById('login-screen').style.display = 'none';
-  loadMod(CURRENT_USER.modules[0] || 'automatizacion');
-  notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-}
-
-// ── Aplicar datos del usuario a la UI ────────────
-function applyUserToUI() {
-  if (!CURRENT_USER) return;
-  const roleLabel = {
-    admin:        'Administrador',
-    collaborator: 'Colaborador',
-    viewer:       'Visualizador'
-  }[CURRENT_USER.role] || CURRENT_USER.role;
-
-  const sbName = document.querySelector('.sb-name');
-  const sbRole = document.querySelector('.sb-role');
-  const sbAv   = document.querySelector('.sb-avatar');
-  const tbAv   = document.querySelector('.tb-av');
-
-  if (sbName) sbName.textContent = CURRENT_USER.name;
-  if (sbRole) sbRole.textContent = roleLabel;
-  if (sbAv) {
-    sbAv.textContent   = CURRENT_USER.initials;
-    sbAv.style.background = `linear-gradient(135deg, ${CURRENT_USER.color}, #0ea5e9)`;
-  }
-  if (tbAv) {
-    tbAv.textContent   = CURRENT_USER.initials;
-    tbAv.style.background = `linear-gradient(135deg, ${CURRENT_USER.color}, #0ea5e9)`;
-    tbAv.title = CURRENT_USER.name + ' · Clic para cerrar sesión';
-    tbAv.style.cursor = 'pointer';
-    tbAv.onclick = () => {
-      if (confirm('¿Cerrar sesión en el sistema?')) doLogout();
-    };
-  }
-}
-
-// ── Aplicar permisos según rol ────────────────────
-function applyPermissions() {
-  if (!CURRENT_USER) return;
-  const { role, modules, perms } = CURRENT_USER;
-
-  // Módulos visibles en sidebar
-  const modMap = {
-    automatizacion:  'mod-auto',
-    investigaciones: 'mod-inv',
-    cambios:         'mod-cam'
-  };
-  Object.entries(modMap).forEach(([key, btnId]) => {
-    const btn = document.getElementById(btnId);
-    if (!btn) return;
-    btn.style.display = (role === 'admin' || modules.includes(key))
-      ? 'flex' : 'none';
-  });
-
-  // Secciones del nav según permisos
-  const navPerms = {
-    "goPage('dashboard'": 'Dashboard',
-    "goPage('projects'":  'Proyectos',
-    "goPage('activities'":'Actividades',
-    "goPage('gantt'":     'Timeline',
-    "goPage('calendar'":  'Calendario',
-    "goPage('reports'":   'Reportes',
-    "goPage('config'":    'Configuración'
-  };
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    const oc = btn.getAttribute('onclick') || '';
-    for (const [match, perm] of Object.entries(navPerms)) {
-      if (oc.includes(match)) {
-        btn.style.display =
-          (role === 'admin' || perms[perm] === true) ? 'flex' : 'none';
-        break;
-      }
-    }
-  });
-
-  // Botón Nueva Actividad — oculto para visualizadores
-  document.querySelectorAll('[onclick="openModal()"]').forEach(btn => {
-    btn.style.display = role === 'viewer' ? 'none' : 'inline-flex';
-  });
-
-  // Botón Nuevo Módulo — solo admin
-  const btnNewMod = document.getElementById('btn-new-mod');
-  if (btnNewMod) btnNewMod.style.display = role === 'admin' ? 'flex' : 'none';
-}
-
-// ── Cerrar sesión ─────────────────────────────────
-async function doLogout() {
-  await _sb.auth.signOut();
-  CURRENT_USER = null;
-  const ls = document.getElementById('login-screen');
-  if (ls) ls.style.display = 'flex';
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-pass').value  = '';
-  notify('✅ Sesión cerrada correctamente');
-}
-
-// ── Restablecer contraseña ────────────────────────
-async function resetPassword() {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    alert('Escribe primero tu email en el campo de arriba.');
-    return;
-  }
-  const { error } = await _sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin
-  });
-  if (!error) {
-    alert('✅ Te enviamos un correo para restablecer tu contraseña.\nRevisa tu bandeja de entrada (y el spam).');
-  } else {
-    alert('Error: ' + error.message);
-  }
-}
-
-// ── Verificar sesión activa al cargar ─────────────
-(async () => {
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session) {
-    const { data: profile } = await _sb
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profile) {
-      CURRENT_USER = {
-        id:       session.user.id,
-        email:    session.user.email,
-        name:     profile.name,
-        role:     profile.role,
-        modules:  profile.modules || [],
-        perms:    profile.perms   || {},
-        color:    profile.avatar_color || '#38bdf8',
-        initials: profile.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
-      };
-      applyUserToUI();
-      applyPermissions();
-      document.getElementById('login-screen').style.display = 'none';
-    }
-  }
-})();
 // ═══════════════════════════════════════════════════════════
 // DATA  — injected from Python via .replace()
 // ═══════════════════════════════════════════════════════════
@@ -1151,7 +902,8 @@ let editingId = null;
 let tmpST = [], tmpCmt = [], tmpAtt = [];
 let calY = 2026, calM = 3;
 let CH = {};
-let USERS = JSON.parse(JSON.stringify(USERS_INIT));
+let USERS = JSON.parse(JSON.stringify(USERS_INIT)); // fallback, overridden after login
+let SB_PROFILES = []; // loaded from Supabase after login
 
 const TODAY    = new Date();
 const TODAY_S  = TODAY.toISOString().split('T')[0];
@@ -2612,7 +2364,7 @@ const _origProjDr = openProjDr;
 // ══════════════════════════════════════════════════════════════════
 // PATCHED saveAct — record change history
 // ══════════════════════════════════════════════════════════════════
-const _origSaveAct = saveAct;
+// _origSaveAct reference removed — new async saveAct above takes precedence
 function saveActWithHistory() {
   const existingId = editingId;
   const before = existingId !== null ? { ...get().find(a => a._id === existingId) } : null;
@@ -2749,10 +2501,896 @@ function initAdminFeatures() {
   if (btnNewMod) btnNewMod.style.display = isAdmin ? 'flex' : 'none';
 }
 
+// ════════════════════════════════════════════════════════════════
+// AUTH — LOGIN / LOGOUT / SESSION
+// ════════════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('lg-email').value.trim();
+  const pass  = document.getElementById('lg-pass').value;
+  const btn   = document.getElementById('lg-btn');
+  const err   = document.getElementById('login-err');
+  err.style.display = 'none';
+  if (!email || !pass) { err.textContent='Completa email y contraseña.'; err.style.display='block'; return; }
+  btn.textContent='Verificando...'; btn.disabled=true; btn.style.opacity='0.7';
+  const { data, error } = await _sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    let msg = 'Email o contraseña incorrectos.';
+    if (error.message.includes('Too many')) msg = 'Demasiados intentos. Espera unos minutos.';
+    err.textContent = msg; err.style.display = 'block';
+    btn.textContent='Ingresar al Sistema'; btn.disabled=false; btn.style.opacity='1'; return;
+  }
+  await initSession(data.user);
+}
+
+async function initSession(authUser) {
+  // Load profile from Supabase
+  const { data: profile } = await _sb.from('profiles').select('*').eq('id', authUser.id).single();
+  if (!profile) {
+    const err = document.getElementById('login-err');
+    if (err) { err.textContent='Usuario sin perfil asignado. Contacta al administrador.'; err.style.display='block'; }
+    await _sb.auth.signOut();
+    const btn = document.getElementById('lg-btn');
+    if (btn) { btn.textContent='Ingresar al Sistema'; btn.disabled=false; btn.style.opacity='1'; }
+    return;
+  }
+
+  CURRENT_USER = {
+    id:       authUser.id,
+    email:    authUser.email,
+    name:     profile.name,
+    role:     profile.role,
+    modules:  profile.modules || [],
+    perms:    profile.perms   || {},
+    color:    profile.avatar_color || '#38bdf8',
+    initials: profile.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
+  };
+
+  // Load ALL profiles for mention autocomplete + responsable dropdowns
+  const { data: allProfiles } = await _sb.from('profiles').select('id, name, role, avatar_color');
+  SB_PROFILES = allProfiles || [];
+  USERS = SB_PROFILES.map(p => ({
+    id: p.id, name: p.name, role: p.role,
+    initials: p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+    color: p.avatar_color || '#38bdf8',
+    modules: [], perms: {}
+  }));
+
+  applyUserToUI();
+  applyPermissions();
+  document.getElementById('login-screen').style.display = 'none';
+
+  // Load data and subscribe to realtime
+  await loadModFromDB(CURRENT_USER.modules[0] || 'automatizacion');
+  subscribeRealtime();
+  await loadUserNotifs();
+  setTimeout(checkDueNotifs, 1500);
+  notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
+}
+
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  unsubscribeRealtime();
+  await _sb.auth.signOut();
+  CURRENT_USER = null; SB_PROFILES = [];
+  Object.keys(MS).forEach(k => MS[k].acts = null);
+  document.getElementById('login-screen').style.display = 'flex';
+  const e = document.getElementById('lg-email'), p = document.getElementById('lg-pass');
+  if (e) e.value = ''; if (p) p.value = '';
+  notify('✅ Sesión cerrada');
+}
+
+async function resetPwd() {
+  const email = document.getElementById('lg-email').value.trim();
+  if (!email) { alert('Escribe tu email primero.'); return; }
+  const { error } = await _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  alert(error ? 'Error: '+error.message : '✅ Email de recuperación enviado. Revisa tu bandeja.');
+}
+
+function applyUserToUI() {
+  if (!CURRENT_USER) return;
+  const RL = { admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
+  const sbName = document.querySelector('.sb-name');
+  const sbRole = document.querySelector('.sb-role');
+  const sbAv   = document.querySelector('.sb-avatar');
+  const tbAv   = document.querySelector('.tb-av');
+  if (sbName) sbName.textContent = CURRENT_USER.name;
+  if (sbRole) sbRole.textContent = RL[CURRENT_USER.role] || CURRENT_USER.role;
+  if (sbAv)   { sbAv.textContent = CURRENT_USER.initials; sbAv.style.background = `linear-gradient(135deg,${CURRENT_USER.color},#0ea5e9)`; }
+  if (tbAv)   {
+    tbAv.textContent = CURRENT_USER.initials;
+    tbAv.style.background = `linear-gradient(135deg,${CURRENT_USER.color},#0ea5e9)`;
+    tbAv.title = CURRENT_USER.name + ' · Clic para cerrar sesión';
+    tbAv.style.cursor = 'pointer';
+    tbAv.onclick = doLogout;
+  }
+}
+
+function applyPermissions() {
+  if (!CURRENT_USER) return;
+  const { role, modules, perms } = CURRENT_USER;
+  const modMap = { automatizacion:'mod-auto', investigaciones:'mod-inv', cambios:'mod-cam' };
+  Object.entries(modMap).forEach(([key, btnId]) => {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.style.display = (role==='admin' || modules.includes(key)) ? 'flex' : 'none';
+  });
+  const navPerms = {
+    "goPage('dashboard'":"Dashboard", "goPage('projects'":"Proyectos", "goPage('activities'":"Actividades",
+    "goPage('gantt'":"Timeline", "goPage('calendar'":"Calendario", "goPage('reports'":"Reportes", "goPage('config'":"Configuración"
+  };
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    const oc = btn.getAttribute('onclick')||'';
+    for (const [match, perm] of Object.entries(navPerms)) {
+      if (oc.includes(match)) { btn.style.display = (role==='admin'||perms[perm]===true)?'flex':'none'; break; }
+    }
+  });
+  // Hide "Nueva Actividad" for viewers
+  document.querySelectorAll('[onclick="openModal()"]').forEach(btn => {
+    btn.style.display = role==='viewer' ? 'none' : 'inline-flex';
+  });
+  const btnNewMod = document.getElementById('btn-new-mod');
+  if (btnNewMod) btnNewMod.style.display = role==='admin' ? 'flex' : 'none';
+}
+
+// ════════════════════════════════════════════════════════════════
+// SUPABASE DATA PERSISTENCE
+// ════════════════════════════════════════════════════════════════
+let REALTIME_SUBS = [];
+
+async function loadModFromDB(key) {
+  ACTIVE = key;
+  if (!MS[key]) MS[key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
+  
+  const { data, error } = await _sb
+    .from('actividades')
+    .select('*')
+    .eq('modulo', key)
+    .order('created_at', { ascending: true });
+
+  if (error) { notify('⚠ Error cargando actividades: ' + error.message, true); return; }
+
+  MS[key].acts = (data || []).map((r, i) => ({
+    _id:        r.id,          // Use UUID as _id
+    _dbid:      r.id,
+    'CÓDIGO':   r.codigo,
+    'AÑO':      r.anio,
+    'ACTIVIDAD':r.actividad,
+    'PLANTA':   r.planta,
+    'PROYECTO': r.proyecto,
+    'RESPONSABLE': r.responsable,
+    'FECHA INICIO': r.fecha_inicio,
+    'FECHA FIN':    r.fecha_fin,
+    'FECHA COMPLETADA': r.fecha_completada,
+    'ESTADO':   r.estado,
+    'AVANCE':   r.avance,
+    'OBSERVACIONES': r.observaciones,
+    'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
+    'DETALLE DE REPROGRAMACION': r.detalle_reprog,
+    'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
+    MODULE: key,
+    subtasks:    r.subtasks    || [],
+    attachments: r.attachments || [],
+    comments:    [],   // loaded separately
+    _history:    [],   // loaded separately
+  }));
+
+  // Load comments and history for displayed activities
+  await loadCommentsForMod(key);
+  await loadHistoryForMod(key);
+
+  populateDDs();
+  applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderCfg(); renderRep();
+  document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
+  document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
+}
+
+async function loadCommentsForMod(key) {
+  const acts = MS[key]?.acts || [];
+  if (!acts.length) return;
+  const ids = acts.map(a => a._dbid).filter(Boolean);
+  const { data } = await _sb.from('comentarios').select('*').in('actividad_id', ids).order('created_at');
+  if (!data) return;
+  data.forEach(c => {
+    const act = acts.find(a => a._dbid === c.actividad_id);
+    if (act) act.comments.push({ id:c.id, user:c.user_name, text:c.texto, ts:new Date(c.created_at).toLocaleString('es-BO') });
+  });
+}
+
+async function loadHistoryForMod(key) {
+  const acts = MS[key]?.acts || [];
+  if (!acts.length) return;
+  const ids = acts.map(a => a._dbid).filter(Boolean);
+  const { data } = await _sb.from('historial_cambios').select('*').in('actividad_id', ids).order('created_at');
+  if (!data) return;
+  data.forEach(h => {
+    const act = acts.find(a => a._dbid === h.actividad_id);
+    if (act) {
+      if (!act._history) act._history = [];
+      act._history.push({ ts: new Date(h.created_at).toLocaleString('es-BO'), user:h.user_name, field:h.campo, from:h.valor_antes, to:h.valor_despues });
+    }
+  });
+}
+
+async function saveActToDB(obj, existingDbId) {
+  const row = {
+    modulo:      ACTIVE,
+    codigo:      obj['CÓDIGO'],
+    anio:        obj['AÑO'],
+    actividad:   obj['ACTIVIDAD'],
+    planta:      obj['PLANTA'],
+    proyecto:    obj['PROYECTO'],
+    responsable: obj['RESPONSABLE'],
+    fecha_inicio: obj['FECHA INICIO'] || null,
+    fecha_fin:    obj['FECHA FIN']    || null,
+    fecha_completada: obj['FECHA COMPLETADA'] || null,
+    estado:      obj['ESTADO'],
+    avance:      obj['AVANCE'],
+    observaciones: obj['OBSERVACIONES'],
+    cant_reprog:  obj['CANTIDAD DE REPROGRAMACIONES'],
+    detalle_reprog: obj['DETALLE DE REPROGRAMACION'],
+    nueva_fecha_cierre: obj['NUEVA FECHA DE CIERRE'] || null,
+    subtasks:    obj.subtasks    || [],
+    attachments: obj.attachments || [],
+    updated_at:  new Date().toISOString(),
+    created_by:  CURRENT_USER?.id,
+  };
+
+  if (existingDbId) {
+    const { data, error } = await _sb.from('actividades').update(row).eq('id', existingDbId).select().single();
+    if (error) { notify('⚠ Error guardando: ' + error.message, true); return null; }
+    return data;
+  } else {
+    const { data, error } = await _sb.from('actividades').insert(row).select().single();
+    if (error) { notify('⚠ Error creando: ' + error.message, true); return null; }
+    return data;
+  }
+}
+
+async function deleteActFromDB(dbId) {
+  const { error } = await _sb.from('actividades').delete().eq('id', dbId);
+  if (error) { notify('⚠ Error eliminando: ' + error.message, true); return false; }
+  return true;
+}
+
+async function saveCommentToDB(dbActId, texto) {
+  const { data, error } = await _sb.from('comentarios').insert({
+    actividad_id: dbActId,
+    user_id:   CURRENT_USER.id,
+    user_name: CURRENT_USER.name,
+    texto
+  }).select().single();
+  if (error) notify('⚠ Error guardando comentario', true);
+  return data;
+}
+
+async function saveHistoryToDB(dbActId, campo, antes, despues) {
+  await _sb.from('historial_cambios').insert({
+    actividad_id:  dbActId,
+    user_id:       CURRENT_USER?.id,
+    user_name:     CURRENT_USER?.name || 'Sistema',
+    campo, valor_antes: String(antes||'—'), valor_despues: String(despues||'—')
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// REALTIME SUBSCRIPTIONS
+// ════════════════════════════════════════════════════════════════
+function subscribeRealtime() {
+  const actSub = _sb.channel('actividades-changes')
+    .on('postgres_changes', { event:'*', schema:'public', table:'actividades' }, async payload => {
+      const mod = payload.new?.modulo || payload.old?.modulo;
+      if (mod !== ACTIVE) return;
+      // Reload current module data
+      await loadModFromDB(ACTIVE);
+      notify('🔄 Datos actualizados por otro usuario');
+    })
+    .subscribe();
+
+  const cmtSub = _sb.channel('comments-changes')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'comentarios' }, async payload => {
+      const c = payload.new;
+      if (c.user_id === CURRENT_USER?.id) return; // own comment
+      const act = get().find(a => a._dbid === c.actividad_id);
+      if (act) {
+        act.comments.push({ id:c.id, user:c.user_name, text:c.texto, ts:new Date(c.created_at).toLocaleString('es-BO') });
+        notify('💬 ' + c.user_name + ' comentó en "' + (act.ACTIVIDAD||'').substring(0,25) + '"');
+      }
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub];
+}
+
+function unsubscribeRealtime() {
+  REALTIME_SUBS.forEach(s => _sb.removeChannel(s));
+  REALTIME_SUBS = [];
+}
+
+// ════════════════════════════════════════════════════════════════
+// NOTIFICATIONS — Supabase-backed, user-scoped
+// ════════════════════════════════════════════════════════════════
+let NOTIFICATIONS = [];
+
+async function loadUserNotifs() {
+  if (!CURRENT_USER) return;
+  const { data } = await _sb.from('notificaciones').select('*')
+    .eq('user_id', CURRENT_USER.id).eq('leida', false)
+    .order('created_at', { ascending:false }).limit(50);
+  NOTIFICATIONS = (data || []).map(n => ({
+    id: n.id, type: n.tipo, text: n.texto,
+    actId: n.actividad_id, read: n.leida,
+    time: new Date(n.created_at).toLocaleString('es-BO'),
+    icon: { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧' }[n.tipo] || '🔔'
+  }));
+  renderNotifBadge();
+}
+
+async function addNotifForUsers(userIds, type, text, actId = null) {
+  if (!userIds || !userIds.length) return;
+  const rows = userIds.map(uid => ({ user_id:uid, tipo:type, texto:text, actividad_id:actId }));
+  await _sb.from('notificaciones').insert(rows);
+  // Show locally if current user is in list
+  if (CURRENT_USER && userIds.includes(CURRENT_USER.id)) {
+    const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧' };
+    NOTIFICATIONS.unshift({ id: Date.now(), type, text, icon:icons[type]||'🔔', time:tsNow(), read:false, actId });
+    renderNotifBadge();
+  }
+}
+
+function getUsersRelatedToAct(act) {
+  // Returns user IDs of people related to this activity
+  const related = new Set();
+  SB_PROFILES.forEach(p => {
+    if (p.name === act.RESPONSABLE) related.add(p.id);
+    // Admin always gets notified
+    if (p.role === 'admin') related.add(p.id);
+  });
+  return [...related];
+}
+
+function getUsersFromMentions(text) {
+  const mentions = text.match(/@([\w\s]+?)(?=\s|$|@)/g) || [];
+  const ids = [];
+  mentions.forEach(m => {
+    const name = m.replace('@','').trim().toLowerCase();
+    const profile = SB_PROFILES.find(p => p.name.toLowerCase().includes(name));
+    if (profile) ids.push(profile.id);
+  });
+  return ids;
+}
+
+function tsNow() {
+  return new Date().toLocaleString('es-BO', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function addNotif(type, text, actId = null) {
+  const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧', project:'◫' };
+  NOTIFICATIONS.unshift({ id: Date.now(), type, text, icon:icons[type]||'🔔', time:tsNow(), read:false, actId });
+  renderNotifBadge();
+}
+
+function renderNotifBadge() {
+  const unread = NOTIFICATIONS.filter(n => !n.read).length;
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  badge.textContent = unread > 9 ? '9+' : unread;
+  badge.style.display = unread > 0 ? 'flex' : 'none';
+}
+
+function renderNotifPanel() {
+  const el = document.getElementById('notif-list'); if (!el) return;
+  if (!NOTIFICATIONS.length) { el.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--text2)">Sin notificaciones</div>'; return; }
+  el.innerHTML = NOTIFICATIONS.map(n => `
+    <div class="notif-item ${n.read?'':'unread'}" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})">
+      <span class="notif-icon">${n.icon}</span>
+      <div style="flex:1"><div class="notif-text">${n.text}</div><div class="notif-time">${n.time}</div></div>
+    </div>`).join('');
+}
+
+function toggleNotif() {
+  const panel = document.getElementById('notif-panel'); if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderNotifPanel();
+}
+
+async function readNotif(id, actId) {
+  const n = NOTIFICATIONS.find(x => String(x.id) === String(id));
+  if (n) { n.read = true; await _sb.from('notificaciones').update({ leida:true }).eq('id', id).then(()=>{}); }
+  renderNotifBadge(); renderNotifPanel();
+  if (actId) { openActDr(actId); toggleNotif(); }
+}
+
+async function markAllRead() {
+  NOTIFICATIONS.forEach(n => n.read = true);
+  if (CURRENT_USER) await _sb.from('notificaciones').update({ leida:true }).eq('user_id', CURRENT_USER.id);
+  renderNotifBadge(); renderNotifPanel();
+}
+
+async function checkDueNotifs() {
+  const soon = new Date(); soon.setDate(soon.getDate() + 3);
+  get().filter(r => r.ESTADO !== 'REALIZADA' && r['FECHA FIN']).forEach(r => {
+    const fin = new Date(r['FECHA FIN']);
+    if (fin <= soon && fin >= TODAY) {
+      const diff = Math.ceil((fin - TODAY) / 86400000);
+      addNotif('due', `Actividad "${(r.ACTIVIDAD||'').substring(0,30)}…" vence en ${diff} día(s)`, r._dbid);
+    }
+    if (fin < TODAY) addNotif('task', `Actividad "${(r.ACTIVIDAD||'').substring(0,30)}…" está vencida`, r._dbid);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// MOBILE NAVIGATION
+// ════════════════════════════════════════════════════════════════
+function toggleMobileSB() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('mobile-overlay');
+  sb.classList.toggle('mobile-open');
+  ov.style.display = sb.classList.contains('mobile-open') ? 'block' : 'none';
+}
+function closeMobileSB() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('mobile-overlay');
+  sb.classList.remove('mobile-open');
+  ov.style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════════════
+// OVERRIDDEN FUNCTIONS — Use CURRENT_USER and Supabase
+// ════════════════════════════════════════════════════════════════
+
+// saveAct — persist to Supabase
+async function saveAct() {
+  const name = document.getElementById('m-act').value.trim();
+  if (!name) { notify('⚠ La actividad necesita un nombre', true); return; }
+  const est = document.getElementById('m-est').value || 'PLANIFICADA';
+  let avance = parseInt(document.getElementById('m-avance').value) || 0;
+  let comp   = document.getElementById('m-comp').value || null;
+  if (est === 'REALIZADA') { avance = 100; if (!comp) comp = tds(); }
+
+  const existing = editingId !== null ? get().find(a => a._id === editingId) : null;
+  let detRep = existing?.['DETALLE DE REPROGRAMACION'] || '';
+  let cntRep = existing?.['CANTIDAD DE REPROGRAMACIONES'] || 0;
+  let nfc    = document.getElementById('m-nfcierre').value || null;
+  let newFin = document.getElementById('m-fin').value || null;
+  let finalEst = est;
+
+  if (est === 'REPROGRAMADA') {
+    const det = document.getElementById('m-repdet').value.trim();
+    if (det) {
+      const userName = CURRENT_USER?.name || 'Usuario';
+      detRep = (detRep ? detRep + '\n' : '') + `[${tds()} - ${userName}] ` + det;
+      cntRep++;
+    }
+    if (nfc) newFin = nfc;
+    finalEst = 'EN CURSO';
+  }
+
+  const obj = {
+    'CÓDIGO':    existing?.['CÓDIGO'] || nxtCode(),
+    'AÑO':       parseInt(document.getElementById('m-anio').value) || new Date().getFullYear(),
+    'ACTIVIDAD': name,
+    'PLANTA':    document.getElementById('m-planta').value,
+    'PROYECTO':  document.getElementById('m-proj').value,
+    'RESPONSABLE': document.getElementById('m-resp').value,
+    'FECHA INICIO':   document.getElementById('m-ini').value || null,
+    'FECHA FIN':      newFin,
+    'FECHA COMPLETADA': comp,
+    'ESTADO':    finalEst,
+    'AVANCE':    avance,
+    'OBSERVACIONES': document.getElementById('m-obs').value,
+    'CANTIDAD DE REPROGRAMACIONES': cntRep,
+    'DETALLE DE REPROGRAMACION': detRep,
+    'NUEVA FECHA DE CIERRE': nfc,
+    subtasks: [...tmpST], comments: [...tmpCmt], attachments: [...tmpAtt]
+  };
+
+  notify('💾 Guardando...', false);
+  const saved = await saveActToDB(obj, existing?._dbid);
+  if (!saved) return;
+
+  // Track changes in history
+  if (existing) {
+    const TRACK = ['ESTADO','AVANCE','FECHA FIN','RESPONSABLE','NUEVA FECHA DE CIERRE','FECHA COMPLETADA'];
+    for (const f of TRACK) {
+      const bv = String(existing[f]||'—'), av = String(obj[f]||'—');
+      if (bv !== av) await saveHistoryToDB(saved.id, f, bv, av);
+    }
+    // Notify users related to this activity
+    const relUsers = getUsersRelatedToAct(obj);
+    if (obj.ESTADO !== existing.ESTADO) {
+      await addNotifForUsers(relUsers, 'task',
+        `${CURRENT_USER.name} cambió estado de "${name.substring(0,25)}…": ${existing.ESTADO} → ${obj.ESTADO}`, saved.id);
+    }
+  } else {
+    // New activity — notify responsible
+    const respProfile = SB_PROFILES.find(p => p.name === obj.RESPONSABLE);
+    if (respProfile && respProfile.id !== CURRENT_USER.id) {
+      await addNotifForUsers([respProfile.id], 'task',
+        `${CURRENT_USER.name} te asignó la actividad "${name.substring(0,30)}…"`, saved.id);
+    }
+  }
+
+  closeMo();
+  await loadModFromDB(ACTIVE);
+  notify(editingId !== null ? '✏️ Actividad actualizada' : '✅ Actividad creada');
+}
+
+// markDone — persist to Supabase
+async function markDone(id) {
+  const r = get().find(a => a._id === id); if (!r) return;
+  const today = tds();
+  const { error } = await _sb.from('actividades').update({
+    estado: 'REALIZADA', avance: 100, fecha_completada: today, updated_at: new Date().toISOString()
+  }).eq('id', r._dbid);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  await saveHistoryToDB(r._dbid, 'ESTADO', r.ESTADO, 'REALIZADA');
+  const relUsers = getUsersRelatedToAct(r);
+  await addNotifForUsers(relUsers, 'task',
+    `${CURRENT_USER.name} marcó como realizada: "${(r.ACTIVIDAD||'').substring(0,30)}…"`, r._dbid);
+  await loadModFromDB(ACTIVE);
+  notify('✅ ' + r['CÓDIGO'] + ' marcada como realizada · ' + today);
+}
+
+// delAct — admin only, persist to Supabase
+async function delAct(id) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar actividades', true); return; }
+  const r = get().find(a => a._id === id); if (!r) return;
+  if (!confirm('¿Eliminar esta actividad? Esta acción no se puede deshacer.')) return;
+  const ok = await deleteActFromDB(r._dbid);
+  if (ok) { await loadModFromDB(ACTIVE); notify('🗑️ Actividad eliminada'); }
+}
+
+// deleteProject — admin only
+async function deleteProject(proj) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar proyectos', true); return; }
+  const acts = get().filter(r => r.PROYECTO === proj);
+  if (!confirm(`¿Eliminar el proyecto "${proj}" y sus ${acts.length} actividades? Esta acción no se puede deshacer.`)) return;
+  const ids = acts.map(a => a._dbid).filter(Boolean);
+  if (ids.length) { const { error } = await _sb.from('actividades').delete().in('id', ids); if (error) { notify('⚠ Error: '+error.message,true); return; } }
+  await loadModFromDB(ACTIVE); closeDr();
+  notify('🗑️ Proyecto "' + proj.substring(0,25) + '…" eliminado');
+}
+
+// addDrawerComment — use CURRENT_USER name, save to DB
+async function addDrawerComment(actId) {
+  const inp = document.getElementById('dr-cmt-inp'); if (!inp) return;
+  const txt = inp.value.trim(); if (!txt) return;
+  const r = get().find(a => a._id === actId); if (!r) return;
+  inp.value = '';
+
+  // Save to Supabase
+  const saved = await saveCommentToDB(r._dbid, txt);
+  if (!saved) return;
+
+  // Add locally
+  if (!r.comments) r.comments = [];
+  r.comments.push({ id:saved.id, user:CURRENT_USER.name, text:txt, ts:new Date(saved.created_at).toLocaleString('es-BO') });
+
+  // Notify mentioned users
+  const mentionedIds = getUsersFromMentions(txt);
+  if (mentionedIds.length) {
+    await addNotifForUsers(mentionedIds, 'mention',
+      `${CURRENT_USER.name} te mencionó en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${txt.substring(0,40)}`, r._dbid);
+  }
+  // Notify responsible and admin
+  const relUsers = getUsersRelatedToAct(r).filter(uid => uid !== CURRENT_USER.id);
+  if (relUsers.length) {
+    await addNotifForUsers(relUsers, 'comment',
+      `${CURRENT_USER.name} comentó en "${(r.ACTIVIDAD||'').substring(0,25)}…"`, r._dbid);
+  }
+
+  renderDrawerComments(actId);
+}
+
+function renderDrawerComments(actId) {
+  const r = get().find(a => a._id === actId); if (!r) return;
+  const el = document.getElementById('dr-cmts-thread'); if (!el) return;
+  const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
+  if (!r.comments || !r.comments.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:10px">Sin comentarios aún.</div>'; return;
+  }
+  el.innerHTML = r.comments.map((c, i) => `
+    <div class="ac-msg">
+      <div class="ac-av" style="background:${avColors[i%avColors.length]}">${(c.user||'?')[0].toUpperCase()}</div>
+      <div class="ac-bubble">
+        <div class="ac-meta">${c.user} &nbsp;·&nbsp; ${c.ts}</div>
+        <div class="ac-text">${parseComment(c.text)}</div>
+      </div>
+    </div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// switchMod — load from DB
+async function switchMod(key, el) {
+  document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  ['f-mes','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
+    const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
+  });
+  await loadModFromDB(key);
+  notify('Módulo: ' + (MOD_LBL[key]||key));
+}
+
+// populateDDs — use SB_PROFILES for responsables and mentions
+function populateDDs() {
+  const a = get();
+  const plantas = uniq(a, 'PLANTA');
+  const projs   = uniq(a, 'PROYECTO');
+  // Use SB_PROFILES names for responsables if available, else from data
+  const resps = SB_PROFILES.length
+    ? SB_PROFILES.filter(p => p.role !== 'viewer').map(p => p.name).sort()
+    : uniq(a, 'RESPONSABLE');
+
+  ['f-planta','a-planta','g-planta','cal-planta','rep-planta'].forEach(id => setDD(id, plantas));
+  ['f-resp','a-resp2','g-resp','cal-resp'].forEach(id => setDD(id, resps));
+  ['f-proyecto','a-proj','g-proj'].forEach(id => setDD(id, projs));
+
+  setDD('m-planta', plantas, true, true);
+  setDD('m-resp',   resps,   true, true);
+  const mp = document.getElementById('m-proj'); if (mp) {
+    while(mp.options.length>1) mp.remove(1);
+    projs.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; mp.appendChild(o); });
+    const o=document.createElement('option'); o.value='__new'; o.textContent='+ Agregar nuevo proyecto'; mp.appendChild(o);
+  }
+  setDD('np-planta', plantas, true, false);
+  // Subtask responsible — all users
+  setDD('st-resp', SB_PROFILES.length ? SB_PROFILES.map(p=>p.name).sort() : resps, true, false);
+}
+
+// Mention autocomplete
+function parseComment(txt) {
+  return txt.replace(/@([\w\s]+?)(?=\s|$|[,.])/g, '<span class="ac-mention">@$1</span>');
+}
+
+function setupMentionAutocomplete(inputId, actId) {
+  const inp = document.getElementById(inputId); if (!inp) return;
+  let dropdown = document.getElementById('mention-dd');
+  if (!dropdown) {
+    dropdown = document.createElement('div');
+    dropdown.id = 'mention-dd';
+    dropdown.style.cssText = 'position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:500;min-width:200px;display:none;overflow:hidden';
+    document.body.appendChild(dropdown);
+  }
+  inp.addEventListener('input', () => {
+    const val = inp.value;
+    const atIdx = val.lastIndexOf('@');
+    if (atIdx < 0) { dropdown.style.display='none'; return; }
+    const query = val.substring(atIdx+1).toLowerCase();
+    const matches = SB_PROFILES.filter(p => p.name.toLowerCase().includes(query)).slice(0,6);
+    if (!matches.length) { dropdown.style.display='none'; return; }
+    const rect = inp.getBoundingClientRect();
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.top  = (rect.bottom + 4) + 'px';
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = matches.map(p =>
+      `<div style="padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;transition:background .15s" 
+        onmouseover="this.style.background='rgba(56,189,248,.1)'" 
+        onmouseout="this.style.background=''"
+        onclick="insertMention('${inputId}','${p.name}')">
+        <div style="width:22px;height:22px;border-radius:50%;background:${p.avatar_color||'#38bdf8'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000;flex-shrink:0">${p.name[0]}</div>
+        <span>${p.name}</span>
+        <span style="font-size:10px;color:var(--text2);margin-left:auto">${p.role}</span>
+      </div>`).join('');
+  });
+  inp.addEventListener('blur', () => setTimeout(()=>{ dropdown.style.display='none'; }, 200));
+  inp.addEventListener('keydown', e => { if(e.key==='Escape') dropdown.style.display='none'; });
+}
+
+function insertMention(inputId, name) {
+  const inp = document.getElementById(inputId); if (!inp) return;
+  const val = inp.value;
+  const atIdx = val.lastIndexOf('@');
+  inp.value = val.substring(0, atIdx) + '@' + name + ' ';
+  inp.focus();
+  const dd = document.getElementById('mention-dd'); if (dd) dd.style.display = 'none';
+}
+
+// Override openActDr to setup mention autocomplete after render
+function openActDr(id) {
+  const r = get().find(a => a._id === id); if (!r) return;
+  document.getElementById('dr-title').textContent = 'Detalle de Actividad';
+  const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
+  const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
+  const isAdmin = CURRENT_USER?.role === 'admin';
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+
+  document.getElementById('dr-body').innerHTML = `
+    <div class="d-code">${r['CÓDIGO']} · ${r['AÑO']}</div>
+    <div class="d-name">${r.ACTIVIDAD || '—'}</div>
+    <div style="margin-bottom:10px">${badge(r.ESTADO||'PLANIFICADA')}</div>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Avance</span><span style="color:${col};font-weight:700">${r.AVANCE}%</span></div>
+      <div style="height:5px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${r.AVANCE}%"></div></div>
+    </div>
+    <div class="d-meta">
+      <div class="d-mb"><div class="d-ml">Proyecto</div><div class="d-mv" title="${r.PROYECTO||''}">${(r.PROYECTO||'—').substring(0,24)}…</div></div>
+      <div class="d-mb"><div class="d-ml">Responsable</div><div class="d-mv">${r.RESPONSABLE||'—'}</div></div>
+      <div class="d-mb"><div class="d-ml">Fecha Inicio</div><div class="d-mv">${fmtD(r['FECHA INICIO'])}</div></div>
+      <div class="d-mb"><div class="d-ml">Fecha Fin</div><div class="d-mv">${fmtD(r['FECHA FIN'])}</div></div>
+      <div class="d-mb"><div class="d-ml">F.Completada</div><div class="d-mv" style="color:${r['FECHA COMPLETADA']?'var(--green)':'var(--text2)'}">${fmtD(r['FECHA COMPLETADA'])}</div></div>
+      <div class="d-mb"><div class="d-ml">Planta</div><div class="d-mv">${(r.PLANTA||'—').replace('PLANTA ','')}</div></div>
+    </div>
+    ${r.OBSERVACIONES ? `<div class="d-obs"><div class="d-obs-l">Observaciones</div>${r.OBSERVACIONES}</div>` : ''}
+    ${rn > 0 ? `<div class="d-rep-box">
+      <div class="d-rep-l">Reprogramaciones (${rn})</div>
+      ${r['NUEVA FECHA DE CIERRE'] ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">Nueva fecha cierre: <span style="color:var(--orange);font-weight:600">${r['NUEVA FECHA DE CIERRE']}</span></div>` : ''}
+      ${r['DETALLE DE REPROGRAMACION'] ? `<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>` : ''}
+    </div>` : ''}
+    ${stT > 0 ? `<div class="d-sec">Subtareas (${stD}/${stT})</div>
+      ${r.subtasks.map(s => `<div class="d-st">
+        <div class="d-chk ${s.done?'done':''}" onclick="togDrST('${r._id}','${s.id}')">${s.done?'✓':''}</div>
+        <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:11px'};flex:1">${s.desc}</span>
+        <span style="font-size:10px;color:var(--text2)">${s.resp||''}</span>
+      </div>`).join('')}` : ''}
+    <div class="d-sec" style="margin-top:14px">💬 Comentarios</div>
+    <div class="ac-thread" id="dr-cmts-thread"></div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;position:relative">
+      <input class="fi" id="dr-cmt-inp" placeholder="Escribe un comentario… usa @nombre para mencionar" style="flex:1;font-size:11px;padding:6px 9px"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addDrawerComment('${r._id}')}">
+      <button class="btn btn-sm" onclick="addDrawerComment('${r._id}')">Enviar</button>
+    </div>
+    <div class="d-sec">📋 Historial de cambios</div>
+    <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
+      ${renderHistory(r)}
+    </div>
+    ${canEdit && r.ESTADO !== 'REALIZADA' ? `<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>` : ''}
+    <div style="display:flex;gap:7px;margin-top:10px">
+      ${canEdit ? `<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>` : ''}
+      ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>` : ''}
+    </div>`;
+
+  openDr();
+  renderDrawerComments(r._id);
+  setTimeout(() => setupMentionAutocomplete('dr-cmt-inp', r._id), 100);
+}
+
+function togDrST(aId, sId) {
+  const r = get().find(a => String(a._id) === String(aId)); if (!r) return;
+  const s = r.subtasks?.find(x => String(x.id) === String(sId)); if (!s) return;
+  s.done = !s.done;
+  const tot = r.subtasks.length, done = r.subtasks.filter(x => x.done).length;
+  if (tot > 0) r.AVANCE = Math.round(done/tot*100);
+  // Save subtasks update to DB
+  _sb.from('actividades').update({ subtasks: r.subtasks, avance: r.AVANCE }).eq('id', r._dbid).then(()=>{});
+  openActDr(aId);
+}
+
+function openProjDr(proj) {
+  const acts = get().filter(r => r.PROYECTO === proj);
+  const avg  = acts.length ? Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length) : 0;
+  const cum  = acts.length ? Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100) : 0;
+  const rep  = acts.filter(r=>r.ESTADO==='REPROGRAMADA').length;
+  const tRep = acts.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
+  const delayed = acts.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY);
+  const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
+  const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
+  const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
+  const isAdmin = CURRENT_USER?.role === 'admin';
+  document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
+  document.getElementById('dr-body').innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+      <div style="width:34px;height:34px;border-radius:8px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:15px">◫</span></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px;line-height:1.3">${proj}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">${plant||'—'}</div></div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Avance promedio</span><span style="color:${col};font-weight:700">${avg}%</span></div>
+      <div style="height:5px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${avg}%"></div></div>
+    </div>
+    <div class="d-meta">
+      <div class="d-mb"><div class="d-ml">Cumplimiento</div><div class="d-mv" style="color:${cc}">${cum}%</div></div>
+      <div class="d-mb"><div class="d-ml">Total</div><div class="d-mv">${acts.length}</div></div>
+      <div class="d-mb"><div class="d-ml">Realizadas</div><div class="d-mv" style="color:var(--green)">${acts.filter(r=>r.ESTADO==='REALIZADA').length}</div></div>
+      <div class="d-mb"><div class="d-ml">En Curso</div><div class="d-mv" style="color:var(--accent)">${acts.filter(r=>r.ESTADO==='EN CURSO').length}</div></div>
+      <div class="d-mb"><div class="d-ml">Reprogramadas</div><div class="d-mv" style="color:var(--orange)">${rep}</div></div>
+      <div class="d-mb"><div class="d-ml">Total Reprog.</div><div class="d-mv" style="color:${tRep>0?'var(--orange)':'var(--text2)'}">${tRep}</div></div>
+      <div class="d-mb"><div class="d-ml">Días retraso</div><div class="d-mv" style="color:${tDel>0?'var(--red)':'var(--green)'}">${tDel}</div></div>
+      <div class="d-mb"><div class="d-ml">Incumpl.</div><div class="d-mv" style="color:${(100-cum)>30?'var(--red)':'var(--text2)'}">${100-cum}%</div></div>
+    </div>
+    <div class="d-sec">Actividades con Observaciones</div>
+    <div style="overflow-x:auto;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <thead><tr style="background:var(--bg3)">
+          <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase;white-space:nowrap">Código</th>
+          <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Actividad</th>
+          <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Estado</th>
+          <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Observaciones</th>
+        </tr></thead>
+        <tbody>
+          ${acts.map(r => `<tr style="border-bottom:1px solid rgba(33,38,45,.5);cursor:pointer" onclick="closeDr();setTimeout(()=>openActDr('${r._id}'),150)">
+            <td style="padding:5px 8px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span></td>
+            <td style="padding:5px 8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.ACTIVIDAD||''}">${(r.ACTIVIDAD||'—').substring(0,18)}…</td>
+            <td style="padding:5px 8px">${badge(r.ESTADO)}</td>
+            <td style="padding:5px 8px;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.OBSERVACIONES?r.OBSERVACIONES.substring(0,30)+(r.OBSERVACIONES.length>30?'…':''):'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${isAdmin ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
+  openDr();
+}
+
+function renderHistory(act) {
+  if (!act._history || !act._history.length) return '<div style="font-size:11px;color:var(--text2);padding:8px 0">Sin cambios registrados.</div>';
+  return act._history.slice().reverse().map(h =>
+    `<div class="ch-row">
+      <span class="ch-time">${h.ts}</span>
+      <span class="ch-desc"><b>${h.field}</b>: ${h.from} → ${h.to}</span>
+      <span class="ch-user">${h.user.split(' ')[0]}</span>
+    </div>`).join('');
+}
+
+// handleImport — save to Supabase
+async function handleImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (typeof XLSX === 'undefined') { notify('⚠ SheetJS no disponible', true); return; }
+  const modeEl = document.querySelector('input[name="import-mode"]:checked');
+  const mode = modeEl ? modeEl.value : 'add';
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      if (mode === 'replace') {
+        if (!confirm(`¿Reemplazar TODOS los datos del módulo "${MOD_LBL[ACTIVE]}"? Esta acción no se puede deshacer.`)) return;
+        await _sb.from('actividades').delete().eq('modulo', ACTIVE);
+      }
+      let cnt = 0;
+      for (const row of rows) {
+        if (!row.ACTIVIDAD) continue;
+        await _sb.from('actividades').insert({
+          modulo: ACTIVE,
+          codigo: row['CÓDIGO']||'',
+          anio:   Number(row['AÑO'])||new Date().getFullYear(),
+          actividad: String(row.ACTIVIDAD||''),
+          planta: String(row.PLANTA||''),
+          proyecto: String(row.PROYECTO||row['PROYECTO DE INVESTIGACION']||''),
+          responsable: String(row.RESPONSABLE||''),
+          fecha_inicio: row['FECHA INICIO']?String(row['FECHA INICIO']).substring(0,10):null,
+          fecha_fin:    row['FECHA FIN']?String(row['FECHA FIN']).substring(0,10):null,
+          fecha_completada: row['FECHA COMPLETADA']?String(row['FECHA COMPLETADA']).substring(0,10):null,
+          estado: row.ESTADO||'PLANIFICADA',
+          avance: Number(String(row.AVANCE||0).replace('%',''))||0,
+          observaciones: String(row.OBSERVACIONES||''),
+          cant_reprog: Number(row['CANTIDAD DE REPROGRAMACIONES'])||0,
+          detalle_reprog: String(row['DETALLE DE REPROGRAMACION']||''),
+          nueva_fecha_cierre: row['NUEVA FECHA DE CIERRE']?String(row['NUEVA FECHA DE CIERRE']).substring(0,10):null,
+          created_by: CURRENT_USER?.id
+        }); cnt++;
+      }
+      await loadModFromDB(ACTIVE);
+      notify('✅ ' + cnt + ' actividades ' + (mode==='replace'?'cargadas (reemplazo)':'añadidas'));
+    } catch (err) { notify('⚠ Error: ' + err.message, true); }
+  };
+  reader.readAsArrayBuffer(file); e.target.value = '';
+}
+
+// saveNewMod — admin only, also save to DB
+async function saveNewMod() {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede crear módulos', true); return; }
+  const name = document.getElementById('nm-name').value.trim();
+  if (!name) { notify('⚠ El módulo necesita un nombre', true); return; }
+  const key = 'mod_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  const { error } = await _sb.from('modulos').insert({ key, nombre:name, color:selectedModColor, created_by:CURRENT_USER.id });
+  if (error && !error.message.includes('unique')) { notify('⚠ '+error.message, true); return; }
+  RAW[key] = []; MS[key] = { acts:[], sF:'CÓDIGO', sA:true, pg:1 }; MOD_LBL[key] = name;
+  if (!COLORS_ALL[key]) COLORS_ALL[key] = {};
+  const extraMods = document.getElementById('extra-mods');
+  const btn = document.createElement('button'); btn.className='mod-btn'; btn.id='mod-'+key;
+  btn.innerHTML = `<span class="mod-dot" style="background:${selectedModColor}"></span><span class="mod-txt">${name}</span>`;
+  btn.onclick = function() { switchMod(key, this); };
+  extraMods.appendChild(btn);
+  closeNewModModal(); notify('✅ Módulo "' + name + '" creado');
+}
+
 // ── Boot ────────────────────────────────────────────────────────────
-loadMod('automatizacion');
-initAdminFeatures();
-setTimeout(checkDueNotifs, 1200);
+// Check for existing session on page load
+(async () => {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session) {
+    await initSession(session.user);
+  }
+})();
 </script>
 </body>
 </html>
