@@ -465,18 +465,9 @@ tr:hover .act-btns { opacity:1 }
     </button>
   </div>
   <nav>
-    <!-- Global year filter -->
-    <div style="padding:5px 8px;margin-bottom:4px">
-      <select id="g-anio" onchange="applyGlobalAnio()" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:'Barlow',sans-serif;cursor:pointer">
-        <option value="">Todos los años</option>
-        <option value="2025">2025</option>
-        <option value="2026" selected>2026</option>
-        <option value="2027">2027</option>
-      </select>
-    </div>
     <span class="sec-lbl">M&#243;dulos</span>
-    <button class="nav-item" onclick="goPage('inicio',this)"><span class="nav-icon">🏠</span><span class="nav-lbl">Inicio</span></button>
-    <button class="nav-item active" onclick="goPage('dashboard',this)"><span class="nav-icon">&#9635;</span><span class="nav-lbl">Dashboard</span></button>
+    <button class="nav-item active" onclick="goPage('inicio',this)"><span class="nav-icon">🏠</span><span class="nav-lbl">Inicio</span></button>
+    <button class="nav-item" onclick="goPage('dashboard',this)"><span class="nav-icon">&#9635;</span><span class="nav-lbl">Dashboard</span></button>
     <button class="nav-item" onclick="goPage('projects',this)"><span class="nav-icon">&#9643;</span><span class="nav-lbl">Proyectos</span></button>
     <button class="nav-item" onclick="goPage('activities',this)"><span class="nav-icon">&#9776;</span><span class="nav-lbl">Actividades</span></button>
     <button class="nav-item" onclick="goPage('gantt',this)"><span class="nav-icon">&#9638;</span><span class="nav-lbl">Timeline / Gantt</span></button>
@@ -524,7 +515,7 @@ tr:hover .act-btns { opacity:1 }
   <div class="content">
 
     <!-- DASHBOARD -->
-    <div class="page active" id="page-dashboard">
+    <div class="page" id="page-dashboard">
       <div class="filter-bar">
         <div class="fg"><label>Desde (F.Fin)</label><input type="date" id="f-desde" onchange="applyF()" class="fi" style="min-width:130px;padding:5px 9px;font-size:12px"></div>
         <div class="fg"><label>Hasta (F.Fin)</label><input type="date" id="f-hasta" onchange="applyF()" class="fi" style="min-width:130px;padding:5px 9px;font-size:12px"></div>
@@ -547,6 +538,14 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><label>Planta</label><select id="f-planta" onchange="applyF()"><option value="">Todas</option></select></div>
         <div class="fg"><label>Proyecto</label><select id="f-proyecto" onchange="applyF()"><option value="">Todos</option></select></div>
         <div class="fg"><label>Responsable</label><select id="f-resp" onchange="applyF()"><option value="">Todos</option></select></div>
+        <div class="fg"><label>A&#241;o</label>
+          <select id="f-anio" onchange="applyF()">
+            <option value="">Todos</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+          </select>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="clearF()">&#10005; Limpiar</button>
       </div>
       <div class="kpi-grid" id="kpi-grid"></div>
@@ -764,7 +763,7 @@ tr:hover .act-btns { opacity:1 }
     </div>
 
       <!-- INICIO -->
-    <div class="page" id="page-inicio">
+    <div class="page active" id="page-inicio">
       <div id="inicio-content"></div>
     </div>
 
@@ -1137,11 +1136,13 @@ function toggleSB() {
 function goPage(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  el.classList.add('active');
-  const T = { dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
+  const pageEl = document.getElementById('page-' + id);
+  if (pageEl) pageEl.classList.add('active');
+  if (el) el.classList.add('active');
+  const T = { inicio:'Inicio', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
   document.getElementById('tb-title').textContent = T[id] || id;
   closeDr();
+  if (id === 'inicio') setTimeout(renderInicio, 50);
 }
 function _DISABLED_switchMod_sync(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
@@ -1165,6 +1166,7 @@ function getFiltered() {
   const planta = document.getElementById('f-planta')?.value;
   const proy   = document.getElementById('f-proyecto')?.value;
   const resp   = document.getElementById('f-resp')?.value;
+  const anio   = document.getElementById('f-anio')?.value || '';
   const TRIM_MONTHS = { '1':[0,1,2], '2':[3,4,5], '3':[6,7,8], '4':[9,10,11] };
   return get().filter(r => {
     const ff = r['FECHA FIN'];
@@ -1175,12 +1177,17 @@ function getFiltered() {
     if (planta && (r.PLANTA||'').trim().toUpperCase() !== planta.trim().toUpperCase()) return false;
     if (proy   && (r.PROYECTO||'').trim().toUpperCase() !== proy.trim().toUpperCase()) return false;
     if (resp   && (r.RESPONSABLE||'').trim().toUpperCase() !== resp.trim().toUpperCase()) return false;
+    if (anio) {
+      const rAnio = r['AÑO'] ? String(r['AÑO']) : '';
+      const fAnio = ff ? String(new Date(ff).getFullYear()) : '';
+      if (rAnio !== anio && fAnio !== anio) return false;
+    }
     return true;
   });
 }
 function applyF()  { renderDash(); }
 function clearF()  {
-  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','rep-plan-mes'].forEach(id => {
+  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','rep-plan-mes'].forEach(id => {
     const e = document.getElementById(id); if (e) e.value = '';
   });
   applyF();
@@ -2072,6 +2079,17 @@ function renderCfg() {
     return `<tr><td><strong>${p}</strong></td><td>${a.length}</td><td>${uniq(a,'PROYECTO').length}</td>
       <td><div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${avg}%;background:var(--accent)"></div></div><span class="av-pct">${avg}%</span></div></td></tr>`;
   }).join('');
+  // Admin-only module management
+  if (CURRENT_USER?.role === 'admin') {
+    setTimeout(renderModMgmt, 50);
+    const rs = document.getElementById('recovery-section');
+    if (rs) rs.style.display = 'block';
+    const mm = document.getElementById('mod-mgmt-section');
+    if (mm) mm.style.display = 'block';
+  } else {
+    const mm = document.getElementById('mod-mgmt-section');
+    if (mm) mm.style.display = 'none';
+  }
 }
 
 // ── New User ────────────────────────────────────────────────────────
@@ -2951,15 +2969,19 @@ async function initSession(authUser) {
   await loadUserNotifs();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio page
+  // Navigate to Inicio page and render it
   setTimeout(() => {
-    const navBtns = document.querySelectorAll('.nav-item');
-    navBtns.forEach(btn => {
-      if ((btn.getAttribute('onclick')||'').includes("'inicio'")) {
-        btn.click();
-      }
+    // Switch to inicio page
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const pg = document.getElementById('page-inicio');
+    if (pg) pg.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      if ((btn.getAttribute('onclick')||'').includes("'inicio'")) btn.classList.add('active');
     });
-  }, 300);
+    document.getElementById('tb-title').textContent = 'Inicio';
+    renderInicio();
+  }, 400);
 }
 
 async function doLogout() {
@@ -3884,31 +3906,10 @@ async function saveNewMod() {
   closeNewModModal(); notify('✅ Módulo "' + name + '" creado');
 }
 
-// ════════════════════════════════════════════════════════════════
-// GLOBAL YEAR FILTER
-// ════════════════════════════════════════════════════════════════
-let GLOBAL_ANIO = '2026';
-
-function applyGlobalAnio() {
-  GLOBAL_ANIO = document.getElementById('g-anio')?.value || '';
-  // Refresh all views
-  applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderRep();
-}
+// Global year filter moved to dashboard filter bar (f-anio)
 
 // Override getFiltered to apply global year
-// getFiltered with global year filter (integrated)
-const _gfBase = getFiltered;
-function getFiltered() {
-  let d = _gfBase();
-  if (GLOBAL_ANIO) {
-    d = d.filter(r => {
-      const anioAct = r['AÑO'] ? String(r['AÑO']) : null;
-      const anioFin = r['FECHA FIN'] ? String(new Date(r['FECHA FIN']).getFullYear()) : null;
-      return !GLOBAL_ANIO || anioAct === GLOBAL_ANIO || anioFin === GLOBAL_ANIO;
-    });
-  }
-  return d;
-}
+// getFiltered year filter removed from override - integrated into original below
 
 // ════════════════════════════════════════════════════════════════
 // PROJECTS — Card/List view + By-plant grouping
@@ -4434,30 +4435,12 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 // FIX: renderCfg — show module management for admin
 // ════════════════════════════════════════════════════════════════
-// renderCfg extended with module management
-const _rcfgBase = renderCfg;
-function renderCfg() {
-  _rcfgBase();
-  setTimeout(() => {
-    if (CURRENT_USER?.role === 'admin') {
-      renderModMgmt();
-      const rs = document.getElementById('recovery-section');
-      if (rs) rs.style.display = 'block';
-    }
-  }, 50);
-}
+// renderCfg override removed - module management integrated into original
 
 // ════════════════════════════════════════════════════════════════
 // FIX: goPage — render Inicio when navigating to it
 // ════════════════════════════════════════════════════════════════
-// goPage extended to render Inicio
-const _goPageBase = goPage;
-function goPage(id, el) {
-  _goPageBase(id, el);
-  if (id === 'inicio') {
-    setTimeout(renderInicio, 50);
-  }
-}
+// goPage override removed - renderInicio called from original goPage
 
 // ════════════════════════════════════════════════════════════════
 // FIX: initSession — navigate to Inicio after login
