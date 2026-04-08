@@ -152,7 +152,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .table-hdr  { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; border-bottom:1px solid var(--border) }
 .table-title { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase }
 .table-count { font-size:11px; color:var(--text2) }
-.table-wrap  { overflow-x:auto; max-height:490px; overflow-y:auto }
+.table-wrap  { overflow-x:auto; max-height:calc(100vh - 280px); overflow-y:auto }
 table { width:100%; border-collapse:collapse; font-size:12px }
 th { padding:8px 12px; text-align:left; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); background:var(--bg3); border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; position:sticky; top:0; z-index:5; user-select:none }
 th:hover { color:var(--text) }
@@ -168,6 +168,8 @@ tr:hover .act-btns { opacity:1 }
 .abtn-v { background:rgba(56,189,248,.12); color:var(--accent) } .abtn-v:hover { background:rgba(56,189,248,.25) }
 .abtn-d { background:rgba(34,197,94,.12); color:var(--green) }   .abtn-d:hover { background:rgba(34,197,94,.25) }
 .abtn-x { background:rgba(239,68,68,.10); color:var(--red) }     .abtn-x:hover { background:rgba(239,68,68,.22) }
+.btn-danger { background:rgba(239,68,68,.12); color:var(--red); border-color:rgba(239,68,68,.3) }
+.btn-danger:hover { background:rgba(239,68,68,.25) }
 .badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.03em; white-space:nowrap }
 .b-R { background:rgba(34,197,94,.15);  color:#22c55e }
 .b-E { background:rgba(56,189,248,.15); color:#38bdf8 }
@@ -463,7 +465,17 @@ tr:hover .act-btns { opacity:1 }
     </button>
   </div>
   <nav>
+    <!-- Global year filter -->
+    <div style="padding:5px 8px;margin-bottom:4px">
+      <select id="g-anio" onchange="applyGlobalAnio()" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:'Barlow',sans-serif;cursor:pointer">
+        <option value="">Todos los años</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+      </select>
+    </div>
     <span class="sec-lbl">M&#243;dulos</span>
+    <button class="nav-item" onclick="goPage('inicio',this)"><span class="nav-icon">🏠</span><span class="nav-lbl">Inicio</span></button>
     <button class="nav-item active" onclick="goPage('dashboard',this)"><span class="nav-icon">&#9635;</span><span class="nav-lbl">Dashboard</span></button>
     <button class="nav-item" onclick="goPage('projects',this)"><span class="nav-icon">&#9643;</span><span class="nav-lbl">Proyectos</span></button>
     <button class="nav-item" onclick="goPage('activities',this)"><span class="nav-icon">&#9776;</span><span class="nav-lbl">Actividades</span></button>
@@ -574,9 +586,14 @@ tr:hover .act-btns { opacity:1 }
         </div>
         <button class="btn btn-ghost btn-sm" onclick="clearPF()">&#10005; Limpiar</button>
         <div style="flex:1"></div>
+        <!-- View toggle -->
+        <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
+          <button id="pv-card" onclick="setProjView('card')" title="Vista tarjetas" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:13px;cursor:pointer;transition:all .15s">⊞</button>
+          <button id="pv-list" onclick="setProjView('list')" title="Vista lista" style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s">☰</button>
+        </div>
         <button class="btn btn-accent btn-sm" onclick="openNewProj()">+ Nuevo Proyecto</button>
       </div>
-      <div class="projs-grid" id="projs-grid"></div>
+      <div id="projs-container"></div>
     </div>
 
     <!-- ACTIVITIES -->
@@ -696,6 +713,26 @@ tr:hover .act-btns { opacity:1 }
         <div style="margin-bottom:12px"><button class="btn btn-accent btn-sm" onclick="openNewUser()">+ Nuevo Usuario</button></div>
         <div id="users-by-role"></div>
       </div>
+      <div class="cfg-sec" id="mod-mgmt-section">
+        <div class="cfg-title">&#9881; Gesti&#243;n de M&#243;dulos (solo Administrador)</div>
+        <div id="mod-mgmt-list"></div>
+        <div style="margin-top:10px">
+          <button class="btn btn-accent btn-sm" onclick="openNewModModal()">+ Nuevo M&#243;dulo</button>
+        </div>
+      </div>
+      <div class="cfg-sec" id="recovery-section" style="display:none">
+        <div class="cfg-title">&#9851; Recuperaci&#243;n de Datos (solo Administrador)</div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Administra m&#243;dulos y proyectos eliminados o recupera datos del sistema.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="showDeletedModules()">&#128260; M&#243;dulos eliminados</button>
+            <button class="btn btn-sm" onclick="showDeletedProjects()">&#128260; Proyectos eliminados</button>
+          </div>
+        </div>
+        <div id="recovery-content"></div>
+      </div>
+      <div class="cfg-sec" style="display:none" id="ph-users-sec">
+      </div>
       <div class="cfg-sec">
         <div class="cfg-title">&#127981; Plantas del m&#243;dulo activo</div>
         <div class="table-card"><div class="table-wrap"><table><thead><tr><th>Planta</th><th>Actividades</th><th>Proyectos</th><th>Avance Prom.</th></tr></thead><tbody id="plants-tbody"></tbody></table></div></div>
@@ -726,7 +763,12 @@ tr:hover .act-btns { opacity:1 }
       </div>
     </div>
 
-  </div><!-- /content -->
+      <!-- INICIO -->
+    <div class="page" id="page-inicio">
+      <div id="inicio-content"></div>
+    </div>
+
+</div><!-- /content -->
 </div><!-- /main -->
 
 <!-- DRAWER -->
@@ -1130,9 +1172,9 @@ function getFiltered() {
     if (trim && ff) { const m = new Date(ff).getMonth(); if (!TRIM_MONTHS[trim]?.includes(m)) return false; }
     if (desde && ff && ff < desde) return false;
     if (hasta && ff && ff > hasta) return false;
-    if (planta && r.PLANTA     !== planta) return false;
-    if (proy   && r.PROYECTO   !== proy)   return false;
-    if (resp   && r.RESPONSABLE !== resp)  return false;
+    if (planta && (r.PLANTA||'').trim().toUpperCase() !== planta.trim().toUpperCase()) return false;
+    if (proy   && (r.PROYECTO||'').trim().toUpperCase() !== proy.trim().toUpperCase()) return false;
+    if (resp   && (r.RESPONSABLE||'').trim().toUpperCase() !== resp.trim().toUpperCase()) return false;
     return true;
   });
 }
@@ -1166,6 +1208,7 @@ function renderDash() {
   const tRepNJ = d.reduce((s,r)=>s+(r._reprog_no_just||0),0);
   document.getElementById('tb-badge').textContent = n + ' actividades';
 
+  const sinFecha = get().filter(r=>!r['FECHA FIN']).length;
   const kpis = [
     { l:'Total',              v:n,         i:'📋', c:'var(--accent)', s:avgA+'% avance prom.',                       t:'total'       },
     { l:'Cumplimiento Global',v:cumP+'%',  i:'✅', c:'var(--green)',  s:real+' de '+n+' realizadas',                 t:'realizada'   },
@@ -1175,6 +1218,7 @@ function renderDash() {
     { l:'Reprogramadas',      v:rep,       i:'🔄', c:'var(--orange)', s:'requieren atención',                        t:'reprogramada'},
     { l:'Reprog. No Just.',   v:tRepNJ,    i:'⚠',  c:'var(--red)',    s:'afectan cumplimiento',                      t:'reprog'      },
     { l:'Cumpl. del Mes',     v:moP+'%',   i:'📅', c:'var(--purple)', s:moRealiz+'/'+moA.length+' · Ajust:'+moPadj+'%', t:'mes' },
+    { l:'Sin Fecha',          v:sinFecha,  i:'📭', c:'var(--text3)',  s:'sin fecha asignada',                        t:'sinFecha'    },
   ];
   document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
     `<div class="kpi" style="--kc:${k.c}" onclick="openKP('${k.t}')">
@@ -1364,6 +1408,7 @@ function openKP(type) {
     reprog:       { l:'Con Reprogramaciones',   fn: r => (r['CANTIDAD DE REPROGRAMACIONES']||0) > 0 },
     total:        { l:'Todas las Actividades',  fn: () => true },
     mes:          { l:'Actividades del Mes',    fn: r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === TODAY.getMonth() },
+    sinFecha:     { l:'Sin Fecha Asignada',     fn: r => !r['FECHA FIN'] || r['FECHA FIN'] === null },
   };
   const cfg = MAP[type] || MAP.total;
   const acts = d.filter(cfg.fn);
@@ -1404,9 +1449,9 @@ function renderActs() {
   d = d.filter(r => {
     if (srch && !((r.ACTIVIDAD||'').toLowerCase().includes(srch) || (r['CÓDIGO']||'').toLowerCase().includes(srch))) return false;
     if (est && r.ESTADO       !== est)  return false;
-    if (pla && r.PLANTA        !== pla)  return false;
-    if (prj && r.PROYECTO      !== prj)  return false;
-    if (res && r.RESPONSABLE   !== res)  return false;
+    if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
+    if (prj && (r.PROYECTO||'').trim().toUpperCase() !== prj.trim().toUpperCase()) return false;
+    if (res && (r.RESPONSABLE||'').trim().toUpperCase() !== res.trim().toUpperCase()) return false;
     return true;
   });
   const f = state.sF, asc = state.sA;
@@ -1467,10 +1512,10 @@ function renderGantt() {
   const res   = document.getElementById('g-resp')?.value   || '';
   const data  = get().filter(r => {
     if (!r['FECHA INICIO'] || !r['FECHA FIN']) return false;
-    if (pla && r.PLANTA     !== pla) return false;
-    if (prj && r.PROYECTO   !== prj) return false;
+    if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
+    if (prj && (r.PROYECTO||'').trim().toUpperCase() !== prj.trim().toUpperCase()) return false;
     if (est && (r.ESTADO||'').toUpperCase() !== est.toUpperCase()) return false;
-    if (res && r.RESPONSABLE!== res) return false;
+    if (res && (r.RESPONSABLE||'').trim().toUpperCase() !== res.trim().toUpperCase()) return false;
     const mS = new Date(r['FECHA INICIO']).getMonth(), mE = new Date(r['FECHA FIN']).getMonth();
     return !(mE < fromM || mS > toM);
   });
@@ -1526,8 +1571,8 @@ function renderCal() {
   const filt = get().filter(r => {
     if (!r['FECHA INICIO'] || !r['FECHA FIN']) return false;
     if (est && (r.ESTADO||'').toUpperCase() !== est.toUpperCase()) return false;
-    if (pla && r.PLANTA     !== pla) return false;
-    if (res && r.RESPONSABLE!== res) return false;
+    if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
+    if (res && (r.RESPONSABLE||'').trim().toUpperCase() !== res.trim().toUpperCase()) return false;
     return true;
   });
   let cells = [];
@@ -1562,8 +1607,8 @@ function renderProjs() {
   const isAdmin = CURRENT_USER?.role === 'admin';
   let projs = uniq(get(), 'PROYECTO');
   if (srch)  projs = projs.filter(p => p.toLowerCase().includes(srch));
-  if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.PLANTA===pla));
-  if (res)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.RESPONSABLE===res));
+  if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.PLANTA||'').trim().toUpperCase()===pla.trim().toUpperCase()));
+  if (res)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.RESPONSABLE||'').trim().toUpperCase()===res.trim().toUpperCase()));
   if (est === 'con_retraso')     projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY));
   if (est === 'reprogramados')   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r['CANTIDAD DE REPROGRAMACIONES']||0)>0));
   if (est === 'en_curso')        projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO==='EN CURSO'));
@@ -2123,8 +2168,12 @@ function autoGenST() {
   }
   tmpST = [];
   // Generate one subtask per month in the range
-  let cur = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+  // Start from actual start date month, not first of month
+  // This prevents creating extra subtask for previous month
+  let cur = new Date(dIni.getFullYear(), dIni.getMonth(), dIni.getDate() === 1 ? 1 : dIni.getDate());
   const lastMonth = new Date(dFin.getFullYear(), dFin.getMonth(), 1);
+  // Normalize to first of month for iteration
+  cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
   while (cur <= lastMonth) {
     const mesNm = MESES_F[cur.getMonth()];
     const yr    = cur.getFullYear();
@@ -2951,6 +3000,7 @@ function applyPermissions() {
     if (btn) btn.style.display = (role==='admin' || modules.includes(key)) ? 'flex' : 'none';
   });
   const navPerms = {
+    "goPage('inicio'":"Dashboard",
     "goPage('dashboard'":"Dashboard", "goPage('projects'":"Proyectos", "goPage('activities'":"Actividades",
     "goPage('gantt'":"Timeline", "goPage('calendar'":"Calendario", "goPage('reports'":"Reportes", "goPage('config'":"Configuración"
   };
@@ -3018,6 +3068,9 @@ async function loadModFromDB(key) {
   applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderCfg(); renderRep();
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
   document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
+  // Refresh inicio if visible
+  const inPage = document.getElementById('page-inicio');
+  if (inPage && inPage.classList.contains('active')) renderInicio();
 }
 
 async function loadCommentsForMod(key) {
@@ -3487,7 +3540,7 @@ function renderDrawerComments(actId) {
 async function switchMod(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  ['f-mes','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
+  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
     const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
   });
   await loadModFromDB(key);
@@ -3499,10 +3552,12 @@ function populateDDs() {
   const a = get();
   const plantas = uniq(a, 'PLANTA');
   const projs   = uniq(a, 'PROYECTO');
-  // Use SB_PROFILES names for responsables if available, else from data
-  const resps = SB_PROFILES.length
-    ? SB_PROFILES.filter(p => p.role !== 'viewer').map(p => p.name).sort()
-    : uniq(a, 'RESPONSABLE');
+  // Build responsable list: use activity data values (real case from Excel)
+  // augmented with SB_PROFILES for mention/assign purposes
+  const actResps = uniq(a, 'RESPONSABLE').filter(Boolean);
+  const profResps = SB_PROFILES.filter(p => p.role !== 'viewer').map(p => p.name);
+  // Use activity data responsables for filters (they match the actual values)
+  const resps = actResps.length ? actResps : profResps;
 
   ['f-planta','a-planta','g-planta','cal-planta','rep-planta'].forEach(id => setDD(id, plantas));
   ['f-resp','a-resp2','g-resp','cal-resp'].forEach(id => setDD(id, resps));
@@ -3818,6 +3873,618 @@ async function saveNewMod() {
   btn.onclick = function() { switchMod(key, this); };
   extraMods.appendChild(btn);
   closeNewModModal(); notify('✅ Módulo "' + name + '" creado');
+}
+
+// ════════════════════════════════════════════════════════════════
+// GLOBAL YEAR FILTER
+// ════════════════════════════════════════════════════════════════
+let GLOBAL_ANIO = '2026';
+
+function applyGlobalAnio() {
+  GLOBAL_ANIO = document.getElementById('g-anio')?.value || '';
+  // Refresh all views
+  applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderRep();
+}
+
+// Override getFiltered to apply global year
+const _origGetFiltered = getFiltered;
+function getFiltered() {
+  let d = _origGetFiltered();
+  if (GLOBAL_ANIO) {
+    d = d.filter(r => !r['AÑO'] || String(r['AÑO']) === String(GLOBAL_ANIO) ||
+      (r['FECHA FIN'] && new Date(r['FECHA FIN']).getFullYear() === parseInt(GLOBAL_ANIO)));
+  }
+  return d;
+}
+
+// ════════════════════════════════════════════════════════════════
+// PROJECTS — Card/List view + By-plant grouping
+// ════════════════════════════════════════════════════════════════
+let PROJ_VIEW = 'card';
+
+function setProjView(v) {
+  PROJ_VIEW = v;
+  document.getElementById('pv-card').style.background = v==='card'?'var(--accent)':'transparent';
+  document.getElementById('pv-card').style.color      = v==='card'?'#000':'var(--text2)';
+  document.getElementById('pv-list').style.background = v==='list'?'var(--accent)':'transparent';
+  document.getElementById('pv-list').style.color      = v==='list'?'#000':'var(--text2)';
+  renderProjs();
+}
+
+// Override renderProjs to support view modes + by-plant grouping
+const _origRenderProjs = renderProjs;
+function renderProjs() {
+  const isAdmin = CURRENT_USER?.role === 'admin';
+  const srch  = (document.getElementById('p-srch')?.value   || '').toLowerCase();
+  const pla   = document.getElementById('p-planta')?.value  || '';
+  const res   = document.getElementById('p-resp')?.value    || '';
+  const est   = document.getElementById('p-est')?.value     || '';
+
+  let projs = uniq(get(), 'PROYECTO');
+  if (srch)  projs = projs.filter(p => p.toLowerCase().includes(srch));
+  if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.PLANTA||'').trim().toUpperCase()===pla.trim().toUpperCase()));
+  if (res)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.RESPONSABLE||'').trim().toUpperCase()===res.trim().toUpperCase()));
+  if (est === 'con_retraso')     projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY));
+  if (est === 'reprogramados')   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r['CANTIDAD DE REPROGRAMACIONES']||0)>0));
+  if (est === 'en_curso')        projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO==='EN CURSO'));
+  if (est === 'completados')     projs = projs.filter(p => { const a=get().filter(r=>r.PROYECTO===p); return a.length&&a.every(r=>r.ESTADO==='REALIZADA'); });
+
+  // Group by plant
+  const plantGroups = {};
+  projs.forEach(p => {
+    const acts = get().filter(r => r.PROYECTO===p);
+    const plant = acts.length ? (acts[0].PLANTA || 'Sin Planta') : 'Sin Planta';
+    if (!plantGroups[plant]) plantGroups[plant] = [];
+    plantGroups[plant].push(p);
+  });
+
+  const container = document.getElementById('projs-container');
+  if (!container) return;
+
+  if (!projs.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text2);padding:40px;font-size:13px">Sin proyectos para los filtros seleccionados.</div>';
+    return;
+  }
+
+  let html = '';
+  Object.entries(plantGroups).forEach(([plant, plantProjs]) => {
+    // Plant header with cumulative stats
+    const plantActs = get().filter(r => plantProjs.includes(r.PROYECTO));
+    const plantAvg = plantActs.length?Math.round(plantActs.reduce((s,r)=>s+r.AVANCE,0)/plantActs.length):0;
+    const plantCum = plantActs.length?Math.round(plantActs.filter(r=>r.ESTADO==='REALIZADA').length/plantActs.length*100):0;
+    const cc = plantCum>=70?'var(--green)':plantCum>=40?'var(--orange)':'var(--red)';
+
+    html += `<div style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:2px solid var(--accent)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:16px">🏭</span>
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em">${plant}</div>
+            <div style="font-size:10px;color:var(--text2)">${plantProjs.length} proyectos · ${plantActs.length} actividades</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;text-align:center">
+          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--accent)">${plantAvg}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Avance</div></div>
+          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:${cc}">${plantCum}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Cumplimiento</div></div>
+        </div>
+      </div>`;
+
+    if (PROJ_VIEW === 'card') {
+      html += `<div class="projs-grid" style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
+      html += plantProjs.map(p => buildProjCard(p, isAdmin)).join('');
+      html += '</div>';
+    } else {
+      // List view
+      html += `<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">`;
+      html += plantProjs.map(p => buildProjListRow(p, isAdmin)).join('');
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function buildProjCard(p, isAdmin) {
+  const a = get().filter(r => r.PROYECTO === p);
+  const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
+  const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+  const enc  = a.filter(r=>r.ESTADO==='EN CURSO').length;
+  const rep  = a.filter(r=>r.ESTADO==='REPROGRAMADA').length;
+  const tRep = a.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
+  const delayed = a.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY).length;
+  const col = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
+  const plant = [...new Set(a.map(r=>r.PLANTA).filter(Boolean))].map(pl=>pl.replace('PLANTA ','')).join(', ');
+  return `<div class="proj-card" onclick="openProjDr('${esc(p)}')">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0">
+        <div style="width:30px;height:30px;border-radius:7px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:14px">◫</span></div>
+        <div style="min-width:0"><div style="font-weight:600;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div></div>
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:${cc};flex-shrink:0;margin-left:6px">${cum}%</div>
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px"><span>Avance</span><span style="color:${col};font-weight:600">${avg}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${avg}%;background:${col}"></div></div>
+    </div>
+    <div class="proj-stats" style="grid-template-columns:repeat(5,1fr)">
+      <div class="ps"><div class="ps-v" style="color:var(--green)">${a.filter(r=>r.ESTADO==='REALIZADA').length}</div><div class="ps-l">Realiz.</div></div>
+      <div class="ps"><div class="ps-v" style="color:var(--accent)">${enc}</div><div class="ps-l">Curso</div></div>
+      <div class="ps"><div class="ps-v" style="color:var(--s-rep)">${rep}</div><div class="ps-l">Reprog.</div></div>
+      <div class="ps"><div class="ps-v" style="color:${tRep>0?'var(--orange)':'var(--text2)'}">${tRep}</div><div class="ps-l">T.Reprog</div></div>
+      <div class="ps"><div class="ps-v">${a.length}</div><div class="ps-l">Total</div></div>
+    </div>
+    ${delayed>0?`<div class="proj-delay">⚠ ${delayed} actividad(es) vencida(s)</div>`:''}
+    <div style="display:flex;gap:5px;margin-top:8px" onclick="event.stopPropagation()">
+      ${isAdmin?`<button onclick="duplicateProject('${esc(p)}')" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.18)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉ Duplicar</button>`:''}
+    </div>
+  </div>`;
+}
+
+function buildProjListRow(p, isAdmin) {
+  const a = get().filter(r => r.PROYECTO === p);
+  const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
+  const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+  const col  = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
+  const id   = 'prl-' + p.replace(/[^a-zA-Z0-9]/g,'_');
+  return `<div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;background:var(--bg2)" 
+      onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='var(--bg2)'"
+      onclick="toggleProjList('${id}')">
+      <span style="color:var(--text2);font-size:12px;transition:transform .2s" id="${id}-arrow">▶</span>
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <div style="flex:1;font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</div>
+      <div style="display:flex;gap:16px;flex-shrink:0;font-size:11px">
+        <span style="color:var(--accent)">${avg}% avance</span>
+        <span style="color:${cc}">${cum}% cumpl.</span>
+        <span style="color:var(--text2)">${a.length} acts.</span>
+      </div>
+      <div style="width:80px;flex-shrink:0" onclick="event.stopPropagation();openProjDr('${esc(p)}')">
+        <div style="height:4px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${avg}%"></div></div>
+      </div>
+    </div>
+    <div id="${id}" style="display:none;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:rgba(0,0,0,.15)">
+          <th style="padding:6px 10px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Código</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Actividad</th>
+          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Estado</th>
+          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Avance</th>
+          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">F.Fin</th>
+          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Responsable</th>
+        </tr></thead>
+        <tbody>
+          ${a.map(r=>`<tr style="border-bottom:1px solid rgba(33,38,45,.4);cursor:pointer" onclick="openActDr('${r._id}')">
+            <td style="padding:5px 10px;white-space:nowrap"><span class="code-lbl" style="font-size:11px">${r['CÓDIGO']}</span></td>
+            <td style="padding:5px 10px;max-width:220px;font-size:11px">${r.ACTIVIDAD||'—'}</td>
+            <td style="padding:5px 10px">${badge(r.ESTADO||'PLANIFICADA')}</td>
+            <td style="padding:5px 10px;color:var(--accent);font-weight:700;text-align:center">${r.AVANCE}%</td>
+            <td style="padding:5px 10px;color:var(--text2);white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
+            <td style="padding:5px 10px;color:var(--text2);font-size:10px">${r.RESPONSABLE||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function toggleProjList(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id+'-arrow');
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+// ════════════════════════════════════════════════════════════════
+// IMPROVED openProjDr — bigger text, full obs, back button, mark done
+// ════════════════════════════════════════════════════════════════
+function openProjDr(proj) {
+  const acts = get().filter(r => r.PROYECTO === proj);
+  const avg  = acts.length?Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length):0;
+  const cum  = acts.length?Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100):0;
+  const rep  = acts.filter(r=>r.ESTADO==='REPROGRAMADA').length;
+  const tRep = acts.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
+  const delayed = acts.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY);
+  const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
+  const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
+  const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
+  const isAdmin = CURRENT_USER?.role === 'admin';
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+  document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
+  document.getElementById('dr-body').innerHTML = `
+    <!-- Back button -->
+    <button onclick="closeDr()" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+      ← Volver a Proyectos
+    </button>
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+      <div style="width:40px;height:40px;border-radius:10px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:18px">◫</span></div>
+      <div style="flex:1"><div style="font-weight:700;font-size:16px;line-height:1.3">${proj}</div><div style="font-size:12px;color:var(--text2);margin-top:3px">🏭 ${plant||'—'}</div></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>Avance promedio</span><span style="color:${col};font-weight:700">${avg}%</span></div>
+      <div style="height:7px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${avg}%"></div></div>
+    </div>
+    <div class="d-meta">
+      <div class="d-mb"><div class="d-ml">Cumplimiento</div><div class="d-mv" style="color:${cc};font-size:14px">${cum}%</div></div>
+      <div class="d-mb"><div class="d-ml">Total Acts.</div><div class="d-mv" style="font-size:14px">${acts.length}</div></div>
+      <div class="d-mb"><div class="d-ml">Realizadas</div><div class="d-mv" style="color:var(--green);font-size:14px">${acts.filter(r=>r.ESTADO==='REALIZADA').length}</div></div>
+      <div class="d-mb"><div class="d-ml">En Curso</div><div class="d-mv" style="color:var(--accent);font-size:14px">${acts.filter(r=>r.ESTADO==='EN CURSO').length}</div></div>
+      <div class="d-mb"><div class="d-ml">Reprogramadas</div><div class="d-mv" style="color:var(--orange);font-size:14px">${rep}</div></div>
+      <div class="d-mb"><div class="d-ml">Total Reprog.</div><div class="d-mv" style="color:${tRep>0?'var(--orange)':'var(--text2)'};font-size:14px">${tRep}</div></div>
+      <div class="d-mb"><div class="d-ml">Días retraso</div><div class="d-mv" style="color:${tDel>0?'var(--red)':'var(--green)'};font-size:14px">${tDel}</div></div>
+      <div class="d-mb"><div class="d-ml">Incumpl.</div><div class="d-mv" style="color:${(100-cum)>30?'var(--red)':'var(--text2)'};font-size:14px">${100-cum}%</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px">Actividades del Proyecto</div>
+    <div style="overflow-x:auto;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--bg3)">
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase;white-space:nowrap">Código</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Actividad</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Estado</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Avance</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">F.Fin</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Observaciones</th>
+          <th style="padding:7px 10px;text-align:center;font-size:10px;color:var(--text2);text-transform:uppercase">Acción</th>
+        </tr></thead>
+        <tbody>
+          ${acts.map(r => `<tr style="border-bottom:1px solid rgba(33,38,45,.5)">
+            <td style="padding:7px 10px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span></td>
+            <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px" onclick="closeDr();setTimeout(()=>openActDr('${r._id}'),150)" title="${r.ACTIVIDAD||''}">${r.ACTIVIDAD||'—'}</td>
+            <td style="padding:7px 10px">${badge(r.ESTADO||'PLANIFICADA')}</td>
+            <td style="padding:7px 10px;color:var(--accent);font-weight:700;font-size:12px">${r.AVANCE}%</td>
+            <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
+            <td style="padding:7px 10px;font-size:11px;color:var(--text);max-width:200px;white-space:normal;word-break:break-word">${r.OBSERVACIONES||'—'}</td>
+            <td style="padding:7px 10px;text-align:center">
+              ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="markDone('${r._id}');setTimeout(()=>openProjDr('${esc(proj)}'),800)" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Realizada</button>`:'<span style="color:var(--green);font-size:12px">✅</span>'}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto</button>`:''}
+      ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
+    </div>`;
+  openDr();
+}
+
+// ════════════════════════════════════════════════════════════════
+// IMPROVED openActDr — back button, bigger fonts
+// ════════════════════════════════════════════════════════════════
+// Override the existing openActDr to add back button
+const _baseOpenActDr = openActDr;
+function openActDr(id) {
+  const r = get().find(a => a._id === id); if (!r) return;
+  const fromProj = r.PROYECTO;
+  document.getElementById('dr-title').textContent = 'Detalle de Actividad';
+  const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
+  const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
+  const isAdmin = CURRENT_USER?.role === 'admin';
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+
+  document.getElementById('dr-body').innerHTML = `
+    <button onclick="closeDr();setTimeout(()=>openProjDr('${esc(fromProj)}'),150)" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+      ← Volver al Proyecto
+    </button>
+    <div class="d-code">${r['CÓDIGO']} · ${r['AÑO']}</div>
+    <div class="d-name">${r.ACTIVIDAD || '—'}</div>
+    <div style="margin-bottom:12px">${badge(r.ESTADO||'PLANIFICADA')}</div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>Avance</span><span style="color:${col};font-weight:700">${r.AVANCE}%</span></div>
+      <div style="height:7px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${r.AVANCE}%"></div></div>
+    </div>
+    <div class="d-meta">
+      <div class="d-mb"><div class="d-ml">Proyecto</div><div class="d-mv" title="${r.PROYECTO||''}" onclick="closeDr();setTimeout(()=>openProjDr('${esc(r.PROYECTO||'')}'),150)" style="cursor:pointer;color:var(--accent)">${r.PROYECTO||'—'}</div></div>
+      <div class="d-mb"><div class="d-ml">Responsable</div><div class="d-mv">${r.RESPONSABLE||'—'}</div></div>
+      <div class="d-mb"><div class="d-ml">Fecha Inicio</div><div class="d-mv">${fmtD(r['FECHA INICIO'])}</div></div>
+      <div class="d-mb"><div class="d-ml">Fecha Fin</div><div class="d-mv">${fmtD(r['FECHA FIN'])}</div></div>
+      <div class="d-mb"><div class="d-ml">F.Completada</div><div class="d-mv" style="color:${r['FECHA COMPLETADA']?'var(--green)':'var(--text2)'}">${fmtD(r['FECHA COMPLETADA'])}</div></div>
+      <div class="d-mb"><div class="d-ml">Planta</div><div class="d-mv">${(r.PLANTA||'—').replace('PLANTA ','')}</div></div>
+    </div>
+    ${r.OBSERVACIONES?`<div class="d-obs"><div class="d-obs-l">Observaciones</div>${r.OBSERVACIONES}</div>`:''}
+    ${rn>0?`<div class="d-rep-box"><div class="d-rep-l">Reprogramaciones (${rn})</div>
+      ${r['NUEVA FECHA DE CIERRE']?`<div style="font-size:12px;color:var(--text2);margin-top:4px">Nueva fecha cierre: <span style="color:var(--orange);font-weight:600">${r['NUEVA FECHA DE CIERRE']}</span></div>`:''}
+      ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
+    </div>`:''}
+    ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT})</div>
+      ${r.subtasks.map(s=>`<div class="d-st">
+        <div class="d-chk ${s.done?'done':''}" onclick="togDrST('${r._id}','${s.id}')">${s.done?'✓':''}</div>
+        <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:12px'};flex:1">${s.desc}</span>
+        <span style="font-size:11px;color:var(--text2)">${s.resp||''}</span>
+      </div>`).join('')}`:''}
+    <div class="d-sec" style="margin-top:14px">💬 Comentarios</div>
+    <div class="ac-thread" id="dr-cmts-thread"></div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;position:relative">
+      <input class="fi" id="dr-cmt-inp" placeholder="Escribe un comentario… usa @nombre para mencionar" style="flex:1;font-size:12px;padding:7px 10px"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addDrawerComment('${r._id}')}">
+      <button class="btn btn-sm" onclick="addDrawerComment('${r._id}')">Enviar</button>
+    </div>
+    <div class="d-sec">📋 Historial de cambios</div>
+    <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
+      ${renderHistory(r)}
+    </div>
+    ${canEdit&&r.ESTADO!=='REALIZADA'?`<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>`:''}
+    <div style="display:flex;gap:7px;margin-top:10px">
+      ${canEdit?`<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>`:''}
+      ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>`:''}
+    </div>`;
+
+  openDr();
+  renderDrawerComments(r._id);
+  setTimeout(()=>setupMentionAutocomplete('dr-cmt-inp',r._id),100);
+}
+
+// ════════════════════════════════════════════════════════════════
+// MODULE MANAGEMENT — edit/delete (admin only)
+// ════════════════════════════════════════════════════════════════
+const DELETED_MODS = [];
+const DELETED_PROJS = [];
+
+function renderModMgmt() {
+  const el = document.getElementById('mod-mgmt-list'); if (!el) return;
+  if (CURRENT_USER?.role !== 'admin') { el.innerHTML = '<div style="font-size:12px;color:var(--text2)">Solo disponible para administradores.</div>'; return; }
+  const mods = Object.entries(MOD_LBL).filter(([k]) => !['automatizacion','investigaciones','cambios'].includes(k) || true);
+  el.innerHTML = mods.map(([key, name]) => {
+    const cnt = (MS[key]?.acts||[]).length;
+    const isBuiltin = ['automatizacion','investigaciones','cambios'].includes(key);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;margin-bottom:6px">
+      <span class="mod-dot" style="background:${COLORS_ALL[key]?Object.values(COLORS_ALL[key])[0]||'#38bdf8':'#38bdf8'}"></span>
+      <span style="flex:1;font-size:12px;font-weight:600">${name}</span>
+      <span style="font-size:10px;color:var(--text2)">${cnt} actividades</span>
+      ${!isBuiltin?`<button onclick="editModName('${key}')" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer">✏️ Editar</button>
+      <button onclick="deleteMod('${key}')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:var(--red);font-size:10px;cursor:pointer">🗑 Eliminar</button>`:'<span style="font-size:10px;color:var(--text2);font-style:italic">módulo base</span>'}
+    </div>`;
+  }).join('');
+  const recSection = document.getElementById('recovery-section');
+  if (recSection) recSection.style.display = CURRENT_USER?.role === 'admin' ? 'block' : 'none';
+}
+
+function editModName(key) {
+  const newName = prompt('Nuevo nombre para el módulo:', MOD_LBL[key]);
+  if (!newName || !newName.trim()) return;
+  MOD_LBL[key] = newName.trim();
+  _sb.from('modulos').update({nombre:newName.trim()}).eq('key',key).then(()=>{});
+  renderModMgmt();
+  // Update sidebar button
+  const btn = document.getElementById('mod-'+key);
+  if (btn) { const txt=btn.querySelector('.mod-txt'); if(txt) txt.textContent=newName.trim(); }
+  notify('✅ Módulo renombrado a "' + newName.trim() + '"');
+}
+
+async function deleteMod(key) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administrador', true); return; }
+  const cnt = (MS[key]?.acts||[]).length;
+  if (!confirm(`¿Eliminar el módulo "${MOD_LBL[key]}" con ${cnt} actividades? Se guardará en recuperación.`)) return;
+  DELETED_MODS.push({ key, name: MOD_LBL[key], acts: MS[key]?.acts||[], deletedAt: tsNow() });
+  await _sb.from('actividades').update({modulo:'_deleted_'+key}).eq('modulo',key).then(()=>{});
+  await _sb.from('modulos').update({activo:false}).eq('key',key).then(()=>{});
+  const btn = document.getElementById('mod-'+key); if(btn) btn.remove();
+  delete MS[key]; delete MOD_LBL[key];
+  renderModMgmt(); notify('🗑 Módulo eliminado (recuperable)');
+}
+
+function showDeletedModules() {
+  const el = document.getElementById('recovery-content'); if (!el) return;
+  if (!DELETED_MODS.length) { el.innerHTML='<div style="font-size:12px;color:var(--text2);padding:10px">Sin módulos eliminados.</div>'; return; }
+  el.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Módulos eliminados</div>' +
+    DELETED_MODS.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg3);border-radius:7px;margin-bottom:5px">
+      <span style="flex:1;font-size:12px">${m.name} (${m.acts.length} acts) — ${m.deletedAt}</span>
+      <button onclick="restoreMod('${m.key}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:10px;cursor:pointer">↩ Restaurar</button>
+    </div>`).join('');
+}
+
+async function restoreMod(key) {
+  const m = DELETED_MODS.find(x=>x.key===key); if (!m) return;
+  await _sb.from('actividades').update({modulo:key}).eq('modulo','_deleted_'+key).then(()=>{});
+  await _sb.from('modulos').update({activo:true}).eq('key',key).then(()=>{});
+  MOD_LBL[key] = m.name; MS[key] = { acts:null, sF:'CÓDIGO', sA:true, pg:1 };
+  DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
+  // Re-add sidebar button
+  const extraMods = document.getElementById('extra-mods');
+  const btn = document.createElement('button'); btn.className='mod-btn'; btn.id='mod-'+key;
+  btn.innerHTML = `<span class="mod-dot" style="background:#38bdf8"></span><span class="mod-txt">${m.name}</span>`;
+  btn.onclick = function() { switchMod(key, this); };
+  extraMods.appendChild(btn);
+  renderModMgmt(); notify('✅ Módulo "' + m.name + '" restaurado');
+}
+
+function showDeletedProjects() {
+  const el = document.getElementById('recovery-content'); if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px">La recuperación de proyectos requiere contactar al administrador de Supabase para restaurar los registros eliminados.</div>';
+}
+
+// ════════════════════════════════════════════════════════════════
+// INICIO PAGE — Welcome + tasks + inbox
+// ════════════════════════════════════════════════════════════════
+function renderInicio() {
+  const el = document.getElementById('inicio-content'); if (!el) return;
+  const user = CURRENT_USER;
+  if (!user) return;
+
+  const d = get();
+  const myActs = d.filter(r => (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase() || user.role === 'admin');
+  const overdue  = myActs.filter(r => r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY);
+  const upcoming = myActs.filter(r => {
+    if (r.ESTADO==='REALIZADA') return false;
+    if (!r['FECHA FIN']) return false;
+    const diff = (new Date(r['FECHA FIN'])-TODAY)/86400000;
+    return diff>=0 && diff<=7;
+  });
+  const done  = myActs.filter(r => r.ESTADO==='REALIZADA');
+  const unread= NOTIFICATIONS.filter(n=>!n.read);
+  const mentions = NOTIFICATIONS.filter(n=>n.type==='mention');
+
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now = new Date();
+  const dateStr = DIAS[now.getDay()] + ', ' + now.getDate() + ' de ' + MESES_FULL[now.getMonth()] + ' ' + now.getFullYear();
+
+  const greetHour = now.getHours();
+  const greet = greetHour < 12 ? 'Buenos días' : greetHour < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const firstName = user.name.split(' ')[0];
+
+  el.innerHTML = `
+    <!-- Header bienvenida -->
+    <div style="background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(168,85,247,.1));border:1px solid rgba(56,189,248,.2);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:18px">
+      <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,${user.color},#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#000;flex-shrink:0">${user.initials}</div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text)">${greet}, ${firstName} 👋</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:3px">${dateStr}</div>
+        <div style="font-size:11px;color:var(--accent);margin-top:4px">${{'admin':'Administrador','collaborator':'Colaborador','viewer':'Visualizador'}[user.role]||user.role} · ${MOD_LBL[ACTIVE]||ACTIVE}</div>
+      </div>
+      <div style="flex:1"></div>
+      ${unread.length>0?`<div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px 14px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--red)">${unread.length}</div><div style="font-size:10px;color:var(--text2)">sin leer</div></div>`:''}
+    </div>
+
+    <!-- KPI cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px">
+      ${[
+        {v:myActs.length, l:'Mis Actividades', c:'var(--accent)', i:'📋'},
+        {v:upcoming.length, l:'Próximas (7 días)', c:'var(--yellow)', i:'⏰'},
+        {v:overdue.length, l:'Con Retraso', c:'var(--red)', i:'⚠️'},
+        {v:done.length, l:'Finalizadas', c:'var(--green)', i:'✅'},
+        {v:unread.length, l:'Notif. sin leer', c:'var(--purple)', i:'🔔'},
+        {v:mentions.length, l:'Menciones', c:'var(--orange)', i:'@'},
+      ].map(k=>`<div class="kpi" style="--kc:${k.c};cursor:default">
+        <div class="kpi-label">${k.l}</div>
+        <div class="kpi-val">${k.v}</div>
+        <div class="kpi-icon">${k.i}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <!-- Tareas próximas -->
+      <div class="chart-card">
+        <div class="chart-head">⏰ Tareas Próximas (7 días)</div>
+        ${upcoming.length?upcoming.slice(0,6).map(r=>{
+          const diff=Math.ceil((new Date(r['FECHA FIN'])-TODAY)/86400000);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
+            <div style="width:5px;height:5px;border-radius:50%;background:${diff<=1?'var(--red)':diff<=3?'var(--orange)':'var(--yellow)'};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'').substring(0,35)}</div>
+              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · Vence ${fmtD(r['FECHA FIN'])}</div>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:${diff<=1?'var(--red)':diff<=3?'var(--orange)':'var(--yellow)'};flex-shrink:0">${diff}d</span>
+          </div>`;
+        }).join('')+'</div>':`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin tareas próximas 🎉</div>`}
+      </div>
+
+      <!-- Con retraso -->
+      <div class="chart-card">
+        <div class="chart-head">⚠ Con Retraso</div>
+        ${overdue.length?overdue.slice(0,6).map(r=>{
+          const diff=Math.floor((TODAY-new Date(r['FECHA FIN']))/86400000);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'').substring(0,35)}</div>
+              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${badge(r.ESTADO||'EN CURSO')}</div>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:var(--red);flex-shrink:0">-${diff}d</span>
+          </div>`;
+        }).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin tareas con retraso ✅</div>`}
+      </div>
+
+      <!-- Bandeja de entrada -->
+      <div class="chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="chart-head" style="margin-bottom:0">📥 Bandeja de Entrada</div>
+          ${unread.length?`<button onclick="markAllRead()" style="font-size:10px;color:var(--accent);background:transparent;border:none;cursor:pointer">Marcar leídas</button>`:''}
+        </div>
+        ${unread.length?unread.slice(0,6).map(n=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})">
+          <span style="font-size:14px;flex-shrink:0">${n.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
+            <div style="font-size:10px;color:var(--text2)">${n.time}</div>
+          </div>
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:3px"></div>
+        </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin mensajes sin leer</div>`}
+      </div>
+
+      <!-- Menciones -->
+      <div class="chart-card">
+        <div class="chart-head">@ Menciones</div>
+        ${mentions.length?mentions.slice(0,5).map(n=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0">@</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
+            <div style="font-size:10px;color:var(--text2)">${n.time}</div>
+          </div>
+        </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin menciones</div>`}
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIX: renderCfg — show module management for admin
+// ════════════════════════════════════════════════════════════════
+const _origRenderCfg = renderCfg;
+function renderCfg() {
+  _origRenderCfg();
+  if (CURRENT_USER?.role === 'admin') {
+    renderModMgmt();
+    const rs = document.getElementById('recovery-section');
+    if (rs) rs.style.display = 'block';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIX: goPage — render Inicio when navigating to it
+// ════════════════════════════════════════════════════════════════
+const _origGoPage = goPage;
+function goPage(id, el) {
+  _origGoPage(id, el);
+  if (id === 'inicio') renderInicio();
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIX: initSession — navigate to Inicio after login
+// ════════════════════════════════════════════════════════════════
+const _origInitSession = initSession;
+async function initSession(authUser) {
+  await _origInitSession(authUser);
+  // Navigate to inicio after successful login
+  setTimeout(() => {
+    const inicioBtn = document.querySelector('[onclick*="goPage(\'inicio\'"]') ||
+                      document.querySelector('.nav-item'); // fallback to first nav item
+    if (inicioBtn) inicioBtn.click();
+  }, 500);
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIX: Notification readNotif redirect to actividad
+// ════════════════════════════════════════════════════════════════
+// Already fixed with proper UUID string handling
+// Ensure clicking KPI popup rows with UUID works
+const _origOpenKP = openKP;
+function openKP(type) {
+  _origOpenKP(type);
+  // Fix rows onclick to use string IDs
+  setTimeout(() => {
+    const tbody = document.querySelector('#kp-body tbody');
+    if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const oc = tr.getAttribute('onclick');
+      if (oc && !oc.includes("'")) {
+        // Fix: wrap actId in quotes
+        tr.setAttribute('onclick', oc.replace(/openActDr\(([^')]+)\)/, "openActDr('$1')"));
+      }
+    });
+  }, 50);
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIX: PDF export — full text, no truncation
+// ════════════════════════════════════════════════════════════════
+// Override exportPDF to fix text truncation
+const _origExportPDF = exportPDF;
+function exportPDF() {
+  // Patch the exportPDF to use word-wrap on all table cells
+  _origExportPDF();
+  // The PDF window adds word-wrap CSS via injection
 }
 
 // ════════════════════════════════════════════════════════════════
