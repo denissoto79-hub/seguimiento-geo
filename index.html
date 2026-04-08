@@ -1598,7 +1598,7 @@ function clearPF() {
   ['p-srch','p-planta','p-resp','p-est'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
   renderProjs();
 }
-function renderProjs() {
+function _old_renderProjs_UNUSED() {
   const srch  = (document.getElementById('p-srch')?.value   || '').toLowerCase();
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
@@ -2678,7 +2678,7 @@ function deleteProject(proj) {
 // ══════════════════════════════════════════════════════════════════
 // PATCHED openActDr — with comments thread + change history
 // ══════════════════════════════════════════════════════════════════
-function openActDr(id) {
+function _DISABLED_openActDr_v1(id) {
   const r = get().find(a => a._id === id); if (!r) return;
   document.getElementById('dr-title').textContent = 'Detalle de Actividad';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
@@ -2822,7 +2822,7 @@ function _DISABLED_handleImport_sync(e) {
 // ══════════════════════════════════════════════════════════════════
 // PATCHED openProjDr — with delete button
 // ══════════════════════════════════════════════════════════════════
-function openProjDr(proj) {
+function _DISABLED_openProjDr_v1(proj) {
   const acts = get().filter(r => r.PROYECTO === proj);
   const avg  = acts.length ? Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length) : 0;
   const cum  = acts.length ? Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100) : 0;
@@ -2951,6 +2951,15 @@ async function initSession(authUser) {
   await loadUserNotifs();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
+  // Navigate to Inicio page
+  setTimeout(() => {
+    const navBtns = document.querySelectorAll('.nav-item');
+    navBtns.forEach(btn => {
+      if ((btn.getAttribute('onclick')||'').includes("'inicio'")) {
+        btn.click();
+      }
+    });
+  }, 300);
 }
 
 async function doLogout() {
@@ -3624,7 +3633,7 @@ function insertMention(inputId, name) {
 }
 
 // Override openActDr to setup mention autocomplete after render
-function openActDr(id) {
+function _DISABLED_openActDr_v2(id) {
   const r = get().find(a => a._id === id); if (!r) return;
   document.getElementById('dr-title').textContent = 'Detalle de Actividad';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
@@ -3693,7 +3702,7 @@ function togDrST(aId, sId) {
   openActDr(aId);
 }
 
-function openProjDr(proj) {
+function _DISABLED_openProjDr_v2(proj) {
   const acts = get().filter(r => r.PROYECTO === proj);
   const avg  = acts.length ? Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length) : 0;
   const cum  = acts.length ? Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100) : 0;
@@ -3887,12 +3896,16 @@ function applyGlobalAnio() {
 }
 
 // Override getFiltered to apply global year
-const _origGetFiltered = getFiltered;
+// getFiltered with global year filter (integrated)
+const _gfBase = getFiltered;
 function getFiltered() {
-  let d = _origGetFiltered();
+  let d = _gfBase();
   if (GLOBAL_ANIO) {
-    d = d.filter(r => !r['AÑO'] || String(r['AÑO']) === String(GLOBAL_ANIO) ||
-      (r['FECHA FIN'] && new Date(r['FECHA FIN']).getFullYear() === parseInt(GLOBAL_ANIO)));
+    d = d.filter(r => {
+      const anioAct = r['AÑO'] ? String(r['AÑO']) : null;
+      const anioFin = r['FECHA FIN'] ? String(new Date(r['FECHA FIN']).getFullYear()) : null;
+      return !GLOBAL_ANIO || anioAct === GLOBAL_ANIO || anioFin === GLOBAL_ANIO;
+    });
   }
   return d;
 }
@@ -4421,71 +4434,48 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 // FIX: renderCfg — show module management for admin
 // ════════════════════════════════════════════════════════════════
-const _origRenderCfg = renderCfg;
+// renderCfg extended with module management
+const _rcfgBase = renderCfg;
 function renderCfg() {
-  _origRenderCfg();
-  if (CURRENT_USER?.role === 'admin') {
-    renderModMgmt();
-    const rs = document.getElementById('recovery-section');
-    if (rs) rs.style.display = 'block';
-  }
+  _rcfgBase();
+  setTimeout(() => {
+    if (CURRENT_USER?.role === 'admin') {
+      renderModMgmt();
+      const rs = document.getElementById('recovery-section');
+      if (rs) rs.style.display = 'block';
+    }
+  }, 50);
 }
 
 // ════════════════════════════════════════════════════════════════
 // FIX: goPage — render Inicio when navigating to it
 // ════════════════════════════════════════════════════════════════
-const _origGoPage = goPage;
+// goPage extended to render Inicio
+const _goPageBase = goPage;
 function goPage(id, el) {
-  _origGoPage(id, el);
-  if (id === 'inicio') renderInicio();
+  _goPageBase(id, el);
+  if (id === 'inicio') {
+    setTimeout(renderInicio, 50);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
 // FIX: initSession — navigate to Inicio after login
 // ════════════════════════════════════════════════════════════════
-const _origInitSession = initSession;
-async function initSession(authUser) {
-  await _origInitSession(authUser);
-  // Navigate to inicio after successful login
-  setTimeout(() => {
-    const inicioBtn = document.querySelector('[onclick*="goPage(\'inicio\'"]') ||
-                      document.querySelector('.nav-item'); // fallback to first nav item
-    if (inicioBtn) inicioBtn.click();
-  }, 500);
-}
+// initSession override removed — navigation integrated directly
 
 // ════════════════════════════════════════════════════════════════
 // FIX: Notification readNotif redirect to actividad
 // ════════════════════════════════════════════════════════════════
 // Already fixed with proper UUID string handling
 // Ensure clicking KPI popup rows with UUID works
-const _origOpenKP = openKP;
-function openKP(type) {
-  _origOpenKP(type);
-  // Fix rows onclick to use string IDs
-  setTimeout(() => {
-    const tbody = document.querySelector('#kp-body tbody');
-    if (!tbody) return;
-    tbody.querySelectorAll('tr').forEach(tr => {
-      const oc = tr.getAttribute('onclick');
-      if (oc && !oc.includes("'")) {
-        // Fix: wrap actId in quotes
-        tr.setAttribute('onclick', oc.replace(/openActDr\(([^')]+)\)/, "openActDr('$1')"));
-      }
-    });
-  }, 50);
-}
+// openKP override removed
 
 // ════════════════════════════════════════════════════════════════
 // FIX: PDF export — full text, no truncation
 // ════════════════════════════════════════════════════════════════
 // Override exportPDF to fix text truncation
-const _origExportPDF = exportPDF;
-function exportPDF() {
-  // Patch the exportPDF to use word-wrap on all table cells
-  _origExportPDF();
-  // The PDF window adds word-wrap CSS via injection
-}
+// exportPDF override removed - original works
 
 // ════════════════════════════════════════════════════════════════
 // THEME — Light / Dark mode
