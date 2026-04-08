@@ -83,7 +83,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 }
 .nav-item:hover  { color:var(--text); background:rgba(255,255,255,.04) }
 .nav-item.active { color:var(--accent); background:rgba(56,189,248,.09); border-left-color:var(--accent) }
-.nav-icon { font-size:14px; width:17px; text-align:center; flex-shrink:0 }
+.nav-icon { font-size:14px; width:17px; text-align:center; flex-shrink:0; display:flex; align-items:center; justify-content:center }
 .nav-lbl  { overflow:hidden; text-overflow:ellipsis }
 .sb-footer { padding:10px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; overflow:hidden; flex-shrink:0 }
 .sb-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#000; flex-shrink:0 }
@@ -219,7 +219,7 @@ tr:hover .act-btns { opacity:1 }
 
 /* ── PROJECTS ── */
 .projs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px }
-.proj-card  { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:all .2s }
+.proj-card  { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:all .2s; position:relative }
 .proj-card:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.4) }
 .proj-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:8px }
 .ps   { background:var(--bg3); border-radius:6px; padding:5px; text-align:center }
@@ -466,15 +466,44 @@ tr:hover .act-btns { opacity:1 }
   </div>
   <nav>
     <span class="sec-lbl">M&#243;dulos</span>
-    <button class="nav-item active" onclick="goPage('inicio',this)"><span class="nav-icon">🏠</span><span class="nav-lbl">Inicio</span></button>
-    <button class="nav-item" onclick="goPage('dashboard',this)"><span class="nav-icon">&#9635;</span><span class="nav-lbl">Dashboard</span></button>
-    <button class="nav-item" onclick="goPage('projects',this)"><span class="nav-icon">&#9643;</span><span class="nav-lbl">Proyectos</span></button>
-    <button class="nav-item" onclick="goPage('activities',this)"><span class="nav-icon">&#9776;</span><span class="nav-lbl">Actividades</span></button>
-    <button class="nav-item" onclick="goPage('gantt',this)"><span class="nav-icon">&#9638;</span><span class="nav-lbl">Timeline / Gantt</span></button>
-    <button class="nav-item" onclick="goPage('calendar',this)"><span class="nav-icon">&#9636;</span><span class="nav-lbl">Calendario</span></button>
-    <button class="nav-item" onclick="goPage('reports',this)"><span class="nav-icon">&#8599;</span><span class="nav-lbl">Reportes</span></button>
+    <button class="nav-item active" onclick="goPage('inicio',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></span>
+      <span class="nav-lbl">Inicio</span>
+    </button>
+    <button class="nav-item" onclick="goPage('dashboard',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+      <span class="nav-lbl">Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="goPage('projects',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22,8.5 12,15.5 2,8.5"/></svg></span>
+      <span class="nav-lbl">Proyectos</span>
+    </button>
+    <button class="nav-item" onclick="goPage('activities',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      <span class="nav-lbl">Actividades</span>
+    </button>
+    <button class="nav-item" onclick="goPage('gantt',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><polyline points="8,7 3,12 8,17"/><polyline points="16,7 21,12 16,17"/></svg></span>
+      <span class="nav-lbl">Timeline / Gantt</span>
+    </button>
+    <button class="nav-item" onclick="goPage('calendar',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="14" r="1" fill="currentColor"/><circle cx="12" cy="14" r="1" fill="currentColor"/><circle cx="16" cy="14" r="1" fill="currentColor"/></svg></span>
+      <span class="nav-lbl">Calendario</span>
+    </button>
+    <button class="nav-item" onclick="goPage('reports',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></span>
+      <span class="nav-lbl">Reportes</span>
+    </button>
+    <span class="sec-lbl">An&#225;lisis</span>
+    <button class="nav-item" onclick="goPage('mis-tareas',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <span class="nav-lbl">Mis Tareas</span>
+    </button>
     <span class="sec-lbl">Sistema</span>
-    <button class="nav-item" onclick="goPage('config',this)"><span class="nav-icon">&#9881;</span><span class="nav-lbl">Configuraci&#243;n</span></button>
+    <button class="nav-item" onclick="goPage('config',this)">
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+      <span class="nav-lbl">Configuraci&#243;n</span>
+    </button>
   </nav>
   <div class="sb-footer">
     <div class="sb-avatar">A</div>
@@ -649,13 +678,34 @@ tr:hover .act-btns { opacity:1 }
 
     <!-- CALENDAR -->
     <div class="page" id="page-calendar">
-      <div class="cal-nav">
-        <button class="btn btn-sm" onclick="calNav(-1)">&#9664;</button>
-        <span class="cal-title" id="cal-title"></span>
-        <button class="btn btn-sm" onclick="calNav(1)">&#9654;</button>
-        <select id="cal-est"    onchange="renderCal()" class="fi" style="min-width:140px"><option value="">Todos los estados</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option></select>
-        <select id="cal-planta" onchange="renderCal()" class="fi" style="min-width:140px"><option value="">Todas las plantas</option></select>
-        <select id="cal-resp"   onchange="renderCal()" class="fi" style="min-width:150px"><option value="">Todos los responsables</option></select>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-sm" onclick="calNav(-1)" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">&#9664;</button>
+          <span class="cal-title" id="cal-title" style="min-width:180px;text-align:center"></span>
+          <button class="btn btn-sm" onclick="calNav(1)" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">&#9654;</button>
+          <button class="btn btn-ghost btn-sm" onclick="calNav(0)" style="font-size:10px">Hoy</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
+            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Estado</span>
+            <select id="cal-est" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer">
+              <option value="">Todos</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
+            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Planta</span>
+            <select id="cal-planta" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;max-width:120px">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
+            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Responsable</span>
+            <select id="cal-resp" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;max-width:130px">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cal-est').value='';document.getElementById('cal-planta').value='';document.getElementById('cal-resp').value='';renderCal()" style="font-size:10px">✕</button>
+        </div>
       </div>
       <div id="cal-legend" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
       <div class="cal-grid" id="cal-dnames"></div>
@@ -687,13 +737,26 @@ tr:hover .act-btns { opacity:1 }
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="chart-head" style="margin-bottom:0">Reporte de Planificación</div>
           <div style="display:flex;gap:8px">
-            <select id="rep-plan-mes" class="fi" style="font-size:11px;padding:4px 8px" onchange="renderRepPlan()">
-              <option value="">Seleccionar mes</option>
-              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-            </select>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div class="fg"><span class="fl">Mes inicio</span>
+                <select id="rep-plan-mes" class="fi" style="font-size:11px;padding:4px 8px" onchange="renderRepPlan()">
+                  <option value="">Seleccionar</option>
+                  <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                  <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                  <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                  <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                </select>
+              </div>
+              <div class="fg"><span class="fl">Mes fin</span>
+                <select id="rep-plan-mes-fin" class="fi" style="font-size:11px;padding:4px 8px" onchange="renderRepPlan()">
+                  <option value="">Mismo mes</option>
+                  <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                  <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                  <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                  <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                </select>
+              </div>
+            </div>
             <button class="rep-btn rep-pdf" style="padding:5px 12px;font-size:11px" onclick="exportPlanPDF()">📄 Exportar Planificación PDF</button>
           </div>
         </div>
@@ -762,7 +825,12 @@ tr:hover .act-btns { opacity:1 }
       </div>
     </div>
 
-      <!-- INICIO -->
+      <!-- MIS TAREAS -->
+    <div class="page" id="page-mis-tareas">
+      <div id="mis-tareas-content"></div>
+    </div>
+
+    <!-- INICIO -->
     <div class="page active" id="page-inicio">
       <div id="inicio-content"></div>
     </div>
@@ -1139,10 +1207,77 @@ function goPage(id, el) {
   const pageEl = document.getElementById('page-' + id);
   if (pageEl) pageEl.classList.add('active');
   if (el) el.classList.add('active');
-  const T = { inicio:'Inicio', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
+  const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
   document.getElementById('tb-title').textContent = T[id] || id;
   closeDr();
   if (id === 'inicio') setTimeout(renderInicio, 50);
+  if (id === 'mis-tareas') setTimeout(renderMisTareas, 50);
+}
+
+function renderMisTareas() {
+  const el = document.getElementById('mis-tareas-content'); if (!el) return;
+  const user = CURRENT_USER; if (!user) return;
+  const all = get();
+  const isAdmin = user.role === 'admin';
+  // Show all tasks for admin, own tasks for others
+  const myActs = isAdmin ? all : all.filter(r =>
+    (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
+  );
+  // Group by status
+  const groups = {
+    'EN CURSO':     { label:'En Curso',    color:'var(--accent)',  icon:'▶', acts:[] },
+    'PLANIFICADA':  { label:'Planificadas', color:'var(--text2)',  icon:'📌', acts:[] },
+    'REPROGRAMADA': { label:'Reprogramadas',color:'var(--orange)', icon:'🔄', acts:[] },
+    'REALIZADA':    { label:'Realizadas',   color:'var(--green)',  icon:'✅', acts:[] },
+  };
+  myActs.forEach(r => { if (groups[r.ESTADO]) groups[r.ESTADO].acts.push(r); });
+  const overdue = myActs.filter(r => r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']) < TODAY);
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Mis Tareas</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${myActs.length} actividades ${isAdmin?'(vista admin)':'asignadas a ti'}</div>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
+    </div>
+    ${overdue.length?`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">⚠️</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--red)">${overdue.length} actividades vencidas</div>
+        <div style="font-size:11px;color:var(--text2)">${overdue.map(r=>r['CÓDIGO']||'').join(', ')}</div>
+      </div>
+    </div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+      ${Object.values(groups).map(g => `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span>${g.icon}</span>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:${g.color}">${g.label}</span>
+            </div>
+            <span style="background:${g.color}20;color:${g.color};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${g.acts.length}</span>
+          </div>
+          <div style="max-height:360px;overflow-y:auto">
+            ${g.acts.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin actividades</div>':
+            g.acts.map(r => {
+              const isLate = r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY;
+              const stD = (r.subtasks||[]).filter(s=>s.done).length, stT=(r.subtasks||[]).length;
+              return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s${isLate?';border-left:3px solid var(--red)':''}" onclick="openActDr('${r._id}')" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
+                    <div style="font-size:10px;color:var(--text2);margin-top:2px">${r.PROYECTO||''} · ${fmtD(r['FECHA FIN'])}</div>
+                    ${stT>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px">▪ ${stD}/${stT} subtareas</div>`:''}
+                  </div>
+                  <span style="font-size:10px;font-weight:700;color:${g.color};flex-shrink:0">${r.AVANCE}%</span>
+                </div>
+                <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:6px;overflow:hidden"><div style="height:100%;background:${g.color};width:${r.AVANCE}%;border-radius:99px"></div></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
 }
 function _DISABLED_switchMod_sync(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
@@ -1169,9 +1304,28 @@ function getFiltered() {
   const anio   = document.getElementById('f-anio')?.value || '';
   const TRIM_MONTHS = { '1':[0,1,2], '2':[3,4,5], '3':[6,7,8], '4':[9,10,11] };
   return get().filter(r => {
+    // For date filters: use activity date OR check if any subtask falls in range
     const ff = r['FECHA FIN'];
-    if (mes && ff) { if (String(new Date(ff).getMonth()+1) !== String(mes)) return false; }
-    if (trim && ff) { const m = new Date(ff).getMonth(); if (!TRIM_MONTHS[trim]?.includes(m)) return false; }
+    const stDates = (r.subtasks||[]).map(s=>s.date).filter(Boolean);
+    // Check if activity OR any subtask matches the date filter
+    function dateMatchesMes(date, mesVal) {
+      if (!date) return false;
+      return String(new Date(date).getMonth()+1) === String(mesVal);
+    }
+    function dateMatchesTrim(date, trimVal) {
+      if (!date) return false;
+      return TRIM_MONTHS[trimVal]?.includes(new Date(date).getMonth());
+    }
+    if (mes) {
+      const actMatch = ff && dateMatchesMes(ff, mes);
+      const stMatch  = stDates.some(d => dateMatchesMes(d, mes));
+      if (!actMatch && !stMatch) return false;
+    }
+    if (trim) {
+      const actMatch = ff && dateMatchesTrim(ff, trim);
+      const stMatch  = stDates.some(d => dateMatchesTrim(d, trim));
+      if (!actMatch && !stMatch) return false;
+    }
     if (desde && ff && ff < desde) return false;
     if (hasta && ff && ff > hasta) return false;
     if (planta && (r.PLANTA||'').trim().toUpperCase() !== planta.trim().toUpperCase()) return false;
@@ -1203,14 +1357,27 @@ function renderDash() {
   const onT  = d.filter(r => r.ESTADO==='REALIZADA' && r['FECHA COMPLETADA'] && r['FECHA FIN'] && r['FECHA COMPLETADA']<=r['FECHA FIN']).length;
   const avgA = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const cumP = n ? Math.round(real/n*100) : 0;
-  const moA  = d.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth()===TODAY.getMonth() && new Date(r['FECHA FIN']).getFullYear()===TODAY.getFullYear());
+  // Determine "current month" from filter or today
+  const fMes = document.getElementById('f-mes')?.value;
+  const refMonth = fMes ? parseInt(fMes)-1 : TODAY.getMonth();
+  const refYear  = TODAY.getFullYear();
+  const moA  = d.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth()===refMonth && new Date(r['FECHA FIN']).getFullYear()===refYear);
+  // Add subtasks that fall in refMonth as virtual items for cumplimiento
+  const moST = [];
+  d.forEach(r => {
+    (r.subtasks||[]).forEach(s => {
+      if (s.date && new Date(s.date).getMonth()===refMonth && new Date(s.date).getFullYear()===refYear) {
+        moST.push({ ...s, _isSubtask:true, ESTADO: s.done?'REALIZADA':'PLANIFICADA' });
+      }
+    });
+  });
+  const moAll = [...moA, ...moST];
   // Reprog no justificadas en el mes
-  const repNoJust = d.filter(r => r._reprog_no_just && r._reprog_no_just > 0 && r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth()===TODAY.getMonth()).length;
-  // Cumplimiento mes = (realizadas del mes) / (totales del mes - reprog no justificadas)
-  const moRealiz = moA.filter(r=>r.ESTADO==='REALIZADA').length;
-  const moDenominator = Math.max(moA.length - repNoJust, 1);
-  const moP = moA.length ? Math.round(moRealiz/moA.length*100) : 0;
-  const moPadj = moA.length ? Math.round(moRealiz/moDenominator*100) : 0;
+  const repNoJust = d.filter(r => r._reprog_no_just && r._reprog_no_just > 0 && r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth()===refMonth).length;
+  const moRealiz = moA.filter(r=>r.ESTADO==='REALIZADA').length + moST.filter(s=>s.done).length;
+  const moDenominator = Math.max(moAll.length - repNoJust, 1);
+  const moP = moAll.length ? Math.round(moRealiz/moAll.length*100) : 0;
+  const moPadj = moAll.length ? Math.round(moRealiz/moDenominator*100) : 0;
   const tRep  = d.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
   const tRepNJ = d.reduce((s,r)=>s+(r._reprog_no_just||0),0);
   document.getElementById('tb-badge').textContent = n + ' actividades';
@@ -1224,7 +1391,7 @@ function renderDash() {
     { l:'Planificadas',       v:plan,      i:'📌', c:'var(--text2)',  s:'pendientes',                                t:'planificada' },
     { l:'Reprogramadas',      v:rep,       i:'🔄', c:'var(--orange)', s:'requieren atención',                        t:'reprogramada'},
     { l:'Reprog. No Just.',   v:tRepNJ,    i:'⚠',  c:'var(--red)',    s:'afectan cumplimiento',                      t:'reprog'      },
-    { l:'Cumpl. del Mes',     v:moP+'%',   i:'📅', c:'var(--purple)', s:moRealiz+'/'+moA.length+' · Ajust:'+moPadj+'%', t:'mes' },
+    { l:'Cumpl. del Mes',     v:moP+'%',   i:'📅', c:'var(--purple)', s:moRealiz+'/'+moAll.length+' (incl. subtareas) · Ajust:'+moPadj+'%', t:'mes' },
     { l:'Sin Fecha',          v:sinFecha,  i:'📭', c:'var(--text3)',  s:'sin fecha asignada',                        t:'sinFecha'    },
   ];
   document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
@@ -1253,26 +1420,48 @@ function renderCharts(d, real, enc, plan, rep) {
     },
     options: {
       responsive:true, maintainAspectRatio:false, cutout:'66%',
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const labels = ['realizada','en curso','planificada','reprogramada'];
+        openKP(labels[els[0].index]);
+      },
       plugins: {
-        legend: { position:'right', labels:{ color:'#8b949e', font:{size:11}, boxWidth:10, padding:10 }},
+        legend: { position:'right', labels:{ color:'#8b949e', font:{size:11}, boxWidth:10, padding:10 },
+          onClick: (e, item) => {
+            const labels = ['realizada','en curso','planificada','reprogramada'];
+            openKP(labels[item.index]);
+          }
+        },
         tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw} (${n ? Math.round(c.raw/n*100) : 0}%)` }}
       }
     }
   });
 
   dChart('m');
-  const moT = MESES.map((_, i) => d.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i).length);
-  const moD = MESES.map((_, i) => d.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i && r.ESTADO === 'REALIZADA').length);
+  // Get filtered data from all activities (not just current filter) for the bar chart
+  const allActs = get();
+  const fMesVal = document.getElementById('f-mes')?.value;
+  const moT = MESES.map((_, i) => allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i).length);
+  const moD = MESES.map((_, i) => allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i && r.ESTADO === 'REALIZADA').length);
+  // Highlight the filtered month
+  const highlightColors = moT.map((_,i) => fMesVal && (i+1)===parseInt(fMesVal) ? 'rgba(56,189,248,.6)' : 'rgba(56,189,248,.2)');
   const c2 = document.getElementById('ch-m')?.getContext('2d');
   if (c2) CH.m = new Chart(c2, {
     type: 'bar',
     data: { labels: MESES, datasets: [
-      { label:'Total',     data:moT, backgroundColor:'rgba(56,189,248,.25)', borderColor:'#38bdf8', borderWidth:1, borderRadius:3 },
-      { label:'Realizadas',data:moD, backgroundColor:'rgba(34,197,94,.65)',  borderRadius:3 }
+      { label:'Total',     data:moT, backgroundColor:highlightColors, borderColor:'#38bdf8', borderWidth:1, borderRadius:4 },
+      { label:'Realizadas',data:moD, backgroundColor:'rgba(34,197,94,.7)', borderRadius:4 }
     ]},
     options: { responsive:true, maintainAspectRatio:false,
-      scales: { y:{ grid:{color:document.documentElement.classList.contains('light')?'rgba(0,0,0,.07)':'rgba(255,255,255,.05)'}, ticks:{color:getComputedStyle(document.documentElement).getPropertyValue('--text2').trim()||'#8b949e',font:{size:10}}}, x:{grid:{display:false}, ticks:{color:getComputedStyle(document.documentElement).getPropertyValue('--text2').trim()||'#8b949e',font:{size:10}}}},
-      plugins: { legend: { labels:{ color:'#8b949e', font:{size:11}, boxWidth:10 }}}
+      onClick: (e, els) => { if(els.length) { const i=els[0].index; document.getElementById('f-mes').value=String(i+1); applyF(); } },
+      scales: {
+        y:{ grid:{color:document.documentElement.classList.contains('light')?'rgba(0,0,0,.07)':'rgba(255,255,255,.05)'}, ticks:{color:getComputedStyle(document.documentElement).getPropertyValue('--text2').trim()||'#8b949e',font:{size:10}}},
+        x:{ grid:{display:false}, ticks:{color:getComputedStyle(document.documentElement).getPropertyValue('--text2').trim()||'#8b949e',font:{size:10}}}
+      },
+      plugins: {
+        legend: { labels:{ color:'#8b949e', font:{size:11}, boxWidth:10 }},
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw} (${allActs.length?Math.round(ctx.raw/allActs.length*100):0}%)` }}
+      }
     }
   });
 
@@ -1567,7 +1756,15 @@ function renderGantt() {
 }
 
 // ── Calendar ───────────────────────────────────────────────────────
-function calNav(d) { calM += d; if (calM > 11) { calM = 0; calY++; } if (calM < 0) { calM = 11; calY--; } renderCal(); }
+function calNav(d) {
+  if (d === 0) { calM = TODAY.getMonth(); calY = TODAY.getFullYear(); }
+  else {
+    calM += d;
+    if (calM > 11) { calM = 0; calY++; }
+    if (calM < 0)  { calM = 11; calY--; }
+  }
+  renderCal();
+}
 function renderCal() {
   const est = document.getElementById('cal-est')?.value    || '';
   const pla = document.getElementById('cal-planta')?.value || '';
@@ -1913,22 +2110,23 @@ function exportPDF() {
   notify('📄 Reporte PDF abierto en nueva ventana');
 }
 function renderRepPlan() {
-  const mes = document.getElementById('rep-plan-mes')?.value;
-  const from = document.getElementById('rep-from')?.value || '';
-  const to   = document.getElementById('rep-to')?.value   || '';
-  const pla  = document.getElementById('rep-planta')?.value || '';
+  const mes    = document.getElementById('rep-plan-mes')?.value;
+  const mesFin = document.getElementById('rep-plan-mes-fin')?.value || mes;
+  const pla    = document.getElementById('rep-planta')?.value || '';
   if (!mes) return;
-  const mesN = parseInt(mes);
-  const mesNm = MESES_F[mesN-1] || '';
+  const mesN    = parseInt(mes);
+  const mesFinN = mesFin ? parseInt(mesFin) : mesN;
+  if (mesFinN < mesN) { document.getElementById('rep-plan-content').innerHTML='<div style="text-align:center;color:var(--red);padding:16px;font-size:12px">El mes fin debe ser mayor o igual al mes inicio.</div>'; return; }
+  const mesNm = mesN===mesFinN ? (MESES_F[mesN-1]||'') : (MESES_F[mesN-1]||'')+' – '+(MESES_F[mesFinN-1]||'');
   const d = get().filter(r => {
     if (!r['FECHA FIN']) return false;
-    if (new Date(r['FECHA FIN']).getMonth()+1 !== mesN) return false;
-    if (pla && r.PLANTA !== pla) return false;
+    const m = new Date(r['FECHA FIN']).getMonth()+1;
+    if (m < mesN || m > mesFinN) return false;
+    if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     return true;
   });
   if (!d.length) {
-    document.getElementById('rep-plan-content').innerHTML =
-      '<div style="text-align:center;color:var(--text2);padding:20px;font-size:12px">Sin actividades para ' + mesNm + '</div>';
+    document.getElementById('rep-plan-content').innerHTML='<div style="text-align:center;color:var(--text2);padding:20px;font-size:12px">Sin actividades para '+mesNm+'</div>';
     return;
   }
   const projs = uniq(d,'PROYECTO');
@@ -1953,11 +2151,11 @@ function renderRepPlan() {
         <tbody>
           ${ap.map(r=>`<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
             <td style="padding:5px 8px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span></td>
-            <td style="padding:5px 8px;max-width:200px">${r.ACTIVIDAD||'—'}</td>
+            <td style="padding:5px 8px">${r.ACTIVIDAD||'—'}</td>
             <td style="padding:5px 8px;font-size:10px;color:var(--text2)">${r.RESPONSABLE||'—'}</td>
             <td style="padding:5px 8px;text-align:center">${badge(r.ESTADO||'PLANIFICADA')}</td>
             <td style="padding:5px 8px;text-align:center;color:var(--accent);font-weight:700">${r.AVANCE}%</td>
-            <td style="padding:5px 8px;text-align:center;color:var(--text2);font-size:10px">${fmtD(r['FECHA FIN'])}</td>
+            <td style="padding:5px 8px;text-align:center;color:var(--text2);font-size:10px;white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -2176,38 +2374,40 @@ function autoGenST() {
   const actNm = document.getElementById('m-act')?.value.trim() || 'Actividad';
   const resp  = document.getElementById('m-resp')?.value || '';
   if (!ini || !fin) return;
-  const dIni = new Date(ini), dFin = new Date(fin);
-  // Only auto-generate if range > 1 month
-  const diffMs = dFin - dIni, diffDays = diffMs / 86400000;
-  if (diffDays < 28) return;
+  const dIni = new Date(ini + 'T00:00:00');
+  const dFin = new Date(fin + 'T00:00:00');
+  // Only auto-generate if range spans more than 1 calendar month
+  const sameMonth = dIni.getFullYear()===dFin.getFullYear() && dIni.getMonth()===dFin.getMonth();
+  if (sameMonth) return; // same month = no subtasks needed
   // Check if already has subtasks
   if (tmpST.length > 0) {
     if (!confirm('¿Regenerar subtareas automáticas por mes? Se eliminarán las subtareas actuales.')) return;
   }
   tmpST = [];
-  // Generate one subtask per month in the range
-  // Start from actual start date month, not first of month
-  // This prevents creating extra subtask for previous month
-  let cur = new Date(dIni.getFullYear(), dIni.getMonth(), dIni.getDate() === 1 ? 1 : dIni.getDate());
-  const lastMonth = new Date(dFin.getFullYear(), dFin.getMonth(), 1);
-  // Normalize to first of month for iteration
-  cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
-  while (cur <= lastMonth) {
-    const mesNm = MESES_F[cur.getMonth()];
-    const yr    = cur.getFullYear();
-    // Subtask end = last day of this month (or activity end if same month)
-    const stEnd = cur.getMonth()===dFin.getMonth()&&cur.getFullYear()===dFin.getFullYear()
-      ? fin
-      : new Date(cur.getFullYear(),cur.getMonth()+1,0).toISOString().split('T')[0];
+  // Iterate months: start = month of dIni, end = month of dFin
+  // Each subtask covers one calendar month, last day = last day of that month
+  // IMPORTANT: if dIni is day 1, that month IS included
+  // If dIni is NOT day 1 (e.g. day 15), that month is also included (activity started mid-month)
+  const startMonth = dIni.getMonth();
+  const startYear  = dIni.getFullYear();
+  const endMonth   = dFin.getMonth();
+  const endYear    = dFin.getFullYear();
+  
+  let curY = startYear, curM = startMonth;
+  while (curY < endYear || (curY === endYear && curM <= endMonth)) {
+    const mesNm = MESES_F[curM];
+    // Last day of this month (always)
+    const lastDay = new Date(curY, curM + 1, 0).toISOString().split('T')[0];
     tmpST.push({
-      id:   Date.now() + cur.getMonth(),
-      desc: actNm + ', seguimiento de ' + mesNm + ' ' + yr,
-      date: stEnd,
+      id:   Date.now() + curM + curY * 12,
+      desc: actNm + ', seguimiento de ' + mesNm + ' ' + curY,
+      date: lastDay,
       resp: resp,
       done: false,
       auto: true
     });
-    cur.setMonth(cur.getMonth()+1);
+    curM++;
+    if (curM > 11) { curM = 0; curY++; }
   }
   renderSTs();
   notify('📌 ' + tmpST.length + ' subtareas mensuales generadas');
@@ -3032,6 +3232,7 @@ function applyPermissions() {
   });
   const navPerms = {
     "goPage('inicio'":"Dashboard",
+    "goPage('mis-tareas'":"Actividades",
     "goPage('dashboard'":"Dashboard", "goPage('projects'":"Proyectos", "goPage('activities'":"Actividades",
     "goPage('gantt'":"Timeline", "goPage('calendar'":"Calendario", "goPage('reports'":"Reportes", "goPage('config'":"Configuración"
   };
@@ -3192,6 +3393,24 @@ async function saveHistoryToDB(dbActId, campo, antes, despues) {
   });
 }
 
+function openModalFromProject(proj) {
+  closeDr();
+  setTimeout(() => {
+    openModal();
+    // Pre-fill the project field after modal opens
+    setTimeout(() => {
+      const mp = document.getElementById('m-proj');
+      if (mp) mp.value = proj;
+      // Also pre-fill planta from first activity of this project
+      const acts = get().filter(r => r.PROYECTO === proj);
+      if (acts.length) {
+        const mpl = document.getElementById('m-planta');
+        if (mpl && acts[0].PLANTA) mpl.value = acts[0].PLANTA;
+      }
+    }, 100);
+  }, 150);
+}
+
 // ════════════════════════════════════════════════════════════════
 // REALTIME SUBSCRIPTIONS
 // ════════════════════════════════════════════════════════════════
@@ -3317,8 +3536,14 @@ function toggleNotif() {
 async function readNotif(id, actId) {
   const n = NOTIFICATIONS.find(x => String(x.id) === String(id));
   if (n) { n.read = true; await _sb.from('notificaciones').update({ leida:true }).eq('id', id).then(()=>{}); }
-  renderNotifBadge(); renderNotifPanel();
-  if (actId) { openActDr(actId); toggleNotif(); }
+  renderNotifBadge();
+  // Close notification panel FIRST before opening activity
+  const panel = document.getElementById('notif-panel');
+  if (panel) panel.style.display = 'none';
+  renderNotifPanel();
+  if (actId) {
+    setTimeout(() => openActDr(actId), 50);
+  }
 }
 
 async function markAllRead() {
@@ -4030,9 +4255,7 @@ function buildProjCard(p, isAdmin) {
       <div class="ps"><div class="ps-v">${a.length}</div><div class="ps-l">Total</div></div>
     </div>
     ${delayed>0?`<div class="proj-delay">⚠ ${delayed} actividad(es) vencida(s)</div>`:''}
-    <div style="display:flex;gap:5px;margin-top:8px" onclick="event.stopPropagation()">
-      ${isAdmin?`<button onclick="duplicateProject('${esc(p)}')" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.18)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉ Duplicar</button>`:''}
-    </div>
+    ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="position:absolute;bottom:10px;right:10px;width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
   </div>`;
 }
 
@@ -4152,15 +4375,16 @@ function openProjDr(proj) {
             <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
             <td style="padding:7px 10px;font-size:11px;color:var(--text);max-width:200px;white-space:normal;word-break:break-word">${r.OBSERVACIONES||'—'}</td>
             <td style="padding:7px 10px;text-align:center">
-              ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="markDone('${r._id}');setTimeout(()=>openProjDr('${esc(proj)}'),800)" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Realizada</button>`:'<span style="color:var(--green);font-size:12px">✅</span>'}
+              ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="markDone('${r._id}');setTimeout(()=>openProjDr('${esc(proj)}'),800)" title="Marcar como completada" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Completar</button>`:'<span style="color:var(--green);font-size:12px">✅</span>'}
             </td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap">
-      ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto</button>`:''}
-      ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
+      ${canEdit?`<button onclick="openModalFromProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.2)'" onmouseout="this.style.background='rgba(56,189,248,.1)'">+ Nueva Actividad</button>`:''}
+      ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
+      ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
     </div>`;
   openDr();
 }
