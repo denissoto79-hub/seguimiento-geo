@@ -5025,124 +5025,263 @@ function showDeletedProjects() {
 // ════════════════════════════════════════════════════════════════
 function renderInicio() {
   const el = document.getElementById('inicio-content'); if (!el) return;
-  const user = CURRENT_USER;
-  if (!user) return;
+  const user = CURRENT_USER; if (!user) return;
 
   const d = get();
-  const myActs = d.filter(r => (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase() || user.role === 'admin');
-  const overdue  = myActs.filter(r => r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY);
+  const isAdmin = user.role === 'admin';
+
+  // Only show THIS user's tasks (not all tasks for admin either — personal view)
+  const myActs = d.filter(r =>
+    (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
+  );
+
+  const now = new Date();
+  const overdue  = myActs.filter(r => r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']+'T00:00:00') < TODAY);
   const upcoming = myActs.filter(r => {
     if (r.ESTADO==='REALIZADA') return false;
     if (!r['FECHA FIN']) return false;
-    const diff = (new Date(r['FECHA FIN'])-TODAY)/86400000;
-    return diff>=0 && diff<=7;
+    const diff = (new Date(r['FECHA FIN']+'T00:00:00') - TODAY) / 86400000;
+    return diff >= 0 && diff <= 7;
   });
-  const done  = myActs.filter(r => r.ESTADO==='REALIZADA');
-  const unread= NOTIFICATIONS.filter(n=>!n.read);
-  const mentions = NOTIFICATIONS.filter(n=>n.type==='mention');
+  const inProgress = myActs.filter(r => r.ESTADO === 'EN CURSO');
+  const planned    = myActs.filter(r => r.ESTADO === 'PLANIFICADA');
+  const done       = myActs.filter(r => r.ESTADO === 'REALIZADA');
+  const unread     = NOTIFICATIONS.filter(n => !n.read);
+  const mentions   = NOTIFICATIONS.filter(n => n.type === 'mention');
 
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const now = new Date();
   const dateStr = DIAS[now.getDay()] + ', ' + now.getDate() + ' de ' + MESES_FULL[now.getMonth()] + ' ' + now.getFullYear();
-
-  const greetHour = now.getHours();
-  const greet = greetHour < 12 ? 'Buenos días' : greetHour < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const greet = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
   const firstName = user.name.split(' ')[0];
 
-  el.style.cssText = 'height:100%;overflow-y:auto;';
+  // Completion % for user
+  const pct = myActs.length ? Math.round(done.length / myActs.length * 100) : 0;
+
+  el.style.cssText = 'height:100%;overflow-y:auto;overflow-x:hidden;padding-bottom:20px;';
+
   el.innerHTML = `
-    <!-- Header bienvenida -->
-    <div style="background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(168,85,247,.1));border:1px solid rgba(56,189,248,.2);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:18px">
-      <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,${user.color},#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#000;flex-shrink:0">${user.initials}</div>
+  <!-- ── HEADER ── -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;gap:16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${user.color},#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${user.initials}</div>
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text)">${greet}, ${firstName} 👋</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:3px">${dateStr}</div>
-        <div style="font-size:11px;color:var(--accent);margin-top:4px">${{'admin':'Administrador','collaborator':'Colaborador','viewer':'Visualizador'}[user.role]||user.role} · ${MOD_LBL[ACTIVE]||ACTIVE}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em">${greet}, ${firstName} 👋</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${dateStr} &nbsp;·&nbsp; <span style="color:var(--accent)">${{'admin':'Administrador','collaborator':'Colaborador','viewer':'Visualizador'}[user.role]||user.role}</span></div>
       </div>
-      <div style="flex:1"></div>
-      ${unread.length>0?`<div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px 14px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--red)">${unread.length}</div><div style="font-size:10px;color:var(--text2)">sin leer</div></div>`:''}
     </div>
+    <button onclick="openModal()" class="btn btn-accent btn-sm" style="display:flex;align-items:center;gap:6px;padding:8px 16px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nueva tarea
+    </button>
+  </div>
 
-    <!-- KPI cards -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px">
-      ${[
-        {v:myActs.length, l:'Mis Actividades', c:'var(--accent)', i:'📋'},
-        {v:upcoming.length, l:'Próximas (7 días)', c:'var(--yellow)', i:'⏰'},
-        {v:overdue.length, l:'Con Retraso', c:'var(--red)', i:'⚠️'},
-        {v:done.length, l:'Finalizadas', c:'var(--green)', i:'✅'},
-        {v:unread.length, l:'Notif. sin leer', c:'var(--purple)', i:'🔔'},
-        {v:mentions.length, l:'Menciones', c:'var(--orange)', i:'@'},
-      ].map(k=>`<div class="kpi" style="--kc:${k.c};cursor:default">
-        <div class="kpi-label">${k.l}</div>
-        <div class="kpi-val">${k.v}</div>
-        <div class="kpi-icon">${k.i}</div>
-      </div>`).join('')}
+  <!-- ── PROGRESS BANNER ── -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:20px">
+    <!-- Circular progress -->
+    <div style="position:relative;width:54px;height:54px;flex-shrink:0">
+      <svg width="54" height="54" viewBox="0 0 54 54">
+        <circle cx="27" cy="27" r="22" fill="none" stroke="var(--bg3)" stroke-width="5"/>
+        <circle cx="27" cy="27" r="22" fill="none" stroke="var(--accent)" stroke-width="5"
+          stroke-dasharray="${Math.round(2*3.14159*22)}"
+          stroke-dashoffset="${Math.round(2*3.14159*22*(1-pct/100))}"
+          stroke-linecap="round" transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .6s ease"/>
+        <text x="27" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="Barlow Condensed">${pct}%</text>
+      </svg>
     </div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Mi progreso esta semana</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        ${[
+          {v:myActs.length,  l:'Total',      c:'var(--text2)'},
+          {v:inProgress.length, l:'En curso', c:'var(--accent)'},
+          {v:overdue.length, l:'Vencidas',   c:'var(--red)'},
+          {v:done.length,    l:'Finalizadas', c:'var(--green)'},
+        ].map(k=>`<div style="text-align:center">
+          <div style="font-size:18px;font-weight:700;color:${k.c};font-family:'Barlow Condensed',sans-serif">${k.v}</div>
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">${k.l}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    ${unread.length>0?`<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px 14px;text-align:center;flex-shrink:0">
+      <div style="font-size:20px;font-weight:700;color:var(--red);font-family:'Barlow Condensed',sans-serif">${unread.length}</div>
+      <div style="font-size:9px;color:var(--text2);text-transform:uppercase">Sin leer</div>
+    </div>`:''}
+  </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0">
-      <!-- Tareas próximas -->
-      <div class="chart-card">
-        <div class="chart-head">⏰ Tareas Próximas (7 días)</div>
-        ${upcoming.length?upcoming.slice(0,6).map(r=>{
-          const diff=Math.ceil((new Date(r['FECHA FIN'])-TODAY)/86400000);
-          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
-            <div style="width:5px;height:5px;border-radius:50%;background:${diff<=1?'var(--red)':diff<=3?'var(--orange)':'var(--yellow)'};flex-shrink:0"></div>
+  <!-- ── 3-COLUMN LAYOUT ── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 300px;gap:14px;align-items:start">
+
+    <!-- COL 1: Mis tareas activas (ASANA style list) -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,11 12,14 22,4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Mis tareas activas
+        </div>
+        <span style="font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 8px;border-radius:10px">${inProgress.length + planned.length}</span>
+      </div>
+      <!-- Overdue section -->
+      ${overdue.length?`<div style="padding:8px 16px 4px;background:rgba(239,68,68,.04)">
+        <div style="font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⚠ Vencidas · ${overdue.length}</div>
+        ${overdue.slice(0,4).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(239,68,68,.1);cursor:pointer" onclick="openActDr('${r._id}')">
+          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--red);flex-shrink:0;display:flex;align-items:center;justify-content:center"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
+            <div style="font-size:10px;color:var(--red)">${r.PROYECTO||''} · Venció ${fmtD(r['FECHA FIN'])}</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:var(--red);flex-shrink:0">-${Math.floor((TODAY-new Date(r['FECHA FIN']+'T00:00:00'))/86400000)}d</span>
+        </div>`).join('')}
+      </div>`:''}
+      <!-- Due soon -->
+      ${upcoming.length?`<div style="padding:8px 16px 4px">
+        <div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⏰ Próximas · ${upcoming.length}</div>
+        ${upcoming.slice(0,4).map(r=>{
+          const diff=Math.ceil((new Date(r['FECHA FIN']+'T00:00:00')-TODAY)/86400000);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
+            <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;transition:border-color .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"></div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'').substring(0,35)}</div>
-              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · Vence ${fmtD(r['FECHA FIN'])}</div>
+              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
+              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${fmtD(r['FECHA FIN'])}</div>
             </div>
             <span style="font-size:10px;font-weight:700;color:${diff<=1?'var(--red)':diff<=3?'var(--orange)':'var(--yellow)'};flex-shrink:0">${diff}d</span>
           </div>`;
-        }).join('')+'</div>':`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin tareas próximas 🎉</div>`}
-      </div>
-
-      <!-- Con retraso -->
-      <div class="chart-card">
-        <div class="chart-head">⚠ Con Retraso</div>
-        ${overdue.length?overdue.slice(0,6).map(r=>{
-          const diff=Math.floor((TODAY-new Date(r['FECHA FIN']))/86400000);
-          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
-            <div style="width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'').substring(0,35)}</div>
-              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${badge(r.ESTADO||'EN CURSO')}</div>
+        }).join('')}
+      </div>`:''}
+      <!-- In progress -->
+      ${inProgress.length?`<div style="padding:8px 16px 4px">
+        <div style="font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">▶ En curso · ${inProgress.length}</div>
+        ${inProgress.slice(0,5).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
+          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--accent);flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
+            <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${r.AVANCE}%</div>
+          </div>
+          <div style="width:40px;flex-shrink:0">
+            <div style="height:3px;background:var(--bg3);border-radius:99px;overflow:hidden">
+              <div style="height:100%;background:var(--accent);width:${r.AVANCE}%;border-radius:99px"></div>
             </div>
-            <span style="font-size:10px;font-weight:700;color:var(--red);flex-shrink:0">-${diff}d</span>
-          </div>`;
-        }).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin tareas con retraso ✅</div>`}
+          </div>
+        </div>`).join('')}
+      </div>`:''}
+      <!-- Planned -->
+      ${planned.length?`<div style="padding:8px 16px 10px">
+        <div style="font-size:9px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">📌 Planificadas · ${planned.length}</div>
+        ${planned.slice(0,4).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
+          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
+            <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${r['FECHA FIN']?fmtD(r['FECHA FIN']):'Sin fecha'}</div>
+          </div>
+        </div>`).join('')}
+        ${planned.length>4?`<div style="padding:6px 0;font-size:11px;color:var(--accent);cursor:pointer" onclick="goPage('mis-tareas',document.querySelector('[onclick*=mis-tareas]'))">+ ${planned.length-4} más →</div>`:''}
+      </div>`:''}
+      ${!myActs.length?`<div style="padding:32px;text-align:center;color:var(--text2)">
+        <div style="font-size:32px;margin-bottom:10px">🎉</div>
+        <div style="font-size:13px;font-weight:600">Sin tareas asignadas</div>
+        <div style="font-size:11px;margin-top:4px">¡Todo al día!</div>
+      </div>`:''}
+    </div>
+
+    <!-- COL 2: Proyectos + finalizadas recientes -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- My projects -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
+            Mis proyectos
+          </div>
+        </div>
+        <div style="padding:8px 0">
+          ${(() => {
+            const myProjs = [...new Set(myActs.map(r=>r.PROYECTO).filter(Boolean))];
+            if (!myProjs.length) return '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin proyectos asignados</div>';
+            return myProjs.slice(0,6).map(p => {
+              const pa = myActs.filter(r=>r.PROYECTO===p);
+              const pc = pa.length?Math.round(pa.filter(r=>r.ESTADO==='REALIZADA').length/pa.length*100):0;
+              const col = pcol(p);
+              return `<div style="display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;transition:background .15s" onclick="openProjDr('${esc(p)}')" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+                <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</div>
+                  <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:4px;overflow:hidden"><div style="height:100%;background:${col};width:${pc}%;border-radius:99px;transition:width .5s"></div></div>
+                </div>
+                <span style="font-size:10px;font-weight:700;color:${pc>=70?'var(--green)':pc>=40?'var(--orange)':'var(--red)'};flex-shrink:0">${pc}%</span>
+              </div>`;
+            }).join('');
+          })()}
+        </div>
       </div>
 
-      <!-- Bandeja de entrada -->
-      <div class="chart-card" style="display:flex;flex-direction:column">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0">
-          <div class="chart-head" style="margin-bottom:0">📥 Bandeja de Entrada</div>
-          ${unread.length?`<button onclick="markAllRead()" style="font-size:10px;color:var(--accent);background:transparent;border:none;cursor:pointer">Marcar leídas</button>`:''}
+      <!-- Recently completed -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+            Finalizadas recientes
+          </div>
         </div>
-        <div style="flex:1;overflow-y:auto;max-height:240px">
-          ${unread.length?unread.map(n=>`<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(56,189,248,.05)'" onmouseout="this.style.background=''">
-            <span style="font-size:14px;flex-shrink:0;margin-top:1px">${n.icon}</span>
+        <div style="padding:8px 0">
+          ${done.length ? done.slice(0,5).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;opacity:.75;transition:opacity .15s" onclick="openActDr('${r._id}')" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.75'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20,6 9,17 4,12"/></svg>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through">${r.ACTIVIDAD||'—'}</div>
+              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${fmtD(r['FECHA COMPLETADA'])||'—'}</div>
+            </div>
+          </div>`).join('') : '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin tareas finalizadas</div>'}
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 3: Inbox + mentions -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- Inbox -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 16,12 14,15 10,15 8,12 2,12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+            Bandeja
+            ${unread.length?`<span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px">${unread.length}</span>`:''}
+          </div>
+          ${unread.length?`<button onclick="markAllRead();renderInicio()" style="font-size:9px;color:var(--accent);background:transparent;border:none;cursor:pointer">Limpiar</button>`:''}
+        </div>
+        <div style="max-height:220px;overflow-y:auto">
+          ${unread.length ? unread.slice(0,10).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(56,189,248,.05)'" onmouseout="this.style.background=''">
+            <span style="font-size:15px;flex-shrink:0;margin-top:1px">${n.icon}</span>
             <div style="flex:1;min-width:0">
               <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
-              <div style="font-size:10px;color:var(--text2);margin-top:2px">${n.time}</div>
+              <div style="font-size:9px;color:var(--text2);margin-top:2px">${n.time}</div>
             </div>
-            ${!n.read?`<div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>`:''}
-          </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin mensajes sin leer</div>`}
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>
+          </div>`).join('') : `<div style="padding:24px;text-align:center;font-size:11px;color:var(--text2)">
+            <div style="font-size:24px;margin-bottom:8px">📭</div>Sin mensajes
+          </div>`}
         </div>
       </div>
 
-      <!-- Menciones -->
-      <div class="chart-card">
-        <div class="chart-head">@ Menciones</div>
-        ${mentions.length?mentions.slice(0,5).map(n=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})">
-          <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0">@</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
-            <div style="font-size:10px;color:var(--text2)">${n.time}</div>
+      <!-- Mentions -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
+            <div style="width:18px;height:18px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">@</div>
+            Menciones
+            ${mentions.length?`<span style="background:var(--purple);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px">${mentions.length}</span>`:''}
           </div>
-        </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin menciones</div>`}
+        </div>
+        <div style="max-height:180px;overflow-y:auto">
+          ${mentions.length ? mentions.slice(0,6).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(168,85,247,.05)'" onmouseout="this.style.background=''">
+            <span style="font-size:12px;flex-shrink:0;margin-top:1px">@</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
+              <div style="font-size:9px;color:var(--text2);margin-top:2px">${n.time}</div>
+            </div>
+          </div>`).join('') : `<div style="padding:20px;text-align:center;font-size:11px;color:var(--text2)">Sin menciones</div>`}
+        </div>
       </div>
-    </div>`;
+    </div>
+
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════════════
