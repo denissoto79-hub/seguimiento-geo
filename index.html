@@ -24,6 +24,37 @@ html.light {
 }
 html.light .kpi:hover { box-shadow:0 4px 16px rgba(14,165,233,.15) }
 html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
+/* BI-TONE MODE — dark sidebar, light content */
+html.bitone {
+  --bg:#0d1117; --bg2:#1e293b; --bg3:#0f172a; --border:#1e3a5f;
+  --text:#f1f5f9; --text2:#94a3b8; --text3:#64748b;
+  --accent:#38bdf8; --accent2:#0ea5e9;
+  --green:#22c55e; --orange:#f97316; --red:#ef4444; --purple:#a855f7; --yellow:#eab308;
+  --s-done:#22c55e; --s-prog:#38bdf8; --s-plan:#94a3b8; --s-rep:#f97316;
+}
+html.bitone #sidebar { background:#0d1117; border-right-color:#1e3a5f; }
+html.bitone #content  { background:#f8fafc; }
+html.bitone #content .page { background:#f8fafc; }
+html.bitone #content .chart-card,
+html.bitone #content .kpi,
+html.bitone #content .proj-card,
+html.bitone #content .table-card { background:#ffffff; border-color:#e2e8f0; color:#1e293b; }
+html.bitone #content .kpi-label,
+html.bitone #content .kpi-sub,
+html.bitone #content .chart-head { color:#64748b; }
+html.bitone #content .kpi-val { color:#0f172a; }
+html.bitone #topbar { background:#ffffff; border-bottom-color:#e2e8f0; color:#1e293b; }
+html.bitone #content th { background:#f1f5f9; color:#64748b; }
+html.bitone #content td { color:#1e293b; border-color:#e2e8f0; }
+html.bitone #content table { background:#ffffff; }
+html.bitone #content tr:hover { background:rgba(14,165,233,.05); }
+html.bitone #content .filter-bar { background:#ffffff; border-bottom-color:#e2e8f0; }
+html.bitone #content .fi { background:#f1f5f9; border-color:#e2e8f0; color:#1e293b; }
+html.bitone .nav-item { color:#8b949e; }
+html.bitone .nav-item.active { color:#38bdf8; background:rgba(56,189,248,.1); }
+html.bitone .sec-lbl { color:#444e58; }
+html.bitone .mod-btn { color:#8b949e; }
+html.bitone .mod-btn.active { color:#38bdf8; background:rgba(56,189,248,.1); }
 * { box-sizing:border-box; margin:0; padding:0 }
 html,body { height:100%; overflow:hidden }
 body { font-family:'Barlow',sans-serif; background:var(--bg); color:var(--text) }
@@ -541,7 +572,7 @@ tr:hover .act-btns { opacity:1 }
       </div>
     </div>
   </div>
-  <div class="content">
+  <div class="content" id="content">
 
     <!-- DASHBOARD -->
     <div class="page" id="page-dashboard">
@@ -616,8 +647,9 @@ tr:hover .act-btns { opacity:1 }
         <div style="flex:1"></div>
         <!-- View toggle -->
         <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
-          <button id="pv-card" onclick="setProjView('card')" title="Vista tarjetas" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:13px;cursor:pointer;transition:all .15s">⊞</button>
-          <button id="pv-list" onclick="setProjView('list')" title="Vista lista" style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s">☰</button>
+          <button id="pv-card"   onclick="setProjView('card')"   title="Vista tarjetas" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:13px;cursor:pointer;transition:all .15s">⊞</button>
+          <button id="pv-list"   onclick="setProjView('list')"   title="Vista lista"    style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s">☰</button>
+          <button id="pv-kanban" onclick="setProjView('kanban')" title="Vista Kanban"   style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.03em">KB</button>
         </div>
         <button class="btn btn-accent btn-sm" onclick="openNewProj()">+ Nuevo Proyecto</button>
       </div>
@@ -1233,6 +1265,7 @@ function renderMisTareas() {
   myActs.forEach(r => { if (groups[r.ESTADO]) groups[r.ESTADO].acts.push(r); });
   const overdue = myActs.filter(r => r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']) < TODAY);
 
+  el.style.cssText = "height:100%;overflow-y:auto;padding:4px 0";
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div>
@@ -1382,9 +1415,13 @@ function renderDash() {
   const tRepNJ = d.reduce((s,r)=>s+(r._reprog_no_just||0),0);
   document.getElementById('tb-badge').textContent = n + ' actividades';
 
+  // Count all subtasks across filtered activities
+  const allST = d.flatMap(r=>r.subtasks||[]);
+  const stTotal = allST.length;
+  const stDone  = allST.filter(s=>s.done).length;
   const sinFecha = get().filter(r=>!r['FECHA FIN']).length;
   const kpis = [
-    { l:'Total',              v:n,         i:'📋', c:'var(--accent)', s:avgA+'% avance prom.',                       t:'total'       },
+    { l:'Total',              v:n+' + '+stTotal+'st', i:'📋', c:'var(--accent)', s:avgA+'% avance · '+stTotal+' subtareas',       t:'total'       },
     { l:'Cumplimiento Global',v:cumP+'%',  i:'✅', c:'var(--green)',  s:real+' de '+n+' realizadas',                 t:'realizada'   },
     { l:'Cumplidas en Fecha', v:onT,       i:'⏰', c:'var(--green)',  s:'entregadas a tiempo',                        t:'ontime'      },
     { l:'En Curso',           v:enc,       i:'▶',  c:'var(--accent)', s:'activas ahora',                             t:'en curso'    },
@@ -1620,7 +1657,7 @@ function openKP(type) {
           <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">F.Fin</th>
         </tr></thead>
         <tbody>${acts.map(r =>
-          `<tr style="border-bottom:1px solid rgba(33,38,45,.6);cursor:pointer" onclick="closeKP();openActDr(${r._id})">
+          `<tr style="border-bottom:1px solid rgba(33,38,45,.6);cursor:pointer" onclick="closeKP();openActDr('${r._id}')">
             <td style="padding:6px 10px"><span class="code-lbl">${r['CÓDIGO']}</span></td>
             <td style="padding:6px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'—').substring(0,35)}</td>
             <td style="padding:6px 10px">${badge(r.ESTADO)}</td>
@@ -2640,7 +2677,15 @@ function _origOpenProjDr_DISABLED(proj) {
 }
 
 function openDr()  { document.getElementById('drawer').classList.add('open');    document.getElementById('dr-ov').classList.add('open'); }
-function closeDr() { document.getElementById('drawer').classList.remove('open'); document.getElementById('dr-ov').classList.remove('open'); }
+function closeDr() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('dr-ov').classList.remove('open');
+  // Reset drawer width and expand button
+  const dr = document.getElementById('drawer');
+  if (dr) dr.style.width = '';
+  const expBtn = document.getElementById('dr-expand-btn');
+  if (expBtn) expBtn.style.display = 'none';
+}
 
 // ── Excel Import/Export ─────────────────────────────────────────────
 function _origHandleImport_DISABLED(e) {
@@ -3397,11 +3442,9 @@ function openModalFromProject(proj) {
   closeDr();
   setTimeout(() => {
     openModal();
-    // Pre-fill the project field after modal opens
     setTimeout(() => {
       const mp = document.getElementById('m-proj');
       if (mp) mp.value = proj;
-      // Also pre-fill planta from first activity of this project
       const acts = get().filter(r => r.PROYECTO === proj);
       if (acts.length) {
         const mpl = document.getElementById('m-planta');
@@ -3409,6 +3452,136 @@ function openModalFromProject(proj) {
       }
     }, 100);
   }, 150);
+}
+
+// Open activity detail WITHOUT closing the project drawer context
+function openActDrFromProj(actId, proj) {
+  // Save current project context
+  window._currentProjContext = proj;
+  openActDr(actId);
+}
+
+// Mark done then reload project drawer (no full close)
+async function markDoneInProj(actId, proj) {
+  await markDone(actId);
+  // Reload project drawer after a short delay
+  setTimeout(() => openProjDr(proj), 600);
+}
+
+// Mark done from list view and refresh that row
+async function markDoneAndRefreshList(actId, listId) {
+  await markDone(actId);
+  // Re-render the list section only
+  setTimeout(() => {
+    // Find the project this activity belongs to
+    const r = get().find(a => a._id === actId);
+    if (r) renderProjs(); // full rerender to update list
+  }, 600);
+}
+
+// Inline edit a field in the project drawer table
+function inlineEditField(cell, field, actId, proj) {
+  const r = get().find(a => a._id === actId); if (!r) return;
+  const canEdit = CURRENT_USER?.role !== 'viewer'; if (!canEdit) return;
+  const orig = cell.innerHTML;
+  let inputEl;
+  if (field === 'estado') {
+    inputEl = document.createElement('select');
+    inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+    ['PLANIFICADA','EN CURSO','REPROGRAMADA','REALIZADA'].forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      if (r.ESTADO === v) o.selected = true;
+      inputEl.appendChild(o);
+    });
+  } else if (field === 'avance') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'number'; inputEl.min = '0'; inputEl.max = '100';
+    inputEl.value = r.AVANCE;
+    inputEl.style.cssText = 'width:60px;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+  } else if (field === 'fecha_fin') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'date';
+    inputEl.value = r['FECHA FIN'] || '';
+    inputEl.style.cssText = 'background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+  } else if (field === 'actividad') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'text';
+    inputEl.value = r.ACTIVIDAD || '';
+    inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+  } else if (field === 'observaciones') {
+    inputEl = document.createElement('textarea');
+    inputEl.value = r.OBSERVACIONES || '';
+    inputEl.rows = 2;
+    inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px;resize:vertical';
+  } else return;
+
+  cell.innerHTML = '';
+  cell.appendChild(inputEl);
+  inputEl.focus();
+
+  async function saveInline() {
+    let newVal = inputEl.value;
+    if (field === 'avance') newVal = Math.min(100, Math.max(0, parseInt(newVal)||0));
+    const update = {};
+    if (field === 'estado')       { update.estado = newVal; r.ESTADO = newVal; if (newVal==='REALIZADA') { update.avance=100; r.AVANCE=100; update.fecha_completada=tds(); } }
+    if (field === 'avance')       { update.avance = parseInt(newVal); r.AVANCE = parseInt(newVal); }
+    if (field === 'fecha_fin')    { update.fecha_fin = newVal||null; r['FECHA FIN'] = newVal||null; }
+    if (field === 'actividad')    { update.actividad = newVal; r.ACTIVIDAD = newVal; }
+    if (field === 'observaciones'){ update.observaciones = newVal; r.OBSERVACIONES = newVal; }
+    if (Object.keys(update).length) {
+      update.updated_at = new Date().toISOString();
+      await _sb.from('actividades').update(update).eq('id', r._dbid);
+      await saveHistoryToDB(r._dbid, field, String(orig||''), String(newVal||''));
+    }
+    // Refresh project drawer in place (no close)
+    openProjDr(proj);
+  }
+
+  inputEl.addEventListener('blur', saveInline);
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && inputEl.tagName !== 'TEXTAREA') { e.preventDefault(); inputEl.blur(); }
+    if (e.key === 'Escape') { cell.innerHTML = orig; }
+  });
+}
+
+// Kanban view builder
+function buildProjKanban(projs, isAdmin) {
+  const COLS = [
+    { key:'PLANIFICADA',  label:'Planificadas', color:'var(--text2)' },
+    { key:'EN CURSO',     label:'En Curso',     color:'var(--accent)' },
+    { key:'REPROGRAMADA', label:'Reprogramadas',color:'var(--orange)' },
+    { key:'REALIZADA',    label:'Realizadas',   color:'var(--green)' },
+  ];
+  const allActs = get().filter(r => projs.includes(r.PROYECTO));
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+  let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
+  COLS.forEach(col => {
+    const colActs = allActs.filter(r => r.ESTADO === col.key);
+    html += `<div style="background:var(--bg3);border-radius:10px;padding:10px;min-height:200px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:${col.color};text-transform:uppercase;letter-spacing:.07em">${col.label}</div>
+        <span style="background:${col.color}20;color:${col.color};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700">${colActs.length}</span>
+      </div>
+      ${colActs.map(r => `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s"
+          onclick="openActDr('${r._id}')"
+          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.3)'" onmouseout="this.style.boxShadow=''">
+          <div style="font-size:11px;font-weight:600;margin-bottom:5px;line-height:1.35">${r.ACTIVIDAD||'—'}</div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:6px">${r.PROYECTO||''}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:9px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</span>
+            <span style="font-size:10px;font-weight:700;color:${col.color}">${r.AVANCE}%</span>
+          </div>
+          <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:5px;overflow:hidden">
+            <div style="height:100%;background:${col.color};width:${r.AVANCE}%;border-radius:99px"></div>
+          </div>
+          ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="event.stopPropagation();markDoneAndRefreshList('${r._id}','')" style="margin-top:6px;width:100%;padding:3px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:9px;cursor:pointer;font-family:'Barlow',sans-serif">✓ Completar</button>`:''}
+        </div>`).join('')}
+    </div>`;
+  });
+  html += '</div>';
+  return html;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4143,10 +4316,13 @@ let PROJ_VIEW = 'card';
 
 function setProjView(v) {
   PROJ_VIEW = v;
-  document.getElementById('pv-card').style.background = v==='card'?'var(--accent)':'transparent';
-  document.getElementById('pv-card').style.color      = v==='card'?'#000':'var(--text2)';
-  document.getElementById('pv-list').style.background = v==='list'?'var(--accent)':'transparent';
-  document.getElementById('pv-list').style.color      = v==='list'?'#000':'var(--text2)';
+  ['card','list','kanban'].forEach(m => {
+    const btn = document.getElementById('pv-'+m);
+    if (!btn) return;
+    const active = v===m;
+    btn.style.background = active?'var(--accent)':'transparent';
+    btn.style.color      = active?'#000':'var(--text2)';
+  });
   renderProjs();
 }
 
@@ -4212,11 +4388,13 @@ function renderProjs() {
       html += `<div class="projs-grid" style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
       html += plantProjs.map(p => buildProjCard(p, isAdmin)).join('');
       html += '</div>';
-    } else {
-      // List view
+    } else if (PROJ_VIEW === 'list') {
       html += `<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">`;
       html += plantProjs.map(p => buildProjListRow(p, isAdmin)).join('');
       html += '</div>';
+    } else {
+      // Kanban view
+      html += buildProjKanban(plantProjs, isAdmin);
     }
     html += '</div>';
   });
@@ -4234,12 +4412,18 @@ function buildProjCard(p, isAdmin) {
   const delayed = a.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY).length;
   const col = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(a.map(r=>r.PLANTA).filter(Boolean))].map(pl=>pl.replace('PLANTA ','')).join(', ');
+  const datesI = a.map(r=>r['FECHA INICIO']).filter(Boolean).sort();
+  const datesF = a.map(r=>r['FECHA FIN']).filter(Boolean).sort();
+  const projIni = datesI.length ? datesI[0] : null;
+  const projFin = datesF.length ? datesF[datesF.length-1] : null;
   return `<div class="proj-card" onclick="openProjDr('${esc(p)}')">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0">
         <div style="width:30px;height:30px;border-radius:7px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:14px">◫</span></div>
         <div style="min-width:0"><div style="font-weight:600;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p}</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div></div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div>
+        ${projIni||projFin?`<div style="font-size:9px;color:var(--text3);margin-top:1px">${projIni?fmtD(projIni):''} ${projFin?'→ '+fmtD(projFin):''}</div>`:''}
+        </div>
       </div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:${cc};flex-shrink:0;margin-left:6px">${cum}%</div>
     </div>
@@ -4265,54 +4449,81 @@ function buildProjListRow(p, isAdmin) {
   const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
   const col  = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const id   = 'prl-' + p.replace(/[^a-zA-Z0-9]/g,'_');
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+  // Project date range from activities
+  const dates = a.map(r=>r['FECHA INICIO']).filter(Boolean).sort();
+  const datesFin = a.map(r=>r['FECHA FIN']).filter(Boolean).sort();
+  const projIni = dates.length ? dates[0] : null;
+  const projFin = datesFin.length ? datesFin[datesFin.length-1] : null;
   return `<div>
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;background:var(--bg2)" 
-      onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='var(--bg2)'"
-      onclick="toggleProjList('${id}')">
-      <span style="color:var(--text2);font-size:12px;transition:transform .2s" id="${id}-arrow">▶</span>
-      <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
-      <div style="flex:1;font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</div>
-      <div style="display:flex;gap:16px;flex-shrink:0;font-size:11px">
-        <span style="color:var(--accent)">${avg}% avance</span>
-        <span style="color:${cc}">${cum}% cumpl.</span>
-        <span style="color:var(--text2)">${a.length} acts.</span>
+    <div style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <!-- Arrow: only expands list -->
+      <div style="padding:10px 6px 10px 14px;cursor:pointer;color:var(--text3);font-size:11px;flex-shrink:0;transition:all .15s;display:flex;align-items:center"
+        onclick="toggleProjList('${id}')" id="${id}-arrow-wrap"
+        onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">
+        <svg id="${id}-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><polyline points="9,18 15,12 9,6"/></svg>
       </div>
-      <div style="width:80px;flex-shrink:0" onclick="event.stopPropagation();openProjDr('${esc(p)}')">
+      <!-- Color dot -->
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;margin-right:8px"></div>
+      <!-- Project name: opens detail -->
+      <div style="flex:1;padding:10px 0;cursor:pointer;min-width:0" onclick="openProjDr('${esc(p)}')"
+        onmouseover="this.querySelector('span').style.color='var(--accent)'" onmouseout="this.querySelector('span').style.color=''">
+        <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;transition:color .15s">${p}</span>
+        <span style="font-size:10px;color:var(--text2)">${projIni?fmtD(projIni):''} ${projFin?'→ '+fmtD(projFin):''}</span>
+      </div>
+      <!-- Stats -->
+      <div style="display:flex;gap:14px;flex-shrink:0;font-size:11px;padding:0 12px">
+        <span style="color:var(--accent)">${avg}%</span>
+        <span style="color:${cc}">${cum}%</span>
+        <span style="color:var(--text2)">${a.filter(r=>r.ESTADO==='REALIZADA').length}/${a.length}</span>
+      </div>
+      <!-- Progress bar -->
+      <div style="width:60px;flex-shrink:0;margin-right:14px">
         <div style="height:4px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${avg}%"></div></div>
       </div>
     </div>
-    <div id="${id}" style="display:none;background:var(--bg3);border-bottom:1px solid var(--border)">
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead><tr style="background:rgba(0,0,0,.15)">
-          <th style="padding:6px 10px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Código</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Actividad</th>
-          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Estado</th>
-          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Avance</th>
-          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">F.Fin</th>
-          <th style="padding:6px 10px;font-size:9px;color:var(--text2);text-transform:uppercase">Responsable</th>
-        </tr></thead>
-        <tbody>
-          ${a.map(r=>`<tr style="border-bottom:1px solid rgba(33,38,45,.4);cursor:pointer" onclick="openActDr('${r._id}')">
-            <td style="padding:5px 10px;white-space:nowrap"><span class="code-lbl" style="font-size:11px">${r['CÓDIGO']}</span></td>
-            <td style="padding:5px 10px;max-width:220px;font-size:11px">${r.ACTIVIDAD||'—'}</td>
-            <td style="padding:5px 10px">${badge(r.ESTADO||'PLANIFICADA')}</td>
-            <td style="padding:5px 10px;color:var(--accent);font-weight:700;text-align:center">${r.AVANCE}%</td>
-            <td style="padding:5px 10px;color:var(--text2);white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
-            <td style="padding:5px 10px;color:var(--text2);font-size:10px">${r.RESPONSABLE||'—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
+    <!-- Expanded list with ASANA-style indentation -->
+    <div id="${id}" style="display:none;border-bottom:1px solid var(--border)">
+      ${a.map(r=>{
+        const isLate = r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY;
+        return `<div style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid rgba(33,38,45,.3);background:var(--bg3);transition:background .15s"
+          onmouseover="this.style.background='rgba(56,189,248,.04)'" onmouseout="this.style.background='var(--bg3)'">
+          <!-- Indentation line (ASANA style) -->
+          <div style="width:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;align-self:stretch">
+            <div style="width:1px;background:var(--border);height:100%;position:absolute;left:21px"></div>
+            <div style="width:10px;height:1px;background:var(--border);position:absolute;left:21px"></div>
+          </div>
+          <!-- Done circle -->
+          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid ${r.ESTADO==='REALIZADA'?'var(--green)':'var(--border)'};background:${r.ESTADO==='REALIZADA'?'var(--green)':'transparent'};flex-shrink:0;cursor:${canEdit&&r.ESTADO!=='REALIZADA'?'pointer':'default'};display:flex;align-items:center;justify-content:center;margin-right:8px;transition:all .15s"
+            ${canEdit&&r.ESTADO!=='REALIZADA'?`onclick="markDoneAndRefreshList('${r._id}','${id}')" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"`:''}>
+            ${r.ESTADO==='REALIZADA'?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>':''}
+          </div>
+          <!-- Name -->
+          <div style="flex:1;padding:7px 0;cursor:pointer;min-width:0" onclick="openActDr('${r._id}')">
+            <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;${r.ESTADO==='REALIZADA'?'text-decoration:line-through;color:var(--text2)':isLate?'color:var(--red)':''}">${r.ACTIVIDAD||'—'}</span>
+            <span style="font-size:9px;color:var(--text2)">${r.RESPONSABLE||''} ${r['FECHA FIN']?'· '+fmtD(r['FECHA FIN']):''}</span>
+          </div>
+          <!-- Badge + avance -->
+          <div style="display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0">
+            ${badge(r.ESTADO||'PLANIFICADA')}
+            <span style="font-size:10px;color:var(--accent);font-weight:700">${r.AVANCE}%</span>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
 
 function toggleProjList(id) {
-  const el = document.getElementById(id);
+  const el    = document.getElementById(id);
   const arrow = document.getElementById(id+'-arrow');
   if (!el) return;
   const open = el.style.display !== 'none';
   el.style.display = open ? 'none' : 'block';
   if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+  // Update arrow wrap color
+  const wrap = document.getElementById(id+'-arrow-wrap');
+  if (wrap) wrap.style.color = open ? 'var(--text3)' : 'var(--accent)';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4330,7 +4541,36 @@ function openProjDr(proj) {
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = CURRENT_USER?.role === 'admin';
   const canEdit = CURRENT_USER?.role !== 'viewer';
+  // Stable order: sort by original code
+  const actsOrdered = [...acts].sort((a,b)=>(a['CÓDIGO']||'').localeCompare(b['CÓDIGO']||''));
+  // Project dates
+  const pdI = acts.map(r=>r['FECHA INICIO']).filter(Boolean).sort();
+  const pdF = acts.map(r=>r['FECHA FIN']).filter(Boolean).sort();
+  const projDateIni = pdI.length ? pdI[0] : null;
+  const projDateFin = pdF.length ? pdF[pdF.length-1] : null;
+
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
+  // Add expand button to drawer header
+  const drHdr = document.getElementById('dr-title');
+  if (drHdr && !document.getElementById('dr-expand-btn')) {
+    const expBtn = document.createElement('button');
+    expBtn.id = 'dr-expand-btn';
+    expBtn.title = 'Expandir';
+    expBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    expBtn.style.cssText = 'background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:5px;margin-left:8px;display:inline-flex;align-items:center;transition:color .15s';
+    expBtn.onclick = () => {
+      const dr = document.getElementById('drawer');
+      if (dr) {
+        const expanded = dr.style.width === '95vw';
+        dr.style.width = expanded ? '680px' : '95vw';
+        expBtn.style.color = expanded ? 'var(--text2)' : 'var(--accent)';
+      }
+    };
+    drHdr.parentNode.insertBefore(expBtn, drHdr.nextSibling);
+  } else if (document.getElementById('dr-expand-btn')) {
+    document.getElementById('dr-expand-btn').style.display = 'inline-flex';
+  }
+
   document.getElementById('dr-body').innerHTML = `
     <!-- Back button -->
     <button onclick="closeDr()" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
@@ -4338,7 +4578,11 @@ function openProjDr(proj) {
     </button>
     <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
       <div style="width:40px;height:40px;border-radius:10px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:18px">◫</span></div>
-      <div style="flex:1"><div style="font-weight:700;font-size:16px;line-height:1.3">${proj}</div><div style="font-size:12px;color:var(--text2);margin-top:3px">🏭 ${plant||'—'}</div></div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:16px;line-height:1.3">${proj}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">🏭 ${plant||'—'}</div>
+        ${projDateIni||projDateFin?`<div style="font-size:11px;color:var(--text2);margin-top:2px">📅 ${projDateIni?fmtD(projDateIni):''} ${projDateFin?'→ '+fmtD(projDateFin):''}</div>`:''}
+      </div>
     </div>
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>Avance promedio</span><span style="color:${col};font-weight:700">${avg}%</span></div>
@@ -4353,6 +4597,8 @@ function openProjDr(proj) {
       <div class="d-mb"><div class="d-ml">Total Reprog.</div><div class="d-mv" style="color:${tRep>0?'var(--orange)':'var(--text2)'};font-size:14px">${tRep}</div></div>
       <div class="d-mb"><div class="d-ml">Días retraso</div><div class="d-mv" style="color:${tDel>0?'var(--red)':'var(--green)'};font-size:14px">${tDel}</div></div>
       <div class="d-mb"><div class="d-ml">Incumpl.</div><div class="d-mv" style="color:${(100-cum)>30?'var(--red)':'var(--text2)'};font-size:14px">${100-cum}%</div></div>
+      ${projDateIni?`<div class="d-mb"><div class="d-ml">F. Inicio</div><div class="d-mv" style="font-size:12px">${fmtD(projDateIni)}</div></div>`:''}
+      ${projDateFin?`<div class="d-mb"><div class="d-ml">F. Fin</div><div class="d-mv" style="font-size:12px">${fmtD(projDateFin)}</div></div>`:''}
     </div>
     <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px">Actividades del Proyecto</div>
     <div style="overflow-x:auto;margin-bottom:12px">
@@ -4367,15 +4613,24 @@ function openProjDr(proj) {
           <th style="padding:7px 10px;text-align:center;font-size:10px;color:var(--text2);text-transform:uppercase">Acción</th>
         </tr></thead>
         <tbody>
-          ${acts.map(r => `<tr style="border-bottom:1px solid rgba(33,38,45,.5)">
+          ${actsOrdered.map(r => `<tr style="border-bottom:1px solid rgba(33,38,45,.5)" id="proj-row-${r._id}">
             <td style="padding:7px 10px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span></td>
-            <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px" onclick="closeDr();setTimeout(()=>openActDr('${r._id}'),150)" title="${r.ACTIVIDAD||''}">${r.ACTIVIDAD||'—'}</td>
-            <td style="padding:7px 10px">${badge(r.ESTADO||'PLANIFICADA')}</td>
-            <td style="padding:7px 10px;color:var(--accent);font-weight:700;font-size:12px">${r.AVANCE}%</td>
-            <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
-            <td style="padding:7px 10px;font-size:11px;color:var(--text);max-width:200px;white-space:normal;word-break:break-word">${r.OBSERVACIONES||'—'}</td>
+            <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px"
+              onclick="openActDrFromProj('${r._id}','${esc(proj)}')"
+              ondblclick="event.stopPropagation();inlineEditField(this,'actividad','${r._id}','${esc(proj)}')"
+              title="Click: ver detalle | Doble-click: editar">${r.ACTIVIDAD||'—'}</td>
+            <td style="padding:7px 10px;cursor:pointer"
+              ondblclick="inlineEditField(this,'estado','${r._id}','${esc(proj)}')">${badge(r.ESTADO||'PLANIFICADA')}</td>
+            <td style="padding:7px 10px;color:var(--accent);font-weight:700;font-size:12px;cursor:pointer"
+              ondblclick="inlineEditField(this,'avance','${r._id}','${esc(proj)}')">${r.AVANCE}%</td>
+            <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap;cursor:pointer"
+              ondblclick="inlineEditField(this,'fecha_fin','${r._id}','${esc(proj)}')">${fmtD(r['FECHA FIN'])}</td>
+            <td style="padding:7px 10px;font-size:11px;color:var(--text);max-width:200px;white-space:normal;word-break:break-word;cursor:pointer"
+              ondblclick="inlineEditField(this,'observaciones','${r._id}','${esc(proj)}')">${r.OBSERVACIONES||'—'}</td>
             <td style="padding:7px 10px;text-align:center">
-              ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="markDone('${r._id}');setTimeout(()=>openProjDr('${esc(proj)}'),800)" title="Marcar como completada" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Completar</button>`:'<span style="color:var(--green);font-size:12px">✅</span>'}
+              ${canEdit && r.ESTADO!=='REALIZADA'
+                ? `<button onclick="markDoneInProj('${r._id}','${esc(proj)}')" title="Marcar como completada" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Completar</button>`
+                : '<span style="color:var(--green);font-size:12px">✅</span>'}
             </td>
           </tr>`).join('')}
         </tbody>
@@ -4398,13 +4653,16 @@ function openActDr(id) {
   const r = get().find(a => a._id === id); if (!r) return;
   const fromProj = r.PROYECTO;
   document.getElementById('dr-title').textContent = 'Detalle de Actividad';
+  // Hide expand button (only for project view)
+  const expBtn = document.getElementById('dr-expand-btn');
+  if (expBtn) expBtn.style.display = 'none';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
   const isAdmin = CURRENT_USER?.role === 'admin';
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
-    <button onclick="closeDr();setTimeout(()=>openProjDr('${esc(fromProj)}'),150)" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+    <button onclick="const proj=window._currentProjContext||'${esc(fromProj)}';window._currentProjContext=null;openProjDr(proj);" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
       ← Volver al Proyecto
     </button>
     <div class="d-code">${r['CÓDIGO']} · ${r['AÑO']}</div>
@@ -4564,6 +4822,7 @@ function renderInicio() {
   const greet = greetHour < 12 ? 'Buenos días' : greetHour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const firstName = user.name.split(' ')[0];
 
+  el.style.height = "100%";
   el.innerHTML = `
     <!-- Header bienvenida -->
     <div style="background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(168,85,247,.1));border:1px solid rgba(56,189,248,.2);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:18px">
@@ -4627,19 +4886,21 @@ function renderInicio() {
       </div>
 
       <!-- Bandeja de entrada -->
-      <div class="chart-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="chart-card" style="display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0">
           <div class="chart-head" style="margin-bottom:0">📥 Bandeja de Entrada</div>
           ${unread.length?`<button onclick="markAllRead()" style="font-size:10px;color:var(--accent);background:transparent;border:none;cursor:pointer">Marcar leídas</button>`:''}
         </div>
-        ${unread.length?unread.slice(0,6).map(n=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})">
-          <span style="font-size:14px;flex-shrink:0">${n.icon}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
-            <div style="font-size:10px;color:var(--text2)">${n.time}</div>
-          </div>
-          <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:3px"></div>
-        </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin mensajes sin leer</div>`}
+        <div style="flex:1;overflow-y:auto;max-height:240px">
+          ${unread.length?unread.map(n=>`<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(56,189,248,.05)'" onmouseout="this.style.background=''">
+            <span style="font-size:14px;flex-shrink:0;margin-top:1px">${n.icon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
+              <div style="font-size:10px;color:var(--text2);margin-top:2px">${n.time}</div>
+            </div>
+            ${!n.read?`<div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>`:''}
+          </div>`).join(''):`<div style="text-align:center;padding:20px;font-size:12px;color:var(--text2)">Sin mensajes sin leer</div>`}
+        </div>
       </div>
 
       <!-- Menciones -->
@@ -4688,17 +4949,31 @@ function renderInicio() {
 // THEME — Light / Dark mode
 // ════════════════════════════════════════════════════════════════
 function toggleTheme() {
-  const isLight = document.documentElement.classList.toggle('light');
-  localStorage.setItem('sg_theme', isLight ? 'light' : 'dark');
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.innerHTML = isLight ? '&#9728;&#65039;' : '&#127769;';
+  const html = document.documentElement;
+  const btn  = document.getElementById('theme-btn');
+  // Cycle: dark → light → bitone → dark
+  if (!html.classList.contains('light') && !html.classList.contains('bitone')) {
+    html.classList.add('light');
+    localStorage.setItem('sg_theme','light');
+    if (btn) btn.innerHTML = '&#9728;&#65039;'; // ☀️
+  } else if (html.classList.contains('light')) {
+    html.classList.remove('light');
+    html.classList.add('bitone');
+    localStorage.setItem('sg_theme','bitone');
+    if (btn) btn.innerHTML = '&#9680;'; // ◐ bi-tone symbol
+  } else {
+    html.classList.remove('bitone');
+    localStorage.setItem('sg_theme','dark');
+    if (btn) btn.innerHTML = '&#127769;'; // 🌙
+  }
 }
 function applyStoredTheme() {
-  if (localStorage.getItem('sg_theme') === 'light') {
-    document.documentElement.classList.add('light');
-    const btn = document.getElementById('theme-btn');
-    if (btn) btn.innerHTML = '&#9728;&#65039;';
-  }
+  const t = localStorage.getItem('sg_theme');
+  const html = document.documentElement;
+  const btn  = document.getElementById('theme-btn');
+  html.classList.remove('light','bitone');
+  if (t === 'light')  { html.classList.add('light');  if (btn) btn.innerHTML='&#9728;&#65039;'; }
+  if (t === 'bitone') { html.classList.add('bitone'); if (btn) btn.innerHTML='&#9680;'; }
 }
 // ── Boot ────────────────────────────────────────────────────────────
 // Check for existing session on page load
