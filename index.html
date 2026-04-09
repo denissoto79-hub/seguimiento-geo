@@ -1421,7 +1421,7 @@ function renderDash() {
   const stDone  = allST.filter(s=>s.done).length;
   const sinFecha = get().filter(r=>!r['FECHA FIN']).length;
   const kpis = [
-    { l:'Total',              v:n+' + '+stTotal+'st', i:'📋', c:'var(--accent)', s:avgA+'% avance · '+stTotal+' subtareas',       t:'total'       },
+    { l:'Total',              v:n,         i:'📋', c:'var(--accent)', s:avgA+'% avance prom. · '+stTotal+' subtareas',             t:'total'       },
     { l:'Cumplimiento Global',v:cumP+'%',  i:'✅', c:'var(--green)',  s:real+' de '+n+' realizadas',                 t:'realizada'   },
     { l:'Cumplidas en Fecha', v:onT,       i:'⏰', c:'var(--green)',  s:'entregadas a tiempo',                        t:'ontime'      },
     { l:'En Curso',           v:enc,       i:'▶',  c:'var(--accent)', s:'activas ahora',                             t:'en curso'    },
