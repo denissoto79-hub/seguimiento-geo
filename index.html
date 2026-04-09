@@ -25,36 +25,99 @@ html.light {
 html.light .kpi:hover { box-shadow:0 4px 16px rgba(14,165,233,.15) }
 html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
 /* BI-TONE MODE — dark sidebar, light content */
+/* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
-  --bg:#0d1117; --bg2:#1e293b; --bg3:#0f172a; --border:#1e3a5f;
-  --text:#f1f5f9; --text2:#94a3b8; --text3:#64748b;
-  --accent:#38bdf8; --accent2:#0ea5e9;
-  --green:#22c55e; --orange:#f97316; --red:#ef4444; --purple:#a855f7; --yellow:#eab308;
-  --s-done:#22c55e; --s-prog:#38bdf8; --s-plan:#94a3b8; --s-rep:#f97316;
+  --bg:#e8f0f7; --bg2:#ffffff; --bg3:#f0f5fb; --border:#c8d8e8;
+  --text:#0f172a; --text2:#334155; --text3:#64748b;
+  --accent:#0284c7; --accent2:#0369a1;
+  --green:#15803d; --orange:#c2410c; --red:#b91c1c; --purple:#7c3aed; --yellow:#a16207;
+  --s-done:#15803d; --s-prog:#0284c7; --s-plan:#64748b; --s-rep:#c2410c;
 }
-html.bitone #sidebar { background:#0d1117; border-right-color:#1e3a5f; }
-html.bitone #content  { background:#f8fafc; }
-html.bitone #content .page { background:#f8fafc; }
-html.bitone #content .chart-card,
-html.bitone #content .kpi,
-html.bitone #content .proj-card,
-html.bitone #content .table-card { background:#ffffff; border-color:#e2e8f0; color:#1e293b; }
-html.bitone #content .kpi-label,
-html.bitone #content .kpi-sub,
-html.bitone #content .chart-head { color:#64748b; }
-html.bitone #content .kpi-val { color:#0f172a; }
-html.bitone #topbar { background:#ffffff; border-bottom-color:#e2e8f0; color:#1e293b; }
-html.bitone #content th { background:#f1f5f9; color:#64748b; }
-html.bitone #content td { color:#1e293b; border-color:#e2e8f0; }
+/* Sidebar stays dark */
+html.bitone #sidebar {
+  background:#0d1117 !important; border-right-color:#21262d !important;
+  --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
+  --border:#21262d;
+}
+html.bitone #sidebar * { color: inherit; }
+html.bitone #sidebar .nav-item { color:#8b949e; }
+html.bitone #sidebar .nav-item.active { color:#38bdf8; background:rgba(56,189,248,.12); }
+html.bitone #sidebar .nav-item:hover { color:#e6edf3; background:rgba(255,255,255,.06); }
+html.bitone #sidebar .sec-lbl { color:#444e58; }
+html.bitone #sidebar .mod-btn { color:#8b949e; background:transparent; }
+html.bitone #sidebar .mod-btn.active { color:#38bdf8; background:rgba(56,189,248,.1); border-color:rgba(56,189,248,.25); }
+html.bitone #sidebar .sb-name { color:#e6edf3; }
+html.bitone #sidebar .sb-role { color:#8b949e; }
+html.bitone #sidebar .logo-txt { color:#e6edf3; }
+html.bitone #sidebar .logo-sub { color:#8b949e; }
+/* Topbar light */
+html.bitone #topbar { background:#ffffff; border-bottom:1px solid #c8d8e8; color:#0f172a; }
+html.bitone #topbar .tb-mod { color:#334155; }
+html.bitone #topbar .tb-badge { background:rgba(2,132,199,.1); color:#0284c7; }
+html.bitone #topbar #theme-btn { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
+html.bitone #topbar #notif-btn { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
+html.bitone #topbar .tb-av { background: linear-gradient(135deg,#0284c7,#0369a1) !important; }
+/* Content area */
+html.bitone #content { background:#e8f0f7; }
+html.bitone #content .page { background:#e8f0f7; }
+html.bitone #content .filter-bar { background:#ffffff; border-bottom:1px solid #c8d8e8; }
+html.bitone #content .fi { background:#f0f5fb; border-color:#c8d8e8; color:#0f172a; }
+html.bitone #content select.fi, html.bitone #content input.fi { color:#0f172a; }
+html.bitone #content label { color:#334155; }
+/* Cards */
+html.bitone #content .chart-card { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+html.bitone #content .kpi { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+html.bitone #content .kpi-label { color:#334155; }
+html.bitone #content .kpi-sub   { color:#64748b; }
+html.bitone #content .kpi-val   { color:#0f172a; }
+html.bitone #content .chart-head { color:#334155; font-weight:700; }
+html.bitone #content .proj-card { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+html.bitone #content .proj-card:hover { box-shadow:0 4px 12px rgba(2,132,199,.15); border-color:#93c5fd; }
+html.bitone #content .table-card { background:#ffffff; border-color:#c8d8e8; }
+/* Tables */
 html.bitone #content table { background:#ffffff; }
-html.bitone #content tr:hover { background:rgba(14,165,233,.05); }
-html.bitone #content .filter-bar { background:#ffffff; border-bottom-color:#e2e8f0; }
-html.bitone #content .fi { background:#f1f5f9; border-color:#e2e8f0; color:#1e293b; }
-html.bitone .nav-item { color:#8b949e; }
-html.bitone .nav-item.active { color:#38bdf8; background:rgba(56,189,248,.1); }
-html.bitone .sec-lbl { color:#444e58; }
-html.bitone .mod-btn { color:#8b949e; }
-html.bitone .mod-btn.active { color:#38bdf8; background:rgba(56,189,248,.1); }
+html.bitone #content th { background:#f0f5fb; color:#334155; border-color:#c8d8e8; }
+html.bitone #content td { color:#0f172a; border-color:#e2eaf2; }
+html.bitone #content tr:hover td { background:rgba(2,132,199,.04); }
+html.bitone #content .code-lbl { background:rgba(2,132,199,.1); color:#0284c7; border-color:rgba(2,132,199,.25); }
+/* Progress bars */
+html.bitone #content .prog-bar { background:#e2eaf2; }
+html.bitone #content .av-bar   { background:#e2eaf2; }
+/* Badges override */
+html.bitone .badge-done { background:rgba(21,128,61,.12); color:#15803d; }
+html.bitone .badge-prog { background:rgba(2,132,199,.12); color:#0284c7; }
+html.bitone .badge-plan { background:rgba(100,116,139,.1); color:#334155; }
+html.bitone .badge-rep  { background:rgba(194,65,12,.12); color:#c2410c; }
+/* Drawers/Modals */
+html.bitone .drawer { background:#ffffff; border-left-color:#c8d8e8; }
+html.bitone .modal  { background:#ffffff; }
+html.bitone .d-ml { color:#334155; }
+html.bitone .d-mv { color:#0f172a; }
+html.bitone .d-obs { background:rgba(2,132,199,.05); border-color:rgba(2,132,199,.2); color:#0f172a; }
+html.bitone .d-sec { color:#334155; border-top-color:#c8d8e8; }
+html.bitone .d-meta { background:#f8fafc; }
+html.bitone .d-rep-box { background:rgba(194,65,12,.06); border-color:rgba(194,65,12,.2); }
+html.bitone .d-rep-l   { color:#c2410c; }
+/* Kanban & project bg */
+html.bitone #content .bg3-el { background:#f0f5fb; }
+html.bitone #content [style*="var(--bg3)"] { background:#f0f5fb !important; color:#0f172a !important; }
+html.bitone #content [style*="var(--bg2)"] { background:#ffffff !important; }
+/* Gantt */
+html.bitone .gantt-bar { box-shadow:0 1px 4px rgba(0,0,0,.12); }
+html.bitone .gantt-month-tick { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
+/* Calendar */
+html.bitone .cal-cell { background:#ffffff; border-color:#c8d8e8; }
+html.bitone .cal-dname { color:#334155; }
+html.bitone .cal-dnum  { color:#334155; }
+/* Toast */
+html.bitone .toast { background:#0f172a; color:#f1f5f9; }
+/* KP overlay */
+html.bitone .kp-box { background:#ffffff; }
+/* Notification panel */
+html.bitone .notif-panel { background:#ffffff; border-color:#c8d8e8; }
+html.bitone .notif-item  { border-color:#e2eaf2; }
+html.bitone .notif-text  { color:#0f172a; }
+html.bitone .notif-time  { color:#64748b; }
 * { box-sizing:border-box; margin:0; padding:0 }
 html,body { height:100%; overflow:hidden }
 body { font-family:'Barlow',sans-serif; background:var(--bg); color:var(--text) }
@@ -237,6 +300,7 @@ tr:hover .act-btns { opacity:1 }
 .cal-nav   { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap }
 .cal-title { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; min-width:160px }
 .cal-grid  { display:grid; grid-template-columns:repeat(7,1fr); gap:3px }
+.cal-scroll { flex:1; overflow-y:auto; min-height:0; }
 .cal-dname { text-align:center; font-size:9px; font-weight:700; color:var(--text2); padding:5px 0; text-transform:uppercase; letter-spacing:.07em }
 .cal-cell  { background:var(--bg2); border:1px solid var(--border); border-radius:6px; min-height:80px; padding:6px; transition:border-color .15s }
 .cal-cell:hover { border-color:rgba(56,189,248,.4) }
@@ -608,7 +672,13 @@ tr:hover .act-btns { opacity:1 }
         </div>
         <button class="btn btn-ghost btn-sm" onclick="clearF()">&#10005; Limpiar</button>
       </div>
-      <div class="kpi-grid" id="kpi-grid"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="kpi-grid" id="kpi-grid" style="flex:1;margin-bottom:0"></div>
+        <button onclick="openDashCustomize()" title="Personalizar dashboard" style="margin-left:10px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);box-shadow:0 2px 0 var(--border);color:var(--text2);border-radius:7px;cursor:pointer;font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;transition:all .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15"/></svg>
+          Personalizar
+        </button>
+      </div>
       <div class="cg g3">
         <div class="chart-card"><div class="chart-head">Estado de Actividades</div><div class="chart-wrap"><canvas id="ch-e"></canvas></div></div>
         <div class="chart-card"><div class="chart-head">Actividades por Mes (F.Fin)</div><div class="chart-wrap"><canvas id="ch-m"></canvas></div></div>
@@ -668,9 +738,18 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><label>Responsable</label><select id="a-resp2" onchange="renderActs()"><option value="">Todos</option></select></div>
       </div>
       <div class="table-card">
-        <div class="table-hdr"><span class="table-title">Registro de Actividades</span><span class="table-count" id="act-cnt"></span></div>
+        <div class="table-hdr">
+          <span class="table-title">Registro de Actividades</span>
+          <span class="table-count" id="act-cnt"></span>
+          <div style="display:flex;gap:6px;margin-left:auto">
+            <button class="btn btn-ghost btn-sm" onclick="openCustomFieldsModal()" title="Gestionar columnas personalizadas" style="font-size:10px;display:flex;align-items:center;gap:4px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Columnas
+            </button>
+          </div>
+        </div>
         <div class="table-wrap">
-          <table><thead><tr>
+          <table id="act-table"><thead id="act-thead"><tr>
             <th onclick="srt('CÓDIGO')">C&#243;digo &#8645;</th>
             <th onclick="srt('ACTIVIDAD')">Actividad &#8645;</th>
             <th onclick="srt('PLANTA')">Planta &#8645;</th>
@@ -709,7 +788,7 @@ tr:hover .act-btns { opacity:1 }
     </div>
 
     <!-- CALENDAR -->
-    <div class="page" id="page-calendar">
+    <div class="page" id="page-calendar" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-sm" onclick="calNav(-1)" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">&#9664;</button>
@@ -739,10 +818,12 @@ tr:hover .act-btns { opacity:1 }
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cal-est').value='';document.getElementById('cal-planta').value='';document.getElementById('cal-resp').value='';renderCal()" style="font-size:10px">✕</button>
         </div>
       </div>
-      <div id="cal-legend" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
-      <div class="cal-grid" id="cal-dnames"></div>
-      <div style="height:5px"></div>
-      <div class="cal-grid" id="cal-cells"></div>
+      <div id="cal-legend" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;flex-shrink:0"></div>
+      <div class="cal-grid" id="cal-dnames" style="flex-shrink:0"></div>
+      <div style="height:4px;flex-shrink:0"></div>
+      <div class="cal-scroll">
+        <div class="cal-grid" id="cal-cells"></div>
+      </div>
     </div>
 
     <!-- REPORTS -->
@@ -1421,7 +1502,7 @@ function renderDash() {
   const stDone  = allST.filter(s=>s.done).length;
   const sinFecha = get().filter(r=>!r['FECHA FIN']).length;
   const kpis = [
-    { l:'Total',              v:n,         i:'📋', c:'var(--accent)', s:avgA+'% avance prom. · '+stTotal+' subtareas',             t:'total'       },
+    { l:'Total',              v:n,         i:'📋', c:'var(--accent)', s:avgA+'% avance prom.',             t:'total'       },
     { l:'Cumplimiento Global',v:cumP+'%',  i:'✅', c:'var(--green)',  s:real+' de '+n+' realizadas',                 t:'realizada'   },
     { l:'Cumplidas en Fecha', v:onT,       i:'⏰', c:'var(--green)',  s:'entregadas a tiempo',                        t:'ontime'      },
     { l:'En Curso',           v:enc,       i:'▶',  c:'var(--accent)', s:'activas ahora',                             t:'en curso'    },
@@ -1431,7 +1512,10 @@ function renderDash() {
     { l:'Cumpl. del Mes',     v:moP+'%',   i:'📅', c:'var(--purple)', s:moRealiz+'/'+moAll.length+' (incl. subtareas) · Ajust:'+moPadj+'%', t:'mes' },
     { l:'Sin Fecha',          v:sinFecha,  i:'📭', c:'var(--text3)',  s:'sin fecha asignada',                        t:'sinFecha'    },
   ];
-  document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
+  const visibleKpis = DASH_KPI_CONFIG?.kpis
+    ? kpis.filter(k => DASH_KPI_CONFIG.kpis.includes(k.t))
+    : kpis;
+  document.getElementById('kpi-grid').innerHTML = visibleKpis.map(k =>
     `<div class="kpi" style="--kc:${k.c}" onclick="openKP('${k.t}')">
       <div class="kpi-label">${k.l}</div>
       <div class="kpi-val">${k.v}</div>
@@ -1697,8 +1781,33 @@ function renderActs() {
   if (state.pg > pages) state.pg = 1;
   const sl = d.slice((state.pg - 1) * PAGE_SZ, state.pg * PAGE_SZ);
   document.getElementById('act-cnt').textContent = tot + ' registros';
+  // Update custom field columns in header
+  const cf = CUSTOM_FIELDS?.[ACTIVE] || [];
+  const thead = document.getElementById('act-thead');
+  if (thead) {
+    const tr = thead.querySelector('tr');
+    // Remove old custom-field headers
+    tr.querySelectorAll('.cf-th').forEach(el => el.remove());
+    // Add new ones before Actions
+    cf.forEach(f => {
+      const th = document.createElement('th');
+      th.className = 'cf-th';
+      th.textContent = f.name;
+      tr.insertBefore(th, tr.lastElementChild);
+    });
+  }
   document.getElementById('act-tbody').innerHTML = sl.map(r => {
     const rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
+    const cfCells = cf.map(f => {
+      const val = r._customFields?.[f.name] || '';
+      if (f.type === 'select') {
+        return `<td><select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-size:10px;font-family:'Barlow',sans-serif" onchange="updateCustomField('${r._id}','${f.name}',this.value)">
+          <option value="">—</option>
+          ${(f.opts||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
+        </select></td>`;
+      }
+      return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+    }).join('');
     return `<tr>
       <td><span class="code-lbl">${r['CÓDIGO']}</span></td>
       <td>
@@ -1713,8 +1822,10 @@ function renderActs() {
       <td>${badge(r.ESTADO||'PLANIFICADA')}</td>
       <td style="text-align:center"><span style="font-size:11px;font-weight:700;color:${rn>0?'var(--orange)':'var(--text2)'}">${rn}</span></td>
       <td><div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${r.AVANCE}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${r.AVANCE}%</span></div></td>
+      ${cfCells}
       <td><div class="act-btns">
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
+        <button class="abtn" onclick="duplicateAct('${r._id}')" title="Duplicar" style="background:rgba(168,85,247,.12);color:var(--purple)">⧉</button>
         ${r.ESTADO!=='REALIZADA'?`<button class="abtn abtn-d" onclick="markDone('${r._id}')">✓</button>`:''}
         <button class="abtn abtn-x" onclick="delAct('${r._id}')">✕</button>
       </div></td>
@@ -2745,10 +2856,102 @@ function tsNow() {
   return d.toLocaleDateString('es-BO') + ' ' + d.toLocaleTimeString('es-BO', {hour:'2-digit',minute:'2-digit'});
 }
 
+// Animal animation counter for cycling
+let _notifAnimalIdx = 0;
+
 function addNotif(type, text, actId = null) {
   const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧', project:'◫' };
-  NOTIFICATIONS.unshift({ id: Date.now(), type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId });
+  const id = Date.now();
+  NOTIFICATIONS.unshift({ id, type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId });
   renderNotifBadge();
+  // Show animated popup if page is visible
+  if (!document.hidden) showNotifPopup(text, type, actId, id);
+}
+
+function showNotifPopup(text, type, actId, notifId) {
+  // Remove existing popup
+  const existing = document.getElementById('notif-popup');
+  if (existing) existing.remove();
+
+  const animals = [
+    { // Cat waving
+      frames: ['🐱','😺','😸'],
+      html: `<div style="font-size:32px;animation:catWave 0.6s ease-in-out infinite alternate">🐱</div>
+             <style>@keyframes catWave{from{transform:rotate(-10deg) translateY(0)}to{transform:rotate(10deg) translateY(-4px)}}</style>`
+    },
+    { // Dog wagging
+      frames: ['🐶'],
+      html: `<div style="position:relative;width:44px;height:44px">
+               <div style="font-size:30px;animation:dogWag 0.4s ease-in-out infinite alternate;display:inline-block">🐶</div>
+               <div style="font-size:18px;position:absolute;bottom:-2px;right:-4px;animation:tailWag 0.3s ease-in-out infinite alternate;transform-origin:left center">🐕</div>
+             </div>
+             <style>@keyframes dogWag{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}@keyframes tailWag{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}</style>`
+    },
+    { // Dove landing
+      html: `<div style="font-size:32px;animation:doveLand 0.8s cubic-bezier(.17,.67,.83,.67) forwards">🕊️</div>
+             <style>@keyframes doveLand{0%{transform:translateY(-30px) rotate(-20deg);opacity:0}60%{transform:translateY(4px) rotate(5deg);opacity:1}80%{transform:translateY(-2px) rotate(-2deg)}100%{transform:translateY(0) rotate(0)}}</style>`
+    }
+  ];
+  const animal = animals[_notifAnimalIdx % animals.length];
+  _notifAnimalIdx++;
+
+  const icons = { comment:'💬', mention:'🔔', task:'📌', due:'⏰', system:'🔧', project:'◫' };
+  const typeLabels = { comment:'Nuevo comentario', mention:'Mención', task:'Actividad', due:'Próximo vencimiento', system:'Sistema', project:'Proyecto' };
+  const typeColors = { comment:'var(--accent)', mention:'var(--purple)', task:'var(--green)', due:'var(--orange)', system:'var(--text2)', project:'var(--accent)' };
+  const icon  = icons[type] || '🔔';
+  const label = typeLabels[type] || 'Notificación';
+  const color = typeColors[type] || 'var(--accent)';
+
+  const popup = document.createElement('div');
+  popup.id = 'notif-popup';
+  popup.style.cssText = `
+    position:fixed; bottom:24px; right:24px; z-index:9999;
+    background:var(--bg2); border:1px solid var(--border);
+    border-left:3px solid ${color};
+    border-radius:14px; padding:14px 16px;
+    width:320px; max-width:calc(100vw - 32px);
+    box-shadow:0 8px 32px rgba(0,0,0,.4);
+    display:flex; align-items:flex-start; gap:12px;
+    transform:translateX(360px); opacity:0;
+    transition:transform .35s cubic-bezier(.17,.67,.46,1.3), opacity .3s ease;
+    cursor:pointer;
+  `;
+  popup.innerHTML = `
+    <div style="flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
+      ${animal.html}
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+        <span style="font-size:12px">${icon}</span>
+        <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.07em">${label}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${text}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:4px">${tsNow()}</div>
+    </div>
+    <button onclick="event.stopPropagation();document.getElementById('notif-popup')?.remove()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0;margin-top:-2px">×</button>
+  `;
+  popup.onclick = () => {
+    popup.remove();
+    if (actId) { setTimeout(() => openActDr(actId), 100); }
+  };
+  document.body.appendChild(popup);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      popup.style.transform = 'translateX(0)';
+      popup.style.opacity = '1';
+    });
+  });
+
+  // Auto dismiss after 5s
+  const timer = setTimeout(() => {
+    popup.style.transform = 'translateX(360px)';
+    popup.style.opacity = '0';
+    setTimeout(() => popup?.remove(), 400);
+  }, 5000);
+
+  popup.addEventListener('mouseenter', () => clearTimeout(timer));
 }
 
 function renderNotifBadge() {
@@ -3344,6 +3547,7 @@ async function loadModFromDB(key) {
   populateDDs();
   applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderCfg(); renderRep();
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
+  loadCustomFieldsView(); loadDashConfig();
   document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
   // Refresh inicio if visible
   const inPage = document.getElementById('page-inicio');
@@ -3546,42 +3750,108 @@ function inlineEditField(cell, field, actId, proj) {
 }
 
 // Kanban view builder
+// Kanban drag-and-drop state
+let _dragActId = null;
+
 function buildProjKanban(projs, isAdmin) {
   const COLS = [
-    { key:'PLANIFICADA',  label:'Planificadas', color:'var(--text2)' },
-    { key:'EN CURSO',     label:'En Curso',     color:'var(--accent)' },
-    { key:'REPROGRAMADA', label:'Reprogramadas',color:'var(--orange)' },
-    { key:'REALIZADA',    label:'Realizadas',   color:'var(--green)' },
+    { key:'PLANIFICADA',  label:'Planificadas', color:'var(--text2)',   bg:'rgba(139,148,158,.12)' },
+    { key:'EN CURSO',     label:'En Curso',     color:'var(--accent)',  bg:'rgba(56,189,248,.08)' },
+    { key:'REPROGRAMADA', label:'Reprogramadas',color:'var(--orange)',  bg:'rgba(249,115,22,.08)' },
+    { key:'REALIZADA',    label:'Realizadas',   color:'var(--green)',   bg:'rgba(34,197,94,.08)' },
   ];
   const allActs = get().filter(r => projs.includes(r.PROYECTO));
   const canEdit = CURRENT_USER?.role !== 'viewer';
   let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
   COLS.forEach(col => {
     const colActs = allActs.filter(r => r.ESTADO === col.key);
-    html += `<div style="background:var(--bg3);border-radius:10px;padding:10px;min-height:200px">
+    html += `<div class="kanban-col" data-estado="${col.key}"
+      style="background:${col.bg};border:2px dashed transparent;border-radius:10px;padding:10px;min-height:220px;transition:border-color .2s,background .2s"
+      ondragover="kanbanDragOver(event,'${col.key}')"
+      ondragleave="kanbanDragLeave(event)"
+      ondrop="kanbanDrop(event,'${col.key}')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:${col.color};text-transform:uppercase;letter-spacing:.07em">${col.label}</div>
         <span style="background:${col.color}20;color:${col.color};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700">${colActs.length}</span>
       </div>
       ${colActs.map(r => `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s"
+        <div class="kanban-card" data-act-id="${r._id}"
+          draggable="${canEdit}"
+          style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:${canEdit?'grab':'pointer'};transition:all .18s;user-select:none"
+          ondragstart="kanbanDragStart(event,'${r._id}')"
+          ondragend="kanbanDragEnd(event)"
           onclick="openActDr('${r._id}')"
-          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.3)'" onmouseout="this.style.boxShadow=''">
-          <div style="font-size:11px;font-weight:600;margin-bottom:5px;line-height:1.35">${r.ACTIVIDAD||'—'}</div>
-          <div style="font-size:10px;color:var(--text2);margin-bottom:6px">${r.PROYECTO||''}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between">
+          onmouseover="if(!this.dragging){this.style.boxShadow='0 4px 14px rgba(0,0,0,.25)';this.style.transform='translateY(-1px)';}" onmouseout="this.style.boxShadow='';this.style.transform=''">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">
+            <div style="font-size:11px;font-weight:600;line-height:1.35;flex:1">${r.ACTIVIDAD||'—'}</div>
+            <span class="code-lbl" style="font-size:9px;white-space:nowrap;flex-shrink:0">${r['CÓDIGO']||''}</span>
+          </div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:6px">${(r.PROYECTO||'').substring(0,28)}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
             <span style="font-size:9px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</span>
             <span style="font-size:10px;font-weight:700;color:${col.color}">${r.AVANCE}%</span>
           </div>
-          <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:5px;overflow:hidden">
-            <div style="height:100%;background:${col.color};width:${r.AVANCE}%;border-radius:99px"></div>
+          <div style="height:3px;background:rgba(139,148,158,.2);border-radius:99px;overflow:hidden">
+            <div style="height:100%;background:${col.color};width:${r.AVANCE}%;border-radius:99px;transition:width .3s"></div>
           </div>
-          ${canEdit && r.ESTADO!=='REALIZADA'?`<button onclick="event.stopPropagation();markDoneAndRefreshList('${r._id}','')" style="margin-top:6px;width:100%;padding:3px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:9px;cursor:pointer;font-family:'Barlow',sans-serif">✓ Completar</button>`:''}
+          <div style="font-size:9px;color:var(--text2);margin-top:5px">${r.RESPONSABLE||''}</div>
         </div>`).join('')}
     </div>`;
   });
   html += '</div>';
   return html;
+}
+
+function kanbanDragStart(event, actId) {
+  _dragActId = actId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', actId);
+  event.currentTarget.style.opacity = '0.5';
+  event.currentTarget.style.transform = 'scale(0.97) rotate(1deg)';
+}
+
+function kanbanDragEnd(event) {
+  event.currentTarget.style.opacity = '';
+  event.currentTarget.style.transform = '';
+  document.querySelectorAll('.kanban-col').forEach(col => {
+    col.style.borderColor = 'transparent';
+    col.style.background = col.dataset.origBg || '';
+  });
+  _dragActId = null;
+}
+
+function kanbanDragOver(event, estado) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const col = event.currentTarget;
+  const colors = { PLANIFICADA:'rgba(139,148,158,.3)', 'EN CURSO':'rgba(56,189,248,.3)', REPROGRAMADA:'rgba(249,115,22,.3)', REALIZADA:'rgba(34,197,94,.3)' };
+  col.style.borderColor = colors[estado] || 'var(--accent)';
+  col.style.background = colors[estado]?.replace('.3','.12') || 'rgba(56,189,248,.08)';
+}
+
+function kanbanDragLeave(event) {
+  const col = event.currentTarget;
+  if (!col.contains(event.relatedTarget)) {
+    col.style.borderColor = 'transparent';
+  }
+}
+
+async function kanbanDrop(event, newEstado) {
+  event.preventDefault();
+  const actId = _dragActId || event.dataTransfer.getData('text/plain');
+  if (!actId) return;
+  const r = get().find(a => a._id === actId);
+  if (!r || r.ESTADO === newEstado) return;
+  const oldEstado = r.ESTADO;
+  r.ESTADO = newEstado;
+  if (newEstado === 'REALIZADA') { r.AVANCE = 100; r['FECHA COMPLETADA'] = tds(); }
+  // Save to DB
+  const update = { estado: newEstado, updated_at: new Date().toISOString() };
+  if (newEstado === 'REALIZADA') { update.avance = 100; update.fecha_completada = tds(); }
+  await _sb.from('actividades').update(update).eq('id', r._dbid);
+  await saveHistoryToDB(r._dbid, 'ESTADO', oldEstado, newEstado);
+  notify('✅ ' + (r['CÓDIGO']||'Actividad') + ' → ' + newEstado);
+  renderProjs();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4556,8 +4826,9 @@ function openProjDr(proj) {
     const expBtn = document.createElement('button');
     expBtn.id = 'dr-expand-btn';
     expBtn.title = 'Expandir';
-    expBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    expBtn.style.cssText = 'background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:5px;margin-left:8px;display:inline-flex;align-items:center;transition:color .15s';
+    expBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    expBtn.style.cssText = 'background:var(--bg3);border:1px solid var(--border);box-shadow:0 2px 0 var(--border),0 3px 6px rgba(0,0,0,.2);color:var(--text2);cursor:pointer;padding:5px 8px;border-radius:6px;margin-left:8px;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:Barlow,sans-serif;font-weight:600;transition:all .15s;white-space:nowrap';
+    expBtn.innerHTML += ' Expandir';
     expBtn.onclick = () => {
       const dr = document.getElementById('drawer');
       if (dr) {
@@ -4638,6 +4909,7 @@ function openProjDr(proj) {
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
       ${canEdit?`<button onclick="openModalFromProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.2)'" onmouseout="this.style.background='rgba(56,189,248,.1)'">+ Nueva Actividad</button>`:''}
+      <button onclick="openProjMetrics('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.3);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 2px 0 rgba(168,85,247,.2)">📊 Métricas</button>
       ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
       ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
     </div>`;
@@ -4822,7 +5094,7 @@ function renderInicio() {
   const greet = greetHour < 12 ? 'Buenos días' : greetHour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const firstName = user.name.split(' ')[0];
 
-  el.style.height = "100%";
+  el.style.cssText = 'height:100%;overflow-y:auto;';
   el.innerHTML = `
     <!-- Header bienvenida -->
     <div style="background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(168,85,247,.1));border:1px solid rgba(56,189,248,.2);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:18px">
@@ -4852,7 +5124,7 @@ function renderInicio() {
       </div>`).join('')}
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0">
       <!-- Tareas próximas -->
       <div class="chart-card">
         <div class="chart-head">⏰ Tareas Próximas (7 días)</div>
@@ -4944,6 +5216,313 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 // Override exportPDF to fix text truncation
 // exportPDF override removed - original works
+
+// ════════════════════════════════════════════════════════════════
+// DUPLICATE ACTIVITY
+// ════════════════════════════════════════════════════════════════
+function updateCustomField(actId, fieldName, value) {
+  const r = get().find(a => a._id === actId); if (!r) return;
+  if (!r._customFields) r._customFields = {};
+  r._customFields[fieldName] = value;
+  // Save to DB as part of subtasks/metadata (reuse subtasks field or a custom_fields column)
+  // For now store in localStorage per activity
+  try {
+    const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || actId);
+    localStorage.setItem(key, JSON.stringify(r._customFields));
+  } catch(e) {}
+}
+
+function loadCustomFieldValues() {
+  const acts = get();
+  const cf = CUSTOM_FIELDS?.[ACTIVE] || [];
+  if (!cf.length) return;
+  acts.forEach(r => {
+    try {
+      const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || r._id);
+      const stored = localStorage.getItem(key);
+      if (stored) r._customFields = JSON.parse(stored);
+    } catch(e) {}
+  });
+}
+
+async function duplicateAct(id) {
+  const r = get().find(a => a._id === id); if (!r) return;
+  if (!confirm('¿Duplicar "' + (r.ACTIVIDAD||'').substring(0,30) + '"?')) return;
+  const batch = [{
+    modulo: ACTIVE,
+    codigo: (r['CÓDIGO']||'') + '-C',
+    anio: r['AÑO'] || new Date().getFullYear(),
+    actividad: (r.ACTIVIDAD||'') + ' (copia)',
+    planta: r.PLANTA || '',
+    proyecto: r.PROYECTO || '',
+    responsable: r.RESPONSABLE || '',
+    fecha_inicio: r['FECHA INICIO'] || null,
+    fecha_fin: r['FECHA FIN'] || null,
+    fecha_completada: null,
+    estado: 'PLANIFICADA',
+    avance: 0,
+    observaciones: r.OBSERVACIONES || '',
+    cant_reprog: 0, detalle_reprog: '', nueva_fecha_cierre: null,
+    subtasks: [], attachments: [], created_by: CURRENT_USER?.id
+  }];
+  const { error } = await _sb.from('actividades').insert(batch);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  await loadModFromDB(ACTIVE);
+  notify('⧉ Actividad duplicada');
+}
+
+// ════════════════════════════════════════════════════════════════
+// CUSTOM FIELDS — ASANA-style column management
+// ════════════════════════════════════════════════════════════════
+// Custom fields stored per module
+if (!window.CUSTOM_FIELDS) window.CUSTOM_FIELDS = {};
+
+function openCustomFieldsModal() {
+  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+  if (!canEdit) { notify('⚠ Solo administradores y colaboradores pueden gestionar columnas', true); return; }
+  const cf = CUSTOM_FIELDS[ACTIVE] || [];
+  const modal = document.createElement('div');
+  modal.id = 'cf-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:460px;max-width:calc(100vw - 32px);max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Columnas personalizadas</div>
+        <button onclick="document.getElementById('cf-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">×</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Añade columnas personalizadas a la tabla de actividades. Los campos se guardan para todos los usuarios.</div>
+      <div id="cf-list">
+        ${cf.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="flex:1;font-size:12px;font-weight:600">${f.name}</span>
+          <span style="font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px">${{text:'Texto',number:'Número',date:'Fecha',select:'Lista'}[f.type]||f.type}</span>
+          <button onclick="deleteCustomField(${i})" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>
+        </div>`).join('')}
+        ${!cf.length?'<div style="text-align:center;padding:16px;font-size:12px;color:var(--text2)">Sin columnas personalizadas</div>':''}
+      </div>
+      <div style="margin-top:14px;background:var(--bg3);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Nueva columna</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:3px">Nombre del campo</label>
+            <input id="cf-name" class="fi" placeholder="Ej: Presupuesto" style="width:100%"></div>
+          <div><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:3px">Tipo de dato</label>
+            <select id="cf-type" class="fi" style="width:100%">
+              <option value="text">Texto</option>
+              <option value="number">Número</option>
+              <option value="date">Fecha</option>
+              <option value="select">Lista desplegable</option>
+            </select>
+          </div>
+        </div>
+        <div id="cf-select-opts" style="display:none;margin-bottom:10px">
+          <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:3px">Opciones (separadas por coma)</label>
+          <input id="cf-opts" class="fi" placeholder="Opción 1, Opción 2, Opción 3" style="width:100%">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="addCustomField()" class="btn btn-accent btn-sm" style="flex:1">+ Añadir columna</button>
+          <button onclick="saveCustomFieldsView()" class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);box-shadow:0 2px 0 var(--border)">💾 Guardar vista</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('cf-type').onchange = () => {
+    document.getElementById('cf-select-opts').style.display =
+      document.getElementById('cf-type').value === 'select' ? 'block' : 'none';
+  };
+}
+
+function addCustomField() {
+  const name = document.getElementById('cf-name')?.value.trim();
+  const type = document.getElementById('cf-type')?.value || 'text';
+  if (!name) { notify('⚠ Ingresa un nombre para el campo', true); return; }
+  if (!CUSTOM_FIELDS[ACTIVE]) CUSTOM_FIELDS[ACTIVE] = [];
+  const opts = type === 'select' ? (document.getElementById('cf-opts')?.value||'').split(',').map(o=>o.trim()).filter(Boolean) : [];
+  CUSTOM_FIELDS[ACTIVE].push({ name, type, opts });
+  saveCustomFieldsView();
+  document.getElementById('cf-modal')?.remove();
+  openCustomFieldsModal();
+  renderActs();
+  notify('✅ Columna "' + name + '" añadida');
+}
+
+function deleteCustomField(idx) {
+  if (!CUSTOM_FIELDS[ACTIVE]) return;
+  CUSTOM_FIELDS[ACTIVE].splice(idx, 1);
+  saveCustomFieldsView();
+  document.getElementById('cf-modal')?.remove();
+  openCustomFieldsModal();
+  renderActs();
+}
+
+function saveCustomFieldsView() {
+  try {
+    localStorage.setItem('sg_custom_fields_' + ACTIVE, JSON.stringify(CUSTOM_FIELDS[ACTIVE]||[]));
+    notify('💾 Vista de columnas guardada');
+  } catch(e) { notify('⚠ Error guardando vista', true); }
+}
+
+function loadCustomFieldsView() {
+  try {
+    const cf = localStorage.getItem('sg_custom_fields_' + ACTIVE);
+    if (cf) CUSTOM_FIELDS[ACTIVE] = JSON.parse(cf);
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// DASHBOARD CUSTOMIZATION — visible KPI cards
+// ════════════════════════════════════════════════════════════════
+let DASH_KPI_CONFIG = null;
+
+function loadDashConfig() {
+  try {
+    const s = localStorage.getItem('sg_dash_config');
+    if (s) DASH_KPI_CONFIG = JSON.parse(s);
+  } catch(e) {}
+}
+
+function saveDashConfig(cfg) {
+  DASH_KPI_CONFIG = cfg;
+  try { localStorage.setItem('sg_dash_config', JSON.stringify(cfg)); } catch(e) {}
+  notify('💾 Dashboard guardado para todos los usuarios');
+}
+
+function openDashCustomize() {
+  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+  if (!canEdit) { notify('⚠ Solo administradores y colaboradores pueden personalizar el dashboard', true); return; }
+  const ALL_KPI_KEYS = ['total','realizada','ontime','en curso','planificada','reprogramada','reprog','mes','sinFecha'];
+  const KPI_LABELS = { total:'Total Actividades', realizada:'Cumplimiento Global', ontime:'Cumplidas en Fecha', 'en curso':'En Curso', planificada:'Planificadas', reprogramada:'Reprogramadas', reprog:'Reprog. No Justificadas', mes:'Cumplimiento del Mes', sinFecha:'Sin Fecha Asignada' };
+  const cfg = DASH_KPI_CONFIG || { kpis: ALL_KPI_KEYS, charts: ['e','m','r','p','cmp','trim','st','rj'] };
+
+  const CHART_LABELS = { e:'Estado de Actividades', m:'Actividades por Mes', r:'Cumplimiento por Responsable', p:'Avance por Planta', cmp:'Cumplimiento Mes/Proyecto', trim:'Mensual/Trimestral', st:'Subtareas', rj:'Reprogramaciones' };
+
+  const modal = document.createElement('div');
+  modal.id = 'dash-cfg-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:480px;max-width:calc(100vw - 32px);max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Personalizar Dashboard</div>
+        <button onclick="document.getElementById('dash-cfg-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">×</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Selecciona qué tarjetas y gráficos mostrar. Se guarda para todos los usuarios.</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Tarjetas KPI</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
+        ${ALL_KPI_KEYS.map(k=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;cursor:pointer;font-size:12px">
+          <input type="checkbox" value="${k}" ${cfg.kpis.includes(k)?'checked':''} style="accent-color:var(--accent)">
+          ${KPI_LABELS[k]||k}
+        </label>`).join('')}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Gráficos</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:18px">
+        ${Object.entries(CHART_LABELS).map(([k,v])=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;cursor:pointer;font-size:12px">
+          <input type="checkbox" value="chart-${k}" ${cfg.charts.includes(k)?'checked':''} style="accent-color:var(--accent)">
+          ${v}
+        </label>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="applyDashCustomize()" class="btn btn-accent btn-sm" style="flex:1">Aplicar</button>
+        <button onclick="saveDashCustomizeConfig()" class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);box-shadow:0 2px 0 var(--border)">💾 Guardar vista</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function applyDashCustomize() {
+  const modal = document.getElementById('dash-cfg-modal');
+  if (!modal) return;
+  const kpis = [...modal.querySelectorAll('input[type=checkbox]')]
+    .filter(cb => cb.checked && !cb.value.startsWith('chart-'))
+    .map(cb => cb.value);
+  const charts = [...modal.querySelectorAll('input[type=checkbox]')]
+    .filter(cb => cb.checked && cb.value.startsWith('chart-'))
+    .map(cb => cb.value.replace('chart-',''));
+  const cfg = { kpis, charts };
+  saveDashConfig(cfg);
+  modal.remove();
+  renderDash();
+}
+
+function saveDashCustomizeConfig() {
+  applyDashCustomize();
+}
+
+// ════════════════════════════════════════════════════════════════
+// PROJECT METRICS PANEL
+// ════════════════════════════════════════════════════════════════
+let PROJ_METRICS_CFG = {};
+
+function openProjMetrics(proj) {
+  const acts = get().filter(r => r.PROYECTO === proj);
+  if (!acts.length) { notify('Sin actividades para mostrar métricas', true); return; }
+  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+
+  const avg  = Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length);
+  const cum  = Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100);
+  const tRep = acts.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
+  const delayed = acts.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY).length;
+  const byResp = {};
+  acts.forEach(r => {
+    if (!byResp[r.RESPONSABLE||'—']) byResp[r.RESPONSABLE||'—'] = {total:0,done:0};
+    byResp[r.RESPONSABLE||'—'].total++;
+    if (r.ESTADO==='REALIZADA') byResp[r.RESPONSABLE||'—'].done++;
+  });
+
+  const modal = document.createElement('div');
+  modal.id = 'proj-metrics-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Métricas del Proyecto</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${proj}</div>
+        </div>
+        <button onclick="document.getElementById('proj-metrics-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:20px">×</button>
+      </div>
+      <!-- KPI row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+        ${[
+          {l:'Avance',v:avg+'%',c:'var(--accent)'},
+          {l:'Cumplimiento',v:cum+'%',c:cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)'},
+          {l:'Reprog.',v:tRep,c:'var(--orange)'},
+          {l:'Vencidas',v:delayed,c:delayed>0?'var(--red)':'var(--green)'},
+        ].map(k=>`<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:${k.c};font-family:'Barlow Condensed',sans-serif">${k.v}</div>
+          <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-top:2px">${k.l}</div>
+        </div>`).join('')}
+      </div>
+      <!-- By responsable -->
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Por Responsable</div>
+      <div style="margin-bottom:14px">
+        ${Object.entries(byResp).map(([name,v])=>{
+          const pct = Math.round(v.done/v.total*100);
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span>${name}</span>
+              <span style="color:${pct>=70?'var(--green)':pct>=40?'var(--orange)':'var(--red)'};font-weight:700">${v.done}/${v.total} (${pct}%)</span>
+            </div>
+            <div style="height:5px;background:var(--bg3);border-radius:99px;overflow:hidden">
+              <div style="height:100%;background:${pct>=70?'var(--green)':pct>=40?'var(--orange)':'var(--red)'};width:${pct}%;border-radius:99px;transition:width .5s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <!-- By status -->
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Distribución por Estado</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+        ${[['PLANIFICADA','var(--text2)'],['EN CURSO','var(--accent)'],['REPROGRAMADA','var(--orange)'],['REALIZADA','var(--green)']].map(([est,col])=>{
+          const cnt = acts.filter(r=>r.ESTADO===est).length;
+          return `<div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:18px;font-weight:700;color:${col}">${cnt}</div>
+            <div style="font-size:9px;color:var(--text2);margin-top:2px">${est}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${canEdit?`<div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('proj-metrics-modal').remove()" class="btn btn-sm" style="flex:1">Cerrar</button>
+      </div>`:''}
+    </div>`;
+  document.body.appendChild(modal);
+}
 
 // ════════════════════════════════════════════════════════════════
 // THEME — Light / Dark mode
