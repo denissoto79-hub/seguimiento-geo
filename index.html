@@ -618,6 +618,9 @@ tr:hover .act-btns { opacity:1 }
     <div class="tb-right">
       <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
       <button id="theme-btn" onclick="toggleTheme()" title="Cambiar tema claro/oscuro" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s">&#127769;</button>
+      <button onclick="location.reload()" title="Actualizar página" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
       <div id="notif-btn" style="position:relative;cursor:pointer;width:34px;height:34px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s" onclick="toggleNotif()" title="Notificaciones">
         🔔
         <span id="notif-badge" style="display:none;position:absolute;top:3px;right:3px;width:16px;height:16px;background:var(--red);border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
@@ -696,6 +699,8 @@ tr:hover .act-btns { opacity:1 }
         <div class="chart-card"><div class="chart-head">Reprog. Justificadas vs No Justificadas</div><div class="chart-wrap" style="height:170px"><canvas id="ch-rj"></canvas></div></div>
       </div>
       <div class="chart-card" style="margin-bottom:18px"><div class="chart-head">Avance por Proyecto (mayor a menor)</div><div class="prog-list" id="proj-prog"></div></div>
+      <!-- Cross data charts rendered here -->
+      <div id="cross-charts"></div>
     </div>
 
     <!-- PROJECTS -->
@@ -1258,7 +1263,7 @@ function loadMod(key) {
   renderActs();
   renderProjs();
   renderGantt();
-  renderCal();
+  if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
   renderCfg();
   renderRep();
 }
@@ -1525,6 +1530,7 @@ function renderDash() {
 
   renderCharts(d, real, enc, plan, rep);
   renderProjProg(d);
+  setTimeout(renderCrossCharts, 100);
 }
 
 // ── Charts ────────────────────────────────────────────────────────
@@ -2859,100 +2865,7 @@ function tsNow() {
 // Animal animation counter for cycling
 let _notifAnimalIdx = 0;
 
-function addNotif(type, text, actId = null) {
-  const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧', project:'◫' };
-  const id = Date.now();
-  NOTIFICATIONS.unshift({ id, type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId });
-  renderNotifBadge();
-  // Show animated popup if page is visible
-  if (!document.hidden) showNotifPopup(text, type, actId, id);
-}
-
-function showNotifPopup(text, type, actId, notifId) {
-  // Remove existing popup
-  const existing = document.getElementById('notif-popup');
-  if (existing) existing.remove();
-
-  const animals = [
-    { // Cat waving
-      frames: ['🐱','😺','😸'],
-      html: `<div style="font-size:32px;animation:catWave 0.6s ease-in-out infinite alternate">🐱</div>
-             <style>@keyframes catWave{from{transform:rotate(-10deg) translateY(0)}to{transform:rotate(10deg) translateY(-4px)}}</style>`
-    },
-    { // Dog wagging
-      frames: ['🐶'],
-      html: `<div style="position:relative;width:44px;height:44px">
-               <div style="font-size:30px;animation:dogWag 0.4s ease-in-out infinite alternate;display:inline-block">🐶</div>
-               <div style="font-size:18px;position:absolute;bottom:-2px;right:-4px;animation:tailWag 0.3s ease-in-out infinite alternate;transform-origin:left center">🐕</div>
-             </div>
-             <style>@keyframes dogWag{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}@keyframes tailWag{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}</style>`
-    },
-    { // Dove landing
-      html: `<div style="font-size:32px;animation:doveLand 0.8s cubic-bezier(.17,.67,.83,.67) forwards">🕊️</div>
-             <style>@keyframes doveLand{0%{transform:translateY(-30px) rotate(-20deg);opacity:0}60%{transform:translateY(4px) rotate(5deg);opacity:1}80%{transform:translateY(-2px) rotate(-2deg)}100%{transform:translateY(0) rotate(0)}}</style>`
-    }
-  ];
-  const animal = animals[_notifAnimalIdx % animals.length];
-  _notifAnimalIdx++;
-
-  const icons = { comment:'💬', mention:'🔔', task:'📌', due:'⏰', system:'🔧', project:'◫' };
-  const typeLabels = { comment:'Nuevo comentario', mention:'Mención', task:'Actividad', due:'Próximo vencimiento', system:'Sistema', project:'Proyecto' };
-  const typeColors = { comment:'var(--accent)', mention:'var(--purple)', task:'var(--green)', due:'var(--orange)', system:'var(--text2)', project:'var(--accent)' };
-  const icon  = icons[type] || '🔔';
-  const label = typeLabels[type] || 'Notificación';
-  const color = typeColors[type] || 'var(--accent)';
-
-  const popup = document.createElement('div');
-  popup.id = 'notif-popup';
-  popup.style.cssText = `
-    position:fixed; bottom:24px; right:24px; z-index:9999;
-    background:var(--bg2); border:1px solid var(--border);
-    border-left:3px solid ${color};
-    border-radius:14px; padding:14px 16px;
-    width:320px; max-width:calc(100vw - 32px);
-    box-shadow:0 8px 32px rgba(0,0,0,.4);
-    display:flex; align-items:flex-start; gap:12px;
-    transform:translateX(360px); opacity:0;
-    transition:transform .35s cubic-bezier(.17,.67,.46,1.3), opacity .3s ease;
-    cursor:pointer;
-  `;
-  popup.innerHTML = `
-    <div style="flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
-      ${animal.html}
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        <span style="font-size:12px">${icon}</span>
-        <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.07em">${label}</span>
-      </div>
-      <div style="font-size:12px;color:var(--text);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${text}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:4px">${tsNow()}</div>
-    </div>
-    <button onclick="event.stopPropagation();document.getElementById('notif-popup')?.remove()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0;margin-top:-2px">×</button>
-  `;
-  popup.onclick = () => {
-    popup.remove();
-    if (actId) { setTimeout(() => openActDr(actId), 100); }
-  };
-  document.body.appendChild(popup);
-
-  // Animate in
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      popup.style.transform = 'translateX(0)';
-      popup.style.opacity = '1';
-    });
-  });
-
-  // Auto dismiss after 5s
-  const timer = setTimeout(() => {
-    popup.style.transform = 'translateX(360px)';
-    popup.style.opacity = '0';
-    setTimeout(() => popup?.remove(), 400);
-  }, 5000);
-
-  popup.addEventListener('mouseenter', () => clearTimeout(timer));
-}
+// addNotif — see animated version below
 
 function renderNotifBadge() {
   const unread = NOTIFICATIONS.filter(n => !n.read).length;
@@ -3411,6 +3324,30 @@ async function initSession(authUser) {
   applyStoredTheme();
   document.getElementById('login-screen').style.display = 'none';
 
+  // Load custom modules from Supabase and add to sidebar
+  const { data: sbModulos } = await _sb.from('modulos').select('*').eq('activo', true).order('created_at');
+  if (sbModulos && sbModulos.length) {
+    const builtinKeys = ['automatizacion','investigaciones','cambios'];
+    sbModulos.forEach(mod => {
+      if (builtinKeys.includes(mod.key)) return; // skip builtins
+      if (!MOD_LBL[mod.key]) {
+        MOD_LBL[mod.key] = mod.nombre;
+        RAW[mod.key] = [];
+        MS[mod.key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
+        if (!COLORS_ALL[mod.key]) COLORS_ALL[mod.key] = {};
+        // Add button to sidebar if not already there
+        if (!document.getElementById('mod-' + mod.key)) {
+          const extraMods = document.getElementById('extra-mods');
+          const btn = document.createElement('button');
+          btn.className = 'mod-btn'; btn.id = 'mod-' + mod.key;
+          btn.innerHTML = `<span class="mod-dot" style="background:${mod.color||'#38bdf8'}"></span><span class="mod-txt">${mod.nombre}</span>`;
+          btn.onclick = function() { switchMod(mod.key, this); };
+          if (extraMods) extraMods.appendChild(btn);
+        }
+      }
+    });
+  }
+
   // Load data and subscribe to realtime
   await loadModFromDB(CURRENT_USER.modules[0] || 'automatizacion');
   subscribeRealtime();
@@ -3545,7 +3482,9 @@ async function loadModFromDB(key) {
   await loadHistoryForMod(key);
 
   populateDDs();
-  applyF(); renderActs(); renderProjs(); renderGantt(); renderCal(); renderCfg(); renderRep();
+  applyF(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
+  // renderCal() only when on calendar page
+  if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
   loadCustomFieldsView(); loadDashConfig();
   document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
@@ -3945,12 +3884,53 @@ function tsNow() {
   return new Date().toLocaleString('es-BO', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+// Animal animation counter for cycling
+let _notifAnimalIdx = 0;
+
 function addNotif(type, text, actId = null) {
   const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧', project:'◫' };
-  NOTIFICATIONS.unshift({ id: Date.now(), type, text, icon:icons[type]||'🔔', time:tsNow(), read:false, actId });
+  const id = Date.now();
+  NOTIFICATIONS.unshift({ id, type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId });
   renderNotifBadge();
+  // Show animated popup if page is visible
+  if (!document.hidden) showNotifPopup(text, type, actId, id);
 }
 
+function showNotifPopup(text, type, actId, notifId) {
+  const existing = document.getElementById('notif-popup');
+  if (existing) existing.remove();
+  const animals = [
+    { html: `<div style="font-size:32px;display:inline-block;animation:catWave 0.6s ease-in-out infinite alternate">🐱</div><style>@keyframes catWave{from{transform:rotate(-10deg) translateY(0)}to{transform:rotate(10deg) translateY(-4px)}}</style>` },
+    { html: `<div style="font-size:32px;display:inline-block;animation:dogWag 0.4s ease-in-out infinite alternate">🐶</div><style>@keyframes dogWag{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}</style>` },
+    { html: `<div style="font-size:32px;display:inline-block;animation:doveLand 0.8s cubic-bezier(.17,.67,.83,.67) forwards">🕊️</div><style>@keyframes doveLand{0%{transform:translateY(-28px) rotate(-15deg);opacity:0}60%{transform:translateY(3px) rotate(3deg);opacity:1}100%{transform:translateY(0) rotate(0)}}</style>` }
+  ];
+  const animal = animals[_notifAnimalIdx % 3];
+  _notifAnimalIdx++;
+  const icons = { comment:'💬', mention:'🔔', task:'📌', due:'⏰', system:'🔧', project:'◫' };
+  const typeLabels = { comment:'Nuevo comentario', mention:'Mención', task:'Tarea', due:'Por vencer', system:'Sistema', project:'Proyecto' };
+  const typeColors = { comment:'var(--accent)', mention:'var(--purple)', task:'var(--green)', due:'var(--orange)', system:'var(--text2)', project:'var(--accent)' };
+  const icon = icons[type]||'🔔';
+  const label = typeLabels[type]||'Notificación';
+  const color = typeColors[type]||'var(--accent)';
+  const popup = document.createElement('div');
+  popup.id = 'notif-popup';
+  popup.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--bg2);border:1px solid var(--border);border-left:3px solid ${color};border-radius:14px;padding:14px 16px;width:320px;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:flex-start;gap:12px;transform:translateX(360px);opacity:0;transition:transform .35s cubic-bezier(.17,.67,.46,1.3),opacity .3s ease;cursor:pointer;`;
+  popup.innerHTML = `<div style="flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center">${animal.html}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+        <span style="font-size:12px">${icon}</span>
+        <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.07em">${label}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${text}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:4px">${tsNow()}</div>
+    </div>
+    <button onclick="event.stopPropagation();document.getElementById('notif-popup')?.remove()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0;margin-top:-2px">×</button>`;
+  popup.onclick = () => { popup.remove(); if (actId) setTimeout(()=>openActDr(actId),100); };
+  document.body.appendChild(popup);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ popup.style.transform='translateX(0)'; popup.style.opacity='1'; }));
+  const timer = setTimeout(()=>{ popup.style.transform='translateX(360px)'; popup.style.opacity='0'; setTimeout(()=>popup?.remove(),400); }, 5000);
+  popup.addEventListener('mouseenter', ()=>clearTimeout(timer));
+}
 function renderNotifBadge() {
   const unread = NOTIFICATIONS.filter(n => !n.read).length;
   const badge = document.getElementById('notif-badge');
@@ -5418,12 +5398,124 @@ function openDashCustomize() {
           ${v}
         </label>`).join('')}
       </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Cruce de Datos</div>
+      <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">Combina campos para generar análisis cruzados en los gráficos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px">
+          <div>
+            <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:3px">Eje X (agrupar por)</label>
+            <select id="cross-x" class="fi" style="width:100%;font-size:11px">
+              <option value="">Sin cruce</option>
+              <option value="RESPONSABLE">Responsable</option>
+              <option value="PLANTA">Planta</option>
+              <option value="PROYECTO">Proyecto</option>
+              <option value="ESTADO">Estado</option>
+              <option value="AÑO">Año</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:3px">Métrica Y</label>
+            <select id="cross-y" class="fi" style="width:100%;font-size:11px">
+              <option value="cumplimiento">Cumplimiento %</option>
+              <option value="avance">Avance %</option>
+              <option value="total">Total actividades</option>
+              <option value="reprogramaciones">Reprogramaciones</option>
+              <option value="retraso">Días de retraso</option>
+            </select>
+          </div>
+          <button onclick="addCrossData()" class="btn btn-sm" style="padding:5px 10px">+ Añadir</button>
+        </div>
+        <div id="cross-list" style="font-size:11px;color:var(--text2)">
+          ${(DASH_KPI_CONFIG?.crossData||[]).map((cd,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)">
+            <span style="flex:1">${cd.x} → ${cd.y}</span>
+            <button onclick="removeCrossData(${i})" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);border-radius:4px;padding:1px 7px;cursor:pointer;font-size:10px">✕</button>
+          </div>`).join('') || '<span>Sin cruces definidos</span>'}
+        </div>
+      </div>
       <div style="display:flex;gap:8px">
         <button onclick="applyDashCustomize()" class="btn btn-accent btn-sm" style="flex:1">Aplicar</button>
         <button onclick="saveDashCustomizeConfig()" class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);box-shadow:0 2px 0 var(--border)">💾 Guardar vista</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
+}
+
+function addCrossData() {
+  const x = document.getElementById('cross-x')?.value;
+  const y = document.getElementById('cross-y')?.value;
+  if (!x) { notify('⚠ Selecciona el campo de agrupación', true); return; }
+  if (!DASH_KPI_CONFIG) DASH_KPI_CONFIG = { kpis:[], charts:[], crossData:[] };
+  if (!DASH_KPI_CONFIG.crossData) DASH_KPI_CONFIG.crossData = [];
+  const exists = DASH_KPI_CONFIG.crossData.find(cd => cd.x===x && cd.y===y);
+  if (!exists) {
+    DASH_KPI_CONFIG.crossData.push({ x, y });
+    saveDashConfig(DASH_KPI_CONFIG);
+    // Refresh cross list display
+    const cl = document.getElementById('cross-list');
+    if (cl) cl.innerHTML = DASH_KPI_CONFIG.crossData.map((cd,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-size:11px">${cd.x} → ${cd.y}</span>
+      <button onclick="removeCrossData(${i})" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);border-radius:4px;padding:1px 7px;cursor:pointer;font-size:10px">✕</button>
+    </div>`).join('');
+    renderCrossCharts();
+  }
+}
+
+function removeCrossData(idx) {
+  if (!DASH_KPI_CONFIG?.crossData) return;
+  DASH_KPI_CONFIG.crossData.splice(idx, 1);
+  saveDashConfig(DASH_KPI_CONFIG);
+  document.getElementById('dash-cfg-modal')?.remove();
+  openDashCustomize();
+  renderCrossCharts();
+}
+
+function renderCrossCharts() {
+  const crossData = DASH_KPI_CONFIG?.crossData;
+  if (!crossData || !crossData.length) {
+    const el = document.getElementById('cross-charts');
+    if (el) el.innerHTML = '';
+    return;
+  }
+  const d = getFiltered();
+  let html = '';
+  const METRIC_LABELS = { cumplimiento:'Cumplimiento %', avance:'Avance %', total:'Total', reprogramaciones:'Reprogramaciones', retraso:'Días retraso' };
+  crossData.forEach((cd, ci) => {
+    const groups = [...new Set(d.map(r => r[cd.x]||'—'))].sort();
+    const values = groups.map(g => {
+      const ga = d.filter(r => (r[cd.x]||'—') === g);
+      if (!ga.length) return 0;
+      if (cd.y === 'cumplimiento') return Math.round(ga.filter(r=>r.ESTADO==='REALIZADA').length/ga.length*100);
+      if (cd.y === 'avance')       return Math.round(ga.reduce((s,r)=>s+r.AVANCE,0)/ga.length);
+      if (cd.y === 'total')        return ga.length;
+      if (cd.y === 'reprogramaciones') return ga.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
+      if (cd.y === 'retraso')      return ga.filter(r=>r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY&&r.ESTADO!=='REALIZADA').length;
+      return 0;
+    });
+    html += `<div class="chart-card" style="margin-top:12px"><div class="chart-head">${cd.x} vs ${METRIC_LABELS[cd.y]||cd.y}</div><div class="chart-wrap" style="height:160px"><canvas id="ch-cross-${ci}"></canvas></div></div>`;
+    // Draw after DOM update
+    setTimeout(() => {
+      const ctx = document.getElementById('ch-cross-'+ci)?.getContext('2d');
+      if (!ctx) return;
+      if (window._crossCharts) { window._crossCharts[ci]?.destroy(); }
+      else window._crossCharts = {};
+      window._crossCharts[ci] = new Chart(ctx, {
+        type:'bar',
+        data:{ labels:groups.map(g=>g.substring?g.substring(0,15):g), datasets:[{
+          label: METRIC_LABELS[cd.y]||cd.y,
+          data: values,
+          backgroundColor: groups.map((_,i)=>`hsl(${(i*47)%360},70%,55%)`),
+          borderRadius: 4
+        }]},
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false} },
+          scales:{ y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e',font:{size:10}}},
+                   x:{grid:{display:false},ticks:{color:'#8b949e',font:{size:9}}} }
+        }
+      });
+    }, 50);
+  });
+  const el = document.getElementById('cross-charts');
+  if (el) el.innerHTML = html;
 }
 
 function applyDashCustomize() {
