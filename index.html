@@ -1221,6 +1221,12 @@ const PAGE_SZ  = 20;
 function get()            { return MS[ACTIVE].acts || []; }
 function pcol(p)          { return (COLORS_ALL[ACTIVE] || {})[p] || '#8b949e'; }
 function uniq(arr, k)     { return [...new Set(arr.map(r => r[k]).filter(Boolean))].sort(); }
+// Convert newlines to <br> for HTML display
+function nlBr(s) {
+  if (!s) return '';
+  return String(s).replace(/\n/g, '<br>').replace(/\r/g, '');
+}
+
 function fmtD(s)          { return (s && s !== 'null') ? String(s).substring(0, 10) : '—'; }
 function tds()            { return new Date().toISOString().split('T')[0]; }
 function esc(s)           { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
@@ -1471,7 +1477,7 @@ function clearF()  {
 // ── Dashboard ─────────────────────────────────────────────────────
 function renderDash() {
   loadDashConfig(); // ensure config is fresh
-  const d = getFiltered(), n = d.length;
+  const d = getFiltered().filter(r => isProjectActive(r.PROYECTO||'')), n = d.length;
   const real = d.filter(r => r.ESTADO === 'REALIZADA').length;
   const enc  = d.filter(r => r.ESTADO === 'EN CURSO').length;
   const plan = d.filter(r => r.ESTADO === 'PLANIFICADA').length;
@@ -1993,7 +1999,8 @@ function _old_renderProjs_UNUSED() {
     const delayed = a.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY).length;
     const col = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
     const plant = [...new Set(a.map(r=>r.PLANTA).filter(Boolean))].map(pl=>pl.replace('PLANTA ','')).join(', ');
-    return `<div class="proj-card" onclick="openProjDr('${esc(p)}')">
+    const isActive = isProjectActive(p);
+  return `<div class="proj-card" onclick="openProjDr('${esc(p)}')" style="position:relative;${!isActive?'opacity:.65;':''}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
         <div style="display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0">
           <div style="width:30px;height:30px;border-radius:7px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:14px">◫</span></div>
@@ -3462,7 +3469,7 @@ async function loadModFromDB(key) {
   // renderCal() only when on calendar page
   if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
-  loadCustomFieldsView(); loadDashConfig();
+  loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
   document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
   // Refresh inicio if visible
   const inPage = document.getElementById('page-inicio');
@@ -4540,6 +4547,52 @@ async function saveNewMod() {
 // ════════════════════════════════════════════════════════════════
 let PROJ_VIEW = 'card';
 
+// ── Project toggle (active/inactive) ─────────────────────────
+// Stores which projects are DISABLED (excluded from global metrics)
+let DISABLED_PROJECTS = {};
+
+function loadDisabledProjects() {
+  try {
+    const s = localStorage.getItem('sg_disabled_projs_' + ACTIVE);
+    if (s) DISABLED_PROJECTS = JSON.parse(s);
+  } catch(e) {}
+}
+
+function saveDisabledProjects() {
+  try {
+    localStorage.setItem('sg_disabled_projs_' + ACTIVE, JSON.stringify(DISABLED_PROJECTS));
+  } catch(e) {}
+}
+
+function toggleProjectActive(proj, event) {
+  if (event) event.stopPropagation();
+  DISABLED_PROJECTS[proj] = !DISABLED_PROJECTS[proj];
+  saveDisabledProjects();
+  renderProjs();
+  renderDash(); // recalculate all metrics
+  notify((DISABLED_PROJECTS[proj] ? '⏸ Proyecto pausado: ' : '▶ Proyecto activado: ') + proj.substring(0,25));
+}
+
+function isProjectActive(proj) {
+  return !DISABLED_PROJECTS[proj];
+}
+
+// Override get() to optionally exclude disabled projects from metrics
+const _getBase = get;
+function getFiltered() {
+  // getFiltered already defined — but we patch get() used by renderDash
+  // Actually we add a filtered version used by metrics only
+  return (MS[ACTIVE]?.acts || []);
+}
+
+// getActive() — for metrics only (excludes disabled projects)
+function getActive() {
+  const all = MS[ACTIVE]?.acts || [];
+  const hasDisabled = Object.values(DISABLED_PROJECTS).some(v => v);
+  if (!hasDisabled) return all;
+  return all.filter(r => isProjectActive(r.PROYECTO||''));
+}
+
 function setProjView(v) {
   PROJ_VIEW = v;
   ['card','list','kanban'].forEach(m => {
@@ -4590,7 +4643,8 @@ function renderProjs() {
   let html = '';
   Object.entries(plantGroups).forEach(([plant, plantProjs]) => {
     // Plant header with cumulative stats
-    const plantActs = get().filter(r => plantProjs.includes(r.PROYECTO));
+    // Only count active projects in plant header stats
+    const plantActs = get().filter(r => plantProjs.includes(r.PROYECTO) && isProjectActive(r.PROYECTO));
     const plantAvg = plantActs.length?Math.round(plantActs.reduce((s,r)=>s+r.AVANCE,0)/plantActs.length):0;
     const plantCum = plantActs.length?Math.round(plantActs.filter(r=>r.ESTADO==='REALIZADA').length/plantActs.length*100):0;
     const cc = plantCum>=70?'var(--green)':plantCum>=40?'var(--orange)':'var(--red)';
@@ -4665,7 +4719,20 @@ function buildProjCard(p, isAdmin) {
       <div class="ps"><div class="ps-v">${a.length}</div><div class="ps-l">Total</div></div>
     </div>
     ${delayed>0?`<div class="proj-delay">⚠ ${delayed} actividad(es) vencida(s)</div>`:''}
-    ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="position:absolute;bottom:10px;right:10px;width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
+    <!-- Toggle active/inactive -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:7px">
+        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Desactivar proyecto (excluir de métricas)':'Activar proyecto (incluir en métricas)'}"
+          style="position:relative;width:36px;height:20px;border-radius:99px;border:none;cursor:pointer;transition:background .25s;background:${isProjectActive(p)?'var(--green)':'rgba(139,148,158,.35)'};flex-shrink:0;outline:none">
+          <span style="position:absolute;top:2px;left:${isProjectActive(p)?'18':'2'}px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .25s;box-shadow:0 1px 4px rgba(0,0,0,.25)"></span>
+        </button>
+        <span style="font-size:10px;color:${isProjectActive(p)?'var(--green)':'var(--text3)'}">
+          ${isProjectActive(p)?'Activo':'Pausado'}
+        </span>
+      </div>
+      ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
+    </div>
+    ${!isProjectActive(p)?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);border-radius:10px;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em;background:rgba(0,0,0,.4);padding:3px 10px;border-radius:99px">Pausado</span></div>`:''}
   </div>`;
 }
 
@@ -4683,8 +4750,15 @@ function buildProjListRow(p, isAdmin) {
   const projFin = datesFin.length ? datesFin[datesFin.length-1] : null;
   return `<div>
     <div style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <!-- Toggle active -->
+      <div style="padding:0 8px 0 14px;display:flex;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
+        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Desactivar':'Activar'}"
+          style="width:28px;height:16px;border-radius:99px;border:none;cursor:pointer;transition:background .25s;background:${isProjectActive(p)?'var(--green)':'rgba(139,148,158,.3)'};position:relative;flex-shrink:0">
+          <span style="position:absolute;top:2px;left:${isProjectActive(p)?'14':'2'}px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .25s"></span>
+        </button>
+      </div>
       <!-- Arrow: only expands list -->
-      <div style="padding:10px 6px 10px 14px;cursor:pointer;color:var(--text3);font-size:11px;flex-shrink:0;transition:all .15s;display:flex;align-items:center"
+      <div style="padding:10px 6px 10px 4px;cursor:pointer;color:var(--text3);font-size:11px;flex-shrink:0;transition:all .15s;display:flex;align-items:center"
         onclick="toggleProjList('${id}')" id="${id}-arrow-wrap"
         onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">
         <svg id="${id}-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><polyline points="9,18 15,12 9,6"/></svg>
@@ -4836,7 +4910,7 @@ function openProjDr(proj) {
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Estado</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Avance</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">F.Fin</th>
-          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Observaciones</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase;min-width:220px">Observaciones</th>
           <th style="padding:7px 10px;text-align:center;font-size:10px;color:var(--text2);text-transform:uppercase">Acción</th>
         </tr></thead>
         <tbody>
@@ -4852,7 +4926,7 @@ function openProjDr(proj) {
               ondblclick="inlineEditField(this,'avance','${r._id}','${esc(proj)}')">${r.AVANCE}%</td>
             <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap;cursor:pointer"
               ondblclick="inlineEditField(this,'fecha_fin','${r._id}','${esc(proj)}')">${fmtD(r['FECHA FIN'])}</td>
-            <td style="padding:7px 10px;font-size:11px;color:var(--text);max-width:200px;white-space:normal;word-break:break-word;cursor:pointer"
+            <td style="padding:7px 10px;font-size:11px;color:var(--text);min-width:220px;max-width:340px;white-space:pre-line;word-break:break-word;cursor:pointer;line-height:1.5"
               ondblclick="inlineEditField(this,'observaciones','${r._id}','${esc(proj)}')">${r.OBSERVACIONES||'—'}</td>
             <td style="padding:7px 10px;text-align:center">
               ${canEdit && r.ESTADO!=='REALIZADA'
@@ -4908,7 +4982,7 @@ function openActDr(id) {
       <div class="d-mb"><div class="d-ml">F.Completada</div><div class="d-mv" style="color:${r['FECHA COMPLETADA']?'var(--green)':'var(--text2)'}">${fmtD(r['FECHA COMPLETADA'])}</div></div>
       <div class="d-mb"><div class="d-ml">Planta</div><div class="d-mv">${(r.PLANTA||'—').replace('PLANTA ','')}</div></div>
     </div>
-    ${r.OBSERVACIONES?`<div class="d-obs"><div class="d-obs-l">Observaciones</div>${r.OBSERVACIONES}</div>`:''}
+    ${r.OBSERVACIONES?`<div class="d-obs"><div class="d-obs-l">Observaciones</div>${nlBr(r.OBSERVACIONES)}</div>`:''}
     ${rn>0?`<div class="d-rep-box"><div class="d-rep-l">Reprogramaciones (${rn})</div>
       ${r['NUEVA FECHA DE CIERRE']?`<div style="font-size:12px;color:var(--text2);margin-top:4px">Nueva fecha cierre: <span style="color:var(--orange);font-weight:600">${r['NUEVA FECHA DE CIERRE']}</span></div>`:''}
       ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
