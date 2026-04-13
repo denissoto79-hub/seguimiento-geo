@@ -1807,7 +1807,12 @@ function closeKP() { document.getElementById('kp-ov').classList.remove('open'); 
 // ── Activities Table ──────────────────────────────────────────────
 function renderActs() {
   const state = MS[ACTIVE];
-  if (!state || state.acts === null) return; // data not loaded yet
+  if (!state || state.acts === null) {
+    // Show loading indicator instead of silent return
+    const tbody = document.getElementById('act-tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text2)">Cargando actividades...</td></tr>';
+    return;
+  }
   let d = [...get()];
   const srch = (document.getElementById('a-srch')?.value || '').toLowerCase();
   const est  = document.getElementById('a-est')?.value   || '';
@@ -3383,13 +3388,21 @@ async function initSession(authUser) {
   }
 
   // Load data and subscribe to realtime
-  await loadModFromDB(CURRENT_USER.modules[0] || 'automatizacion');
+  const initMod = CURRENT_USER.modules[0] || 'automatizacion';
+  ACTIVE = initMod;
+  try {
+    await loadModFromDB(initMod);
+  } catch (err) {
+    console.error('Error loading initial module:', err);
+    if (!MS[initMod]) MS[initMod] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
+    if (MS[initMod].acts === null) MS[initMod].acts = [];
+  }
   subscribeRealtime();
-  await loadUserNotifs();
+  try { await loadUserNotifs(); } catch(e) { console.error('Error loading notifs:', e); }
   loadIOHistory();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio page and render — done synchronously after all data is loaded
+  // Navigate to Inicio page and render — always runs even if data load failed
   _navigateToInicio();
 }
 
@@ -3490,36 +3503,40 @@ async function loadModFromDB(key) {
     .eq('modulo', key)
     .order('created_at', { ascending: true });
 
-  if (error) { notify('⚠ Error cargando actividades: ' + error.message, true); return; }
+  if (error) {
+    notify('⚠ Error cargando actividades: ' + error.message, true);
+    // Set acts to empty array so UI doesn't stay in loading state
+    MS[key].acts = [];
+  } else {
+    MS[key].acts = (data || []).map((r, i) => ({
+      _id:        r.id,          // Use UUID as _id
+      _dbid:      r.id,
+      'CÓDIGO':   r.codigo,
+      'AÑO':      r.anio,
+      'ACTIVIDAD':r.actividad,
+      'PLANTA':   r.planta,
+      'PROYECTO': r.proyecto,
+      'RESPONSABLE': r.responsable,
+      'FECHA INICIO': r.fecha_inicio,
+      'FECHA FIN':    r.fecha_fin,
+      'FECHA COMPLETADA': r.fecha_completada,
+      'ESTADO':   r.estado,
+      'AVANCE':   Number(r.avance) || 0,
+      'OBSERVACIONES': r.observaciones,
+      'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
+      'DETALLE DE REPROGRAMACION': r.detalle_reprog,
+      'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
+      MODULE: key,
+      subtasks:    r.subtasks    || [],
+      attachments: r.attachments || [],
+      comments:    [],   // loaded separately
+      _history:    [],   // loaded separately
+    }));
 
-  MS[key].acts = (data || []).map((r, i) => ({
-    _id:        r.id,          // Use UUID as _id
-    _dbid:      r.id,
-    'CÓDIGO':   r.codigo,
-    'AÑO':      r.anio,
-    'ACTIVIDAD':r.actividad,
-    'PLANTA':   r.planta,
-    'PROYECTO': r.proyecto,
-    'RESPONSABLE': r.responsable,
-    'FECHA INICIO': r.fecha_inicio,
-    'FECHA FIN':    r.fecha_fin,
-    'FECHA COMPLETADA': r.fecha_completada,
-    'ESTADO':   r.estado,
-    'AVANCE':   Number(r.avance) || 0,
-    'OBSERVACIONES': r.observaciones,
-    'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
-    'DETALLE DE REPROGRAMACION': r.detalle_reprog,
-    'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
-    MODULE: key,
-    subtasks:    r.subtasks    || [],
-    attachments: r.attachments || [],
-    comments:    [],   // loaded separately
-    _history:    [],   // loaded separately
-  }));
-
-  // Load comments and history for displayed activities
-  await loadCommentsForMod(key);
-  await loadHistoryForMod(key);
+    // Load comments and history for displayed activities
+    try { await loadCommentsForMod(key); } catch(e) { console.error('Error loading comments:', e); }
+    try { await loadHistoryForMod(key); } catch(e) { console.error('Error loading history:', e); }
+  }
 
   populateDDs();
   loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
@@ -4264,13 +4281,25 @@ function renderDrawerComments(actId) {
 async function switchMod(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
+  // Update module label IMMEDIATELY before async load for instant feedback
+  const label = MOD_LBL[key] || key;
+  document.getElementById('tb-mod').textContent = label;
+  if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
   ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
     const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
   });
-  await loadModFromDB(key);
-  // Update both module name badges
-  const label = MOD_LBL[key] || key;
-  document.getElementById('tb-mod').textContent = label;
+  ACTIVE = key;
+  try {
+    await loadModFromDB(key);
+  } catch (err) {
+    console.error('Error loading module:', err);
+    // Ensure acts is at least an empty array so UI doesn't break
+    if (!MS[key]) MS[key] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
+    if (MS[key].acts === null) MS[key].acts = [];
+    notify('⚠ Error al cargar módulo', true);
+  }
+  // Ensure label is still correct after load (in case loadModFromDB changed it)
+  document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
   // Update current page title if it uses the module name
   const activePage = document.querySelector('.page.active');
   if (activePage) {
@@ -4278,7 +4307,7 @@ async function switchMod(key, el) {
     const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
     if (T[pageId]) document.getElementById('tb-title').textContent = T[pageId];
   }
-  notify('Módulo: ' + label);
+  notify('Módulo: ' + (MOD_LBL[key] || key));
 }
 
 // populateDDs — use SB_PROFILES for responsables and mentions
@@ -5281,16 +5310,24 @@ function showDeletedProjects() {
 // ════════════════════════════════════════════════════════════════
 // INICIO PAGE — Welcome + tasks + inbox
 // ════════════════════════════════════════════════════════════════
+let _inicioRetries = 0;
 function renderInicio() {
   const el = document.getElementById('inicio-content'); if (!el) return;
   const user = CURRENT_USER; if (!user) return;
 
-  // If data not loaded yet, show spinner and retry
+  // If data not loaded yet, show spinner and retry (max 10 times = 5 seconds)
   if (!MS[ACTIVE] || MS[ACTIVE].acts === null) {
-    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="font-size:13px">Cargando datos...</span></div>';
-    setTimeout(renderInicio, 500);
+    _inicioRetries++;
+    if (_inicioRetries <= 10) {
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="font-size:13px">Cargando datos...</span></div>';
+      setTimeout(renderInicio, 500);
+    } else {
+      // Timeout — show fallback instead of infinite spinner
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><span style="font-size:13px">No se pudieron cargar los datos. Intenta recargar la página.</span></div>';
+    }
     return;
   }
+  _inicioRetries = 0; // reset on success
 
   const d = get();
   const isAdmin = user.role === 'admin';
