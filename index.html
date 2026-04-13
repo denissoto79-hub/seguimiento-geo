@@ -199,6 +199,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .page { display:none !important }
 .page.active { display:block !important; animation:fadeIn .18s ease }
 @keyframes fadeIn { from { opacity:0; transform:translateY(3px) } to { opacity:1; transform:translateY(0) } }
+@keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
 
 /* ── BUTTONS ── */
 .btn { padding:6px 14px; border-radius:7px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; font-family:'Barlow',sans-serif; display:inline-flex; align-items:center; gap:5px }
@@ -614,7 +615,7 @@ tr:hover .act-btns { opacity:1 }
       <button id="mobile-menu-btn" onclick="toggleMobileSB()" style="display:none;background:transparent;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 8px;margin-right:4px">☰</button>
       <span class="tb-title" id="tb-title">Dashboard</span>
       <span class="tb-badge" id="tb-badge">&#8212;</span>
-      <span class="tb-mod"   id="tb-mod">Plan de Automatizaci&#243;n</span>
+      <span class="tb-mod"   id="tb-mod"></span>
     </div>
     <div class="tb-right">
       <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
@@ -1806,6 +1807,7 @@ function closeKP() { document.getElementById('kp-ov').classList.remove('open'); 
 // ── Activities Table ──────────────────────────────────────────────
 function renderActs() {
   const state = MS[ACTIVE];
+  if (!state || state.acts === null) return; // data not loaded yet
   let d = [...get()];
   const srch = (document.getElementById('a-srch')?.value || '').toLowerCase();
   const est  = document.getElementById('a-est')?.value   || '';
@@ -3387,20 +3389,24 @@ async function initSession(authUser) {
   loadIOHistory();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio page on login
-  setTimeout(() => {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const pg = document.getElementById('page-inicio');
-    if (pg) pg.classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(btn => {
-      if ((btn.getAttribute('onclick')||'').includes("'inicio'")) btn.classList.add('active');
-    });
-    document.getElementById('tb-title').textContent = 'Inicio';
-    // Ensure tb-mod shows the loaded module name
-    document.getElementById('tb-mod').textContent = MOD_LBL[ACTIVE] || ACTIVE;
-    renderInicio();
-  }, 400);
+  // Navigate to Inicio page and render — done synchronously after all data is loaded
+  _navigateToInicio();
+}
+
+function _navigateToInicio() {
+  // Activate Inicio page
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-inicio');
+  if (pg) pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    if ((btn.getAttribute('onclick')||'').includes("'inicio'")) btn.classList.add('active');
+  });
+  // Update topbar titles
+  document.getElementById('tb-title').textContent = 'Inicio';
+  document.getElementById('tb-mod').textContent = MOD_LBL[ACTIVE] || ACTIVE;
+  // Render inicio content
+  renderInicio();
 }
 
 async function doLogout() {
@@ -3517,19 +3523,19 @@ async function loadModFromDB(key) {
 
   populateDDs();
   loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
-  // Render all active modules
+  // Render everything
   applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
   // renderCal() only when on calendar page
   if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
-  // Update topbar module label
+  // Update BOTH topbar labels — always force them to reflect current module
   const modLabel = MOD_LBL[key] || key;
   document.getElementById('tb-mod').textContent = modLabel;
   document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = modLabel);
-  // Refresh page-specific renderers if visible
-  const inPage   = document.getElementById('page-inicio');
-  const misTPage = document.getElementById('page-mis-tareas');
-  if (inPage   && inPage.classList.contains('active'))   renderInicio();
-  if (misTPage && misTPage.classList.contains('active')) renderMisTareas();
+  // Render page-specific content for whichever page is currently active
+  const activePg = document.querySelector('.page.active');
+  const activePgId = activePg ? activePg.id.replace('page-','') : '';
+  if (activePgId === 'inicio')     renderInicio();
+  if (activePgId === 'mis-tareas') renderMisTareas();
 }
 
 async function loadCommentsForMod(key) {
@@ -5278,6 +5284,13 @@ function showDeletedProjects() {
 function renderInicio() {
   const el = document.getElementById('inicio-content'); if (!el) return;
   const user = CURRENT_USER; if (!user) return;
+
+  // If data not loaded yet, show spinner and retry
+  if (!MS[ACTIVE] || MS[ACTIVE].acts === null) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="font-size:13px">Cargando datos...</span></div>';
+    setTimeout(renderInicio, 500);
+    return;
+  }
 
   const d = get();
   const isAdmin = user.role === 'admin';
