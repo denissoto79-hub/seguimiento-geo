@@ -747,6 +747,7 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><label>Planta</label><select id="a-planta" onchange="renderActs()"><option value="">Todas</option></select></div>
         <div class="fg"><label>Proyecto</label><select id="a-proj" onchange="renderActs()"><option value="">Todos</option></select></div>
         <div class="fg"><label>Responsable</label><select id="a-resp2" onchange="renderActs()"><option value="">Todos</option></select></div>
+        <button class="btn btn-ghost btn-sm" onclick="clearActF()">&#10005; Limpiar</button>
       </div>
       <div class="table-card">
         <div class="table-hdr">
@@ -1351,10 +1352,18 @@ function goPage(id, el) {
   if (el) el.classList.add('active');
   const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
   document.getElementById('tb-title').textContent = T[id] || id;
+  // Keep tb-mod always showing the active module name
+  document.getElementById('tb-mod').textContent = MOD_LBL[ACTIVE] || ACTIVE;
   closeDr();
-  if (id === 'inicio') setTimeout(renderInicio, 50);
-  if (id === 'mis-tareas') setTimeout(renderMisTareas, 50);
-  if (id === 'calendar') setTimeout(renderCal, 50);
+  if (id === 'inicio')      setTimeout(renderInicio, 50);
+  if (id === 'mis-tareas')  setTimeout(renderMisTareas, 50);
+  if (id === 'calendar')    setTimeout(renderCal, 50);
+  if (id === 'dashboard')   setTimeout(renderDash, 50);
+  if (id === 'activities')  setTimeout(renderActs, 50);
+  if (id === 'projects')    setTimeout(renderProjs, 50);
+  if (id === 'gantt')       setTimeout(renderGantt, 50);
+  if (id === 'reports')     setTimeout(renderRep, 50);
+  if (id === 'config')      setTimeout(renderCfg, 50);
 }
 
 function renderMisTareas() {
@@ -1993,6 +2002,13 @@ function renderCal() {
 }
 
 // ── Projects ───────────────────────────────────────────────────────
+function clearActF() {
+  ['a-srch','a-est','a-planta','a-proj','a-resp2'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  renderActs();
+}
+
 function clearPF() {
   ['p-srch','p-planta','p-resp','p-est'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
   renderProjs();
@@ -3371,9 +3387,8 @@ async function initSession(authUser) {
   loadIOHistory();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio page and render it
+  // Navigate to Inicio page on login
   setTimeout(() => {
-    // Switch to inicio page
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const pg = document.getElementById('page-inicio');
@@ -3382,6 +3397,8 @@ async function initSession(authUser) {
       if ((btn.getAttribute('onclick')||'').includes("'inicio'")) btn.classList.add('active');
     });
     document.getElementById('tb-title').textContent = 'Inicio';
+    // Ensure tb-mod shows the loaded module name
+    document.getElementById('tb-mod').textContent = MOD_LBL[ACTIVE] || ACTIVE;
     renderInicio();
   }, 400);
 }
@@ -3499,15 +3516,20 @@ async function loadModFromDB(key) {
   await loadHistoryForMod(key);
 
   populateDDs();
-  applyF(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
+  loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
+  // Render all active modules
+  applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
   // renderCal() only when on calendar page
   if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
-  document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
-  loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
-  document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = MOD_LBL[key] || key);
-  // Refresh inicio if visible
-  const inPage = document.getElementById('page-inicio');
-  if (inPage && inPage.classList.contains('active')) renderInicio();
+  // Update topbar module label
+  const modLabel = MOD_LBL[key] || key;
+  document.getElementById('tb-mod').textContent = modLabel;
+  document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = modLabel);
+  // Refresh page-specific renderers if visible
+  const inPage   = document.getElementById('page-inicio');
+  const misTPage = document.getElementById('page-mis-tareas');
+  if (inPage   && inPage.classList.contains('active'))   renderInicio();
+  if (misTPage && misTPage.classList.contains('active')) renderMisTareas();
 }
 
 async function loadCommentsForMod(key) {
@@ -4240,7 +4262,17 @@ async function switchMod(key, el) {
     const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
   });
   await loadModFromDB(key);
-  notify('Módulo: ' + (MOD_LBL[key]||key));
+  // Update both module name badges
+  const label = MOD_LBL[key] || key;
+  document.getElementById('tb-mod').textContent = label;
+  // Update current page title if it uses the module name
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const pageId = (activePage.id||'').replace('page-','');
+    const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
+    if (T[pageId]) document.getElementById('tb-title').textContent = T[pageId];
+  }
+  notify('Módulo: ' + label);
 }
 
 // populateDDs — use SB_PROFILES for responsables and mentions
