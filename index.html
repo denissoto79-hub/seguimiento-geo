@@ -3637,6 +3637,7 @@ async function saveHistoryToDB(dbActId, campo, antes, despues) {
 }
 
 function openModalFromProject(proj) {
+  window._modalFromProject = proj;
   closeDr();
   setTimeout(() => {
     openModal();
@@ -3916,8 +3917,9 @@ async function addNotifForUsers(userIds, type, text, actId = null) {
 function getUsersRelatedToAct(act) {
   // Returns user IDs of people related to this activity
   const related = new Set();
+  const respNorm = (act.RESPONSABLE || '').trim().toUpperCase();
   SB_PROFILES.forEach(p => {
-    if (p.name === act.RESPONSABLE) related.add(p.id);
+    if ((p.name || '').trim().toUpperCase() === respNorm) related.add(p.id);
     // Admin always gets notified
     if (p.role === 'admin') related.add(p.id);
   });
@@ -3980,7 +3982,7 @@ function showNotifPopup(text, type, actId, notifId) {
       <div style="font-size:10px;color:var(--text2);margin-top:4px">${tsNow()}</div>
     </div>
     <button onclick="event.stopPropagation();document.getElementById('notif-popup')?.remove()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0;margin-top:-2px">×</button>`;
-  popup.onclick = () => { popup.remove(); if (actId) setTimeout(()=>openActDr(actId),100); };
+  popup.onclick = () => { popup.remove(); if (actId) setTimeout(()=>{ const r=get().find(a=>String(a._dbid)===String(actId)); if(r) openActDr(r._id); },100); };
   document.body.appendChild(popup);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{ popup.style.transform='translateX(0)'; popup.style.opacity='1'; }));
   const timer = setTimeout(()=>{ popup.style.transform='translateX(360px)'; popup.style.opacity='0'; setTimeout(()=>popup?.remove(),400); }, 5000);
@@ -4020,7 +4022,11 @@ async function readNotif(id, actId) {
   if (panel) panel.style.display = 'none';
   renderNotifPanel();
   if (actId) {
-    setTimeout(() => openActDr(actId), 50);
+    setTimeout(() => {
+      // Find activity by _dbid (UUID from Supabase), not by local _id index
+      const r = get().find(a => String(a._dbid) === String(actId));
+      if (r) openActDr(r._id);
+    }, 50);
   }
 }
 
@@ -4143,9 +4149,12 @@ async function saveAct() {
     }
   }
 
+  const returnToProj = window._modalFromProject || null;
+  window._modalFromProject = null;
   closeMo();
   await loadModFromDB(ACTIVE);
   notify(editingId !== null ? '✏️ Actividad actualizada' : '✅ Actividad creada');
+  if (returnToProj) setTimeout(() => openProjDr(returnToProj), 150);
 }
 
 // markDone — persist to Supabase
@@ -4209,6 +4218,22 @@ async function duplicateProject(proj) {
   }
   await loadModFromDB(ACTIVE);
   notify('✅ Proyecto duplicado: "' + newName.trim() + '" con ' + acts.length + ' actividades');
+}
+
+async function renameProject(proj) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede renombrar proyectos', true); return; }
+  const newName = prompt('Nuevo nombre del proyecto:', proj);
+  if (!newName || !newName.trim() || newName.trim() === proj) return;
+  const acts = get().filter(r => r.PROYECTO === proj);
+  const ids = acts.map(a => a._dbid).filter(Boolean);
+  if (ids.length) {
+    const { error } = await _sb.from('actividades').update({ proyecto: newName.trim() }).in('id', ids);
+    if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  }
+  await loadModFromDB(ACTIVE);
+  notify('✅ Proyecto renombrado a "' + newName.trim() + '"');
+  closeDr();
+  setTimeout(() => openProjDr(newName.trim()), 150);
 }
 
 async function deleteProject(proj) {
@@ -4319,8 +4344,8 @@ function populateDDs() {
   // Use activity data responsables for filters (they match the actual values)
   const resps = actResps.length ? actResps : profResps;
 
-  ['f-planta','a-planta','g-planta','cal-planta','rep-planta'].forEach(id => setDD(id, plantas));
-  ['f-resp','a-resp2','g-resp','cal-resp'].forEach(id => setDD(id, resps));
+  ['f-planta','a-planta','g-planta','cal-planta','rep-planta','p-planta'].forEach(id => setDD(id, plantas));
+  ['f-resp','a-resp2','g-resp','cal-resp','p-resp'].forEach(id => setDD(id, resps));
   ['f-proyecto','a-proj','g-proj'].forEach(id => setDD(id, projs));
 
   setDD('m-planta', plantas, true, true);
@@ -5090,7 +5115,7 @@ function openProjDr(proj) {
     <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
       <div style="width:40px;height:40px;border-radius:10px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:18px">◫</span></div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:16px;line-height:1.3">${proj}</div>
+        <div style="font-weight:700;font-size:16px;line-height:1.3">${proj}${isAdmin?` <button onclick="renameProject('${esc(proj)}')" title="Editar nombre del proyecto" style="background:transparent;border:none;cursor:pointer;color:var(--text2);font-size:13px;padding:0 3px;vertical-align:middle;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">✏️</button>`:''}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:3px">🏭 ${plant||'—'}</div>
         ${projDateIni||projDateFin?`<div style="font-size:11px;color:var(--text2);margin-top:2px">📅 ${projDateIni?fmtD(projDateIni):''} ${projDateFin?'→ '+fmtD(projDateFin):''}</div>`:''}
       </div>
@@ -5216,7 +5241,7 @@ function openActDr(id) {
     </div>
     ${canEdit&&r.ESTADO!=='REALIZADA'?`<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>`:''}
     <div style="display:flex;gap:7px;margin-top:10px">
-      ${canEdit?`<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>`:''}
+      ${canEdit?`<button class="btn btn-sm" style="flex:1" onclick="window._modalFromProject=window._currentProjContext||'${esc(fromProj)}';openModal('${r._id}');closeDr()">✏️ Editar</button>`:''}
       ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>`:''}
     </div>`;
 
