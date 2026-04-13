@@ -1807,12 +1807,7 @@ function closeKP() { document.getElementById('kp-ov').classList.remove('open'); 
 // ── Activities Table ──────────────────────────────────────────────
 function renderActs() {
   const state = MS[ACTIVE];
-  if (!state || state.acts === null) {
-    // Show loading indicator instead of silent return
-    const tbody = document.getElementById('act-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text2)">Cargando actividades...</td></tr>';
-    return;
-  }
+  if (!state || state.acts === null) return; // data not loaded yet
   let d = [...get()];
   const srch = (document.getElementById('a-srch')?.value || '').toLowerCase();
   const est  = document.getElementById('a-est')?.value   || '';
@@ -1864,7 +1859,7 @@ function renderActs() {
       }
       return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
     }).join('');
-    const ie = canEdit; // inline editable
+    const ie = ['admin','collaborator'].includes(CURRENT_USER?.role); // inline editable
     return `<tr id="act-row-${r._id}">
       <td><span class="code-lbl">${r['CÓDIGO']}</span></td>
       <td>
@@ -3398,11 +3393,11 @@ async function initSession(authUser) {
     if (MS[initMod].acts === null) MS[initMod].acts = [];
   }
   subscribeRealtime();
-  try { await loadUserNotifs(); } catch(e) { console.error('Error loading notifs:', e); }
+  try { await loadUserNotifs(); } catch(e) { console.error('Notifs load error:', e); }
   loadIOHistory();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio page and render — always runs even if data load failed
+  // Navigate to Inicio — always runs even if data load failed
   _navigateToInicio();
 }
 
@@ -3505,11 +3500,10 @@ async function loadModFromDB(key) {
 
   if (error) {
     notify('⚠ Error cargando actividades: ' + error.message, true);
-    // Set acts to empty array so UI doesn't stay in loading state
     MS[key].acts = [];
   } else {
     MS[key].acts = (data || []).map((r, i) => ({
-      _id:        r.id,          // Use UUID as _id
+      _id:        r.id,
       _dbid:      r.id,
       'CÓDIGO':   r.codigo,
       'AÑO':      r.anio,
@@ -3529,13 +3523,12 @@ async function loadModFromDB(key) {
       MODULE: key,
       subtasks:    r.subtasks    || [],
       attachments: r.attachments || [],
-      comments:    [],   // loaded separately
-      _history:    [],   // loaded separately
+      comments:    [],
+      _history:    [],
     }));
 
-    // Load comments and history for displayed activities
-    try { await loadCommentsForMod(key); } catch(e) { console.error('Error loading comments:', e); }
-    try { await loadHistoryForMod(key); } catch(e) { console.error('Error loading history:', e); }
+    try { await loadCommentsForMod(key); } catch(e) { console.error('Comments load error:', e); }
+    try { await loadHistoryForMod(key); } catch(e) { console.error('History load error:', e); }
   }
 
   populateDDs();
@@ -4281,26 +4274,30 @@ function renderDrawerComments(actId) {
 async function switchMod(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  // Update module label IMMEDIATELY before async load for instant feedback
+  // Update module label IMMEDIATELY — don't wait for async load
+  ACTIVE = key;
   const label = MOD_LBL[key] || key;
   document.getElementById('tb-mod').textContent = label;
   if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
+  // Clear all filters
   ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
     const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
   });
-  ACTIVE = key;
   try {
     await loadModFromDB(key);
   } catch (err) {
     console.error('Error loading module:', err);
-    // Ensure acts is at least an empty array so UI doesn't break
     if (!MS[key]) MS[key] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
     if (MS[key].acts === null) MS[key].acts = [];
+    // Force render even on error so UI shows empty state not stale data
+    populateDDs(); applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
+    const activePgId = document.querySelector('.page.active')?.id?.replace('page-','') || '';
+    if (activePgId === 'inicio') renderInicio();
+    if (activePgId === 'mis-tareas') renderMisTareas();
     notify('⚠ Error al cargar módulo', true);
   }
-  // Ensure label is still correct after load (in case loadModFromDB changed it)
+  // Ensure label is correct after load
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
-  // Update current page title if it uses the module name
   const activePage = document.querySelector('.page.active');
   if (activePage) {
     const pageId = (activePage.id||'').replace('page-','');
@@ -5315,19 +5312,18 @@ function renderInicio() {
   const el = document.getElementById('inicio-content'); if (!el) return;
   const user = CURRENT_USER; if (!user) return;
 
-  // If data not loaded yet, show spinner and retry (max 10 times = 5 seconds)
+  // If data not loaded yet, show spinner and retry (max 10 = 5 seconds)
   if (!MS[ACTIVE] || MS[ACTIVE].acts === null) {
     _inicioRetries++;
     if (_inicioRetries <= 10) {
       el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="font-size:13px">Cargando datos...</span></div>';
       setTimeout(renderInicio, 500);
     } else {
-      // Timeout — show fallback instead of infinite spinner
-      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><span style="font-size:13px">No se pudieron cargar los datos. Intenta recargar la página.</span></div>';
+      el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><span style="font-size:14px">⚠️</span><span style="font-size:13px">No se pudieron cargar los datos.</span><button class="btn btn-sm" onclick="location.reload()">Recargar página</button></div>';
     }
     return;
   }
-  _inicioRetries = 0; // reset on success
+  _inicioRetries = 0;
 
   const d = get();
   const isAdmin = user.role === 'admin';
