@@ -721,6 +721,11 @@ tr:hover .act-btns { opacity:1 }
         </div>
         <button class="btn btn-ghost btn-sm" onclick="clearPF()">&#10005; Limpiar</button>
         <div style="flex:1"></div>
+        <!-- Sort buttons -->
+        <div style="display:flex;gap:4px">
+          <button id="psort-avg" onclick="setProjSort('avg')" title="Ordenar por avance" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Avance</button>
+          <button id="psort-cum" onclick="setProjSort('cum')" title="Ordenar por cumplimiento" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Cumpl.</button>
+        </div>
         <!-- View toggle -->
         <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
           <button id="pv-card"   onclick="setProjView('card')"   title="Vista tarjetas" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:13px;cursor:pointer;transition:all .15s">⊞</button>
@@ -901,6 +906,18 @@ tr:hover .act-btns { opacity:1 }
           <button class="btn btn-accent btn-sm" onclick="openNewModModal()">+ Nuevo M&#243;dulo</button>
         </div>
       </div>
+      <!-- Import/Export History — admin only -->
+      <div class="cfg-sec" id="io-history-section" style="display:none">
+        <div class="cfg-title">📋 Historial de Importaciones / Exportaciones</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--text2)">Solo visible para administradores. Últimas 100 operaciones.</div>
+          <button onclick="IO_HISTORY=[];try{localStorage.removeItem('sg_io_history')}catch(e){}renderIOHistory()" style="font-size:10px;color:var(--red);background:transparent;border:none;cursor:pointer">🗑 Limpiar</button>
+        </div>
+        <div id="io-history-list" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;max-height:340px;overflow-y:auto">
+          <div style="font-size:12px;color:var(--text2);padding:20px;text-align:center">Sin historial registrado</div>
+        </div>
+      </div>
+
       <div class="cfg-sec" id="recovery-section" style="display:none">
         <div class="cfg-title">&#9851; Recuperaci&#243;n de Datos (solo Administrador)</div>
         <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
@@ -1831,7 +1848,8 @@ function renderActs() {
       }
       return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
     }).join('');
-    return `<tr>
+    const ie = canEdit; // inline editable
+    return `<tr id="act-row-${r._id}">
       <td><span class="code-lbl">${r['CÓDIGO']}</span></td>
       <td>
         <button class="name-btn" onclick="openActDr('${r._id}')" title="${r.ACTIVIDAD||''}">${(r.ACTIVIDAD||'—').substring(0,33)}${(r.ACTIVIDAD||'').length>33?'…':''}</button>
@@ -1839,12 +1857,18 @@ function renderActs() {
       </td>
       <td style="font-size:10px;color:var(--text2)">${(r.PLANTA||'').replace('PLANTA ','')}</td>
       <td style="font-size:10px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.PROYECTO||''}">${(r.PROYECTO||'—').substring(0,22)}${(r.PROYECTO||'').length>22?'…':''}</td>
-      <td style="font-size:11px">${r.RESPONSABLE||'—'}</td>
-      <td style="font-size:11px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</td>
+      <td>${ie?`<input type="text" value="${(r.RESPONSABLE||'').replace(/"/g,'&quot;')}" class="fi" style="padding:2px 5px;font-size:11px;min-width:80px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','responsable',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:`<span style="font-size:11px">${r.RESPONSABLE||'—'}</span>`}</td>
+      <td>${ie?`<input type="date" value="${r['FECHA FIN']||''}" class="fi" style="padding:2px 5px;font-size:11px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','fecha_fin',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:`<span style="font-size:11px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</span>`}</td>
       <td style="font-size:11px;color:${r['FECHA COMPLETADA']?'var(--green)':'var(--text2)'}">${fmtD(r['FECHA COMPLETADA'])}</td>
-      <td>${badge(r.ESTADO||'PLANIFICADA')}</td>
+      <td>${ie?`<select class="fi" style="padding:2px 5px;font-size:11px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','estado',this.value)" onchange="actInlineEdit('${r._id}','estado',this.value);renderActs()">
+        <option value="PLANIFICADA" ${r.ESTADO==='PLANIFICADA'?'selected':''}>PLANIFICADA</option>
+        <option value="EN CURSO" ${r.ESTADO==='EN CURSO'?'selected':''}>EN CURSO</option>
+        <option value="REPROGRAMADA" ${r.ESTADO==='REPROGRAMADA'?'selected':''}>REPROGRAMADA</option>
+        <option value="REALIZADA" ${r.ESTADO==='REALIZADA'?'selected':''}>REALIZADA</option>
+      </select>`:badge(r.ESTADO||'PLANIFICADA')}</td>
       <td style="text-align:center"><span style="font-size:11px;font-weight:700;color:${rn>0?'var(--orange)':'var(--text2)'}">${rn}</span></td>
-      <td><div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${r.AVANCE}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${r.AVANCE}%</span></div></td>
+      <td>${ie?`<input type="number" min="0" max="100" value="${r.AVANCE}" class="fi" style="padding:2px 5px;font-size:11px;width:55px;border-radius:4px;background:transparent;border:1px solid transparent;text-align:center" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','avance',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:
+      `<div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${r.AVANCE}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${r.AVANCE}%</span></div>`}</td>
       ${cfCells}
       <td><div class="act-btns">
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
@@ -2186,11 +2210,11 @@ function exportPDF() {
     }).join('');
     const actRows = ap.map(r =>
       `<tr><td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;font-family:monospace;white-space:nowrap">${r['CÓDIGO']}</td>
-        <td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'').substring(0,50)}</td>
+        <td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:180px;white-space:normal;word-break:break-word">${(r.ACTIVIDAD||'').substring(0,60)}</td>
         <td style="padding:5px 8px;font-size:10px;border-bottom:1px solid #e2e8f0;white-space:nowrap"><span style="${badgeCSS[r.ESTADO]||badgeCSS.PLANIFICADA}">${r.ESTADO}</span></td>
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#0ea5e9;font-weight:700">${r.AVANCE}%</td>
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#64748b;white-space:nowrap">${r['FECHA FIN']||'—'}</td>
-        <td style="padding:5px 8px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.OBSERVACIONES||'—').substring(0,40)}</td>
+        <td style="padding:5px 8px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;max-width:240px;white-space:normal;word-wrap:break-word;word-break:break-word;line-height:1.4">${r.OBSERVACIONES||'—'}</td>
       </tr>`).join('');
     return `
       <div style="margin-bottom:24px;page-break-inside:avoid">
@@ -2243,7 +2267,7 @@ function exportPDF() {
   <table style="width:100%;border:2px solid #1e40af;border-radius:8px;border-collapse:collapse;margin-bottom:20px;overflow:hidden">
     <tr>
       <td style="width:28%;padding:10px 14px;border-right:1px solid #e2e8f0;vertical-align:middle">
-        <img src="data:image/png;base64,${LOGO_B64}" style="max-height:60px;max-width:100%;object-fit:contain" alt="Logo">
+        <img src="data:image/png;base64,${LOGO_B64}" style="max-height:90px;max-width:240px;object-fit:contain" alt="Logo">
       </td>
       <td style="width:44%;padding:10px 14px;text-align:center;vertical-align:middle;border-right:1px solid #e2e8f0">
         <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Módulo</div>
@@ -2279,6 +2303,7 @@ function exportPDF() {
   const w = window.open('', '_blank');
   w.document.write(html);
   w.document.close();
+  addIOHistory('export_pdf', `PDF exportado: ${d.length} actividades, ${plantas.length} planta(s)`);
   notify('📄 Reporte PDF abierto en nueva ventana');
 }
 function renderRepPlan() {
@@ -2378,7 +2403,7 @@ function exportPlanPDF() {
   <table style="width:100%;border:2px solid #1e40af;border-radius:8px;margin-bottom:18px;border-collapse:collapse;overflow:hidden">
     <tr>
       <td style="width:25%;padding:8px 12px;border-right:1px solid #e2e8f0;vertical-align:middle">
-        <img src="data:image/png;base64,${LOGO_B64}" style="max-height:55px;max-width:100%;object-fit:contain" alt="Logo">
+        <img src="data:image/png;base64,${LOGO_B64}" style="max-height:90px;max-width:240px;object-fit:contain" alt="Logo">
       </td>
       <td style="width:50%;padding:8px 12px;text-align:center;vertical-align:middle;border-right:1px solid #e2e8f0">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Reporte de Planificación</div>
@@ -2410,6 +2435,7 @@ function exportXLSX() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cols, ...d.map(r => cols.map(c => r[c]??''))]), 'Actividades');
   XLSX.writeFile(wb, `Reporte_${MOD_LBL[ACTIVE]}_${from||'2026'}.xlsx`);
+  addIOHistory('export_xlsx', `Exportación XLSX: ${d.length} registros (${from||'todos'} → ${to||'hoy'})`);
   notify('📊 Excel exportado');
 }
 
@@ -2456,9 +2482,16 @@ function renderCfg() {
     if (rs) rs.style.display = 'block';
     const mm = document.getElementById('mod-mgmt-section');
     if (mm) mm.style.display = 'block';
+    // Show IO history
+    const ioh = document.getElementById('io-history-section');
+    if (ioh) ioh.style.display = 'block';
+    loadIOHistory();
+    setTimeout(renderIOHistory, 100);
   } else {
     const mm = document.getElementById('mod-mgmt-section');
     if (mm) mm.style.display = 'none';
+    const ioh = document.getElementById('io-history-section');
+    if (ioh) ioh.style.display = 'none';
   }
 }
 
@@ -3335,6 +3368,7 @@ async function initSession(authUser) {
   await loadModFromDB(CURRENT_USER.modules[0] || 'automatizacion');
   subscribeRealtime();
   await loadUserNotifs();
+  loadIOHistory();
   setTimeout(checkDueNotifs, 1500);
   notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
   // Navigate to Inicio page and render it
@@ -4420,6 +4454,52 @@ function renderHistory(act) {
 }
 
 // handleImport — save to Supabase
+// ── Import/Export history (admin only) ──────────────
+if (!window.IO_HISTORY) window.IO_HISTORY = [];
+
+function addIOHistory(type, detail) {
+  IO_HISTORY.unshift({
+    type,   // 'import' | 'export_pdf' | 'export_xlsx'
+    detail,
+    user: CURRENT_USER?.name || '—',
+    module: MOD_LBL[ACTIVE] || ACTIVE,
+    ts: new Date().toLocaleString('es-BO'),
+  });
+  if (IO_HISTORY.length > 100) IO_HISTORY.length = 100;
+  // Persist to localStorage
+  try { localStorage.setItem('sg_io_history', JSON.stringify(IO_HISTORY)); } catch(e) {}
+  // Refresh config page if open
+  if (document.getElementById('page-config')?.classList.contains('active')) {
+    renderIOHistory();
+  }
+}
+
+function loadIOHistory() {
+  try {
+    const s = localStorage.getItem('sg_io_history');
+    if (s) IO_HISTORY = JSON.parse(s);
+  } catch(e) {}
+}
+
+function renderIOHistory() {
+  const el = document.getElementById('io-history-list'); if (!el) return;
+  if (!IO_HISTORY.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:16px;text-align:center">Sin historial de importaciones/exportaciones</div>';
+    return;
+  }
+  el.innerHTML = IO_HISTORY.map(h => `
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border)">
+      <div style="width:28px;height:28px;border-radius:8px;background:${h.type==='import'?'rgba(56,189,248,.15)':'rgba(34,197,94,.15)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">
+        ${h.type==='import'?'📥':h.type.includes('pdf')?'📄':'📊'}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${h.detail}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:1px">${h.module} · ${h.user} · ${h.ts}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${h.type==='import'?'rgba(56,189,248,.1)':'rgba(34,197,94,.1)'};color:${h.type==='import'?'var(--accent)':'var(--green)'}">${h.type==='import'?'IMPORT':h.type.includes('pdf')?'PDF':'XLSX'}</span>
+    </div>`).join('');
+}
+
 async function handleImport(e) {
   const file = e.target.files[0]; if (!file) return;
   if (typeof XLSX === 'undefined') { notify('⚠ SheetJS no disponible', true); return; }
@@ -4551,26 +4631,49 @@ let PROJ_VIEW = 'card';
 // Stores which projects are DISABLED (excluded from global metrics)
 let DISABLED_PROJECTS = {};
 
-function loadDisabledProjects() {
+// Load from Supabase (shared across all users)
+async function loadDisabledProjects() {
+  try {
+    // Try Supabase first — stored as a single JSON row per module
+    const { data } = await _sb.from('modulos')
+      .select('config_json')
+      .eq('key', ACTIVE + '_proj_status')
+      .maybeSingle();
+    if (data?.config_json) {
+      DISABLED_PROJECTS = JSON.parse(data.config_json);
+      return;
+    }
+  } catch(e) {}
+  // Fallback to localStorage
   try {
     const s = localStorage.getItem('sg_disabled_projs_' + ACTIVE);
     if (s) DISABLED_PROJECTS = JSON.parse(s);
   } catch(e) {}
 }
 
-function saveDisabledProjects() {
+async function saveDisabledProjects() {
+  const json = JSON.stringify(DISABLED_PROJECTS);
+  // Save to localStorage for immediate access
+  try { localStorage.setItem('sg_disabled_projs_' + ACTIVE, json); } catch(e) {}
+  // Save to Supabase so all users see the same state
   try {
-    localStorage.setItem('sg_disabled_projs_' + ACTIVE, JSON.stringify(DISABLED_PROJECTS));
+    const key = ACTIVE + '_proj_status';
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_proj_status_' + ACTIVE, activo: false, config_json: json });
+    }
   } catch(e) {}
 }
 
-function toggleProjectActive(proj, event) {
+async function toggleProjectActive(proj, event) {
   if (event) event.stopPropagation();
   DISABLED_PROJECTS[proj] = !DISABLED_PROJECTS[proj];
-  saveDisabledProjects();
+  await saveDisabledProjects();
   renderProjs();
-  renderDash(); // recalculate all metrics
-  notify((DISABLED_PROJECTS[proj] ? '⏸ Proyecto pausado: ' : '▶ Proyecto activado: ') + proj.substring(0,25));
+  renderDash();
+  notify((DISABLED_PROJECTS[proj] ? '⏸ Pausado: ' : '▶ Activo: ') + proj.substring(0,25));
 }
 
 function isProjectActive(proj) {
@@ -4591,6 +4694,24 @@ function getActive() {
   const hasDisabled = Object.values(DISABLED_PROJECTS).some(v => v);
   if (!hasDisabled) return all;
   return all.filter(r => isProjectActive(r.PROYECTO||''));
+}
+
+let PROJ_SORT = null; // null=default, 'avg', 'cum'
+let PROJ_SORT_ASC = false;
+
+function setProjSort(field) {
+  if (PROJ_SORT === field) { PROJ_SORT_ASC = !PROJ_SORT_ASC; }
+  else { PROJ_SORT = field; PROJ_SORT_ASC = false; }
+  // Update button states
+  ['avg','cum'].forEach(f => {
+    const btn = document.getElementById('psort-'+f);
+    if (!btn) return;
+    const active = PROJ_SORT === f;
+    btn.style.background = active ? 'var(--accent)' : 'var(--bg3)';
+    btn.style.color      = active ? '#000' : 'var(--text2)';
+    btn.textContent      = (f==='avg'?'↕ Avance':'↕ Cumpl.').replace('↕', active?(PROJ_SORT_ASC?'↑':'↓'):'↕');
+  });
+  renderProjs();
 }
 
 function setProjView(v) {
@@ -4622,6 +4743,19 @@ function renderProjs() {
   if (est === 'reprogramados')   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r['CANTIDAD DE REPROGRAMACIONES']||0)>0));
   if (est === 'en_curso')        projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO==='EN CURSO'));
   if (est === 'completados')     projs = projs.filter(p => { const a=get().filter(r=>r.PROYECTO===p); return a.length&&a.every(r=>r.ESTADO==='REALIZADA'); });
+  // Apply sort
+  if (PROJ_SORT) {
+    projs.sort((a, b) => {
+      const ga = get().filter(r=>r.PROYECTO===a), gb = get().filter(r=>r.PROYECTO===b);
+      const va = PROJ_SORT==='avg'
+        ? (ga.length?Math.round(ga.reduce((s,r)=>s+r.AVANCE,0)/ga.length):0)
+        : (ga.length?Math.round(ga.filter(r=>r.ESTADO==='REALIZADA').length/ga.length*100):0);
+      const vb = PROJ_SORT==='avg'
+        ? (gb.length?Math.round(gb.reduce((s,r)=>s+r.AVANCE,0)/gb.length):0)
+        : (gb.length?Math.round(gb.filter(r=>r.ESTADO==='REALIZADA').length/gb.length*100):0);
+      return PROJ_SORT_ASC ? va - vb : vb - va;
+    });
+  }
 
   // Group by plant
   const plantGroups = {};
@@ -4722,13 +4856,11 @@ function buildProjCard(p, isAdmin) {
     <!-- Toggle active/inactive -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px" onclick="event.stopPropagation()">
       <div style="display:flex;align-items:center;gap:7px">
-        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Desactivar proyecto (excluir de métricas)':'Activar proyecto (incluir en métricas)'}"
-          style="position:relative;width:36px;height:20px;border-radius:99px;border:none;cursor:pointer;transition:background .25s;background:${isProjectActive(p)?'var(--green)':'rgba(139,148,158,.35)'};flex-shrink:0;outline:none">
-          <span style="position:absolute;top:2px;left:${isProjectActive(p)?'18':'2'}px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .25s;box-shadow:0 1px 4px rgba(0,0,0,.25)"></span>
+        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Pausar proyecto':'Activar proyecto'}"
+          style="display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:99px;border:1px solid ${isProjectActive(p)?'rgba(34,197,94,.35)':'rgba(139,148,158,.3)'};background:${isProjectActive(p)?'rgba(34,197,94,.1)':'rgba(139,148,158,.08)'};cursor:pointer;transition:all .2s;outline:none">
+          <span style="width:8px;height:8px;border-radius:50%;background:${isProjectActive(p)?'var(--green)':'var(--text3)'};flex-shrink:0;transition:background .2s"></span>
+          <span style="font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;color:${isProjectActive(p)?'var(--green)':'var(--text3)'};text-transform:uppercase">${isProjectActive(p)?'Activo':'Pausado'}</span>
         </button>
-        <span style="font-size:10px;color:${isProjectActive(p)?'var(--green)':'var(--text3)'}">
-          ${isProjectActive(p)?'Activo':'Pausado'}
-        </span>
       </div>
       ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
     </div>
@@ -4752,9 +4884,10 @@ function buildProjListRow(p, isAdmin) {
     <div style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid var(--border);background:var(--bg2)">
       <!-- Toggle active -->
       <div style="padding:0 8px 0 14px;display:flex;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
-        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Desactivar':'Activar'}"
-          style="width:28px;height:16px;border-radius:99px;border:none;cursor:pointer;transition:background .25s;background:${isProjectActive(p)?'var(--green)':'rgba(139,148,158,.3)'};position:relative;flex-shrink:0">
-          <span style="position:absolute;top:2px;left:${isProjectActive(p)?'14':'2'}px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .25s"></span>
+        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Pausar':'Activar'}"
+          style="display:flex;align-items:center;gap:4px;padding:2px 7px 2px 4px;border-radius:99px;border:1px solid ${isProjectActive(p)?'rgba(34,197,94,.35)':'rgba(139,148,158,.3)'};background:${isProjectActive(p)?'rgba(34,197,94,.1)':'rgba(139,148,158,.08)'};cursor:pointer;transition:all .2s;outline:none;white-space:nowrap">
+          <span style="width:6px;height:6px;border-radius:50%;background:${isProjectActive(p)?'var(--green)':'var(--text3)'};flex-shrink:0"></span>
+          <span style="font-size:8px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:${isProjectActive(p)?'var(--green)':'var(--text3)'};">${isProjectActive(p)?'ON':'OFF'}</span>
         </button>
       </div>
       <!-- Arrow: only expands list -->
@@ -4799,10 +4932,13 @@ function buildProjListRow(p, isAdmin) {
             ${r.ESTADO==='REALIZADA'?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>':''}
           </div>
           <!-- Name -->
-          <div style="flex:1;padding:7px 0;cursor:pointer;min-width:0" onclick="openActDr('${r._id}')">
+          <div style="flex:1;padding:6px 0;cursor:pointer;min-width:0" onclick="openActDr('${r._id}')">
             <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;${r.ESTADO==='REALIZADA'?'text-decoration:line-through;color:var(--text2)':isLate?'color:var(--red)':''}">${r.ACTIVIDAD||'—'}</span>
-            <span style="font-size:9px;color:var(--text2)">${r.RESPONSABLE||''} ${r['FECHA FIN']?'· '+fmtD(r['FECHA FIN']):''}</span>
           </div>
+          <!-- Editable fields (responsable, fecha, obs) -->
+          <span style="font-size:10px;color:var(--text2);padding:0 4px;flex-shrink:0">${r.RESPONSABLE||''}</span>
+          <span style="font-size:10px;color:var(--text2);padding:0 4px;flex-shrink:0">${fmtD(r['FECHA FIN'])}</span>
+          ${canEdit?'<button onclick="event.stopPropagation();listEditField_open(\''+(r._id)+'\')" style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">✏</button>':''}
           <!-- Badge + avance -->
           <div style="display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0">
             ${badge(r.ESTADO||'PLANIFICADA')}
@@ -4812,6 +4948,16 @@ function buildProjListRow(p, isAdmin) {
       }).join('')}
     </div>
   </div>`;
+}
+
+// Inline edit for list row fields
+async function listEditField(actId, field, value) {
+  const r = get().find(a => a._id === actId); if (!r) return;
+  const update = { updated_at: new Date().toISOString() };
+  if (field === 'responsable')    { if ((r.RESPONSABLE||'') === value) return; update.responsable = value; r.RESPONSABLE = value; }
+  if (field === 'fecha_fin')      { if ((r['FECHA FIN']||'') === value) return; update.fecha_fin = value||null; r['FECHA FIN'] = value||null; }
+  if (field === 'observaciones')  { if ((r.OBSERVACIONES||'') === value) return; update.observaciones = value; r.OBSERVACIONES = value; }
+  await _sb.from('actividades').update(update).eq('id', r._dbid);
 }
 
 function toggleProjList(id) {
@@ -5412,6 +5558,22 @@ function loadCustomFieldValues() {
       if (stored) r._customFields = JSON.parse(stored);
     } catch(e) {}
   });
+}
+
+// Inline edit for activities table
+async function actInlineEdit(actId, field, value) {
+  const r = get().find(a => a._id === actId); if (!r) return;
+  const canEdit = CURRENT_USER?.role !== 'viewer'; if (!canEdit) return;
+  const update = { updated_at: new Date().toISOString() };
+  const oldVal = String(r[field === 'responsable' ? 'RESPONSABLE' : field === 'fecha_fin' ? 'FECHA FIN' : field === 'estado' ? 'ESTADO' : field === 'avance' ? 'AVANCE' : field] || '');
+  if (field === 'responsable') { update.responsable = value; r.RESPONSABLE = value; }
+  else if (field === 'fecha_fin')  { update.fecha_fin = value||null; r['FECHA FIN'] = value||null; }
+  else if (field === 'estado')     { update.estado = value; r.ESTADO = value; if(value==='REALIZADA'){update.avance=100;r.AVANCE=100;update.fecha_completada=tds();} }
+  else if (field === 'avance')     { const n=Math.min(100,Math.max(0,parseInt(value)||0)); update.avance=n; r.AVANCE=n; }
+  else return;
+  if (String(oldVal) === String(value)) return;
+  await _sb.from('actividades').update(update).eq('id', r._dbid);
+  await saveHistoryToDB(r._dbid, field, oldVal, String(value||''));
 }
 
 async function duplicateAct(id) {
