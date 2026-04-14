@@ -1564,6 +1564,7 @@ function renderDash() {
     { l:'Reprog. No Just.',   v:tRepNJ,    i:'⚠',  c:'var(--red)',    s:'afectan cumplimiento',                      t:'reprog'      },
     { l:'Cumpl. del Mes',     v:moP+'%',   i:'📅', c:'var(--purple)', s:moRealiz+'/'+moAll.length+' (incl. subtareas) · Ajust:'+moPadj+'%', t:'mes' },
     { l:'Sin Fecha',          v:sinFecha,  i:'📭', c:'var(--text3)',  s:'sin fecha asignada',                        t:'sinFecha'    },
+    { l:'Total Efectuar Mes',  v:moAll.length, i:'📊', c:'var(--accent2)', s:moA.length+' acts + '+(moAll.length-moA.length)+' subtareas',  t:'totalMes'    },
   ];
   const visibleKpis = DASH_KPI_CONFIG?.kpis
     ? kpis.filter(k => DASH_KPI_CONFIG.kpis.includes(k.t))
@@ -1788,6 +1789,7 @@ function openKP(type) {
     total:        { l:'Todas las Actividades',  fn: () => true },
     mes:          { l:'Actividades del Mes',    fn: r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === TODAY.getMonth() },
     sinFecha:     { l:'Sin Fecha Asignada',     fn: r => !r['FECHA FIN'] || r['FECHA FIN'] === null },
+    totalMes:     { l:'Total a Efectuar del Mes', fn: r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === TODAY.getMonth() },
   };
   const cfg = MAP[type] || MAP.total;
   const acts = d.filter(cfg.fn);
@@ -2242,14 +2244,27 @@ function exportPDF() {
         <td style="padding:6px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0">${a.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0)}</td>
       </tr>`;
     }).join('');
-    const actRows = ap.map(r =>
-      `<tr><td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;font-family:monospace;white-space:nowrap">${r['CÓDIGO']}</td>
+    const actRows = ap.map(r => {
+      const stRows = (r.subtasks||[]).map(s => {
+        const stEst = s.done?'CERRADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
+        const stCol = s.done?'#22c55e':(s.reprogramada?'#f97316':'#0ea5e9');
+        return `<tr style="background:#f8fafc"><td style="padding:3px 8px 3px 24px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9" colspan="2">↳ ${s.desc}</td>
+          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9"></td>
+          <td style="padding:3px 8px;font-size:9px;border-bottom:1px solid #f1f5f9"><span style="color:${stCol};font-weight:600">${stEst}</span></td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#94a3b8">${s.done?'100':'0'}%</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#94a3b8">${s.date||'—'}</td>
+          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${s.stComment||''}${s.reprogDetail?' | Reprog: '+s.reprogDetail:''}</td>
+        </tr>`;
+      }).join('');
+      return `<tr><td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;font-family:monospace;white-space:nowrap">${r['CÓDIGO']}</td>
         <td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:180px;white-space:normal;word-break:break-word">${(r.ACTIVIDAD||'').substring(0,60)}</td>
+        <td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:140px;white-space:normal;word-break:break-word">${(r.PROYECTO||'—').substring(0,40)}</td>
         <td style="padding:5px 8px;font-size:10px;border-bottom:1px solid #e2e8f0;white-space:nowrap"><span style="${badgeCSS[r.ESTADO]||badgeCSS.PLANIFICADA}">${r.ESTADO}</span></td>
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#0ea5e9;font-weight:700">${r.AVANCE}%</td>
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#64748b;white-space:nowrap">${r['FECHA FIN']||'—'}</td>
         <td style="padding:5px 8px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;max-width:240px;white-space:normal;word-wrap:break-word;word-break:break-word;line-height:1.4">${r.OBSERVACIONES||'—'}</td>
-      </tr>`).join('');
+      </tr>${stRows}`;
+    }).join('');
     return `
       <div style="margin-bottom:24px;page-break-inside:avoid">
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
@@ -2278,6 +2293,7 @@ function exportPDF() {
             <thead><tr style="background:#334155;color:#fff">
               <th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase">Código</th>
               <th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase">Actividad</th>
+              <th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase">Proyecto</th>
               <th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase">Estado</th>
               <th style="padding:5px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase">Avance</th>
               <th style="padding:5px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase">F.Fin</th>
@@ -2788,13 +2804,58 @@ function togST(id) { const s = tmpST.find(x => x.id === id); if (s) s.done = !s.
 function renderSTs() {
   const el = document.getElementById('st-list');
   if (!tmpST.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:18px">Sin subtareas.</div>'; return; }
-  el.innerHTML = tmpST.map(s =>
-    `<div class="st-row">
-      <input type="checkbox" class="st-chk" ${s.done?'checked':''} onchange="togST(${s.id})">
-      <span class="st-desc" style="${s.done?'text-decoration:line-through;color:var(--text2)':''}">${s.desc}</span>
-      <span class="st-meta">${s.resp||''}${s.date?' · '+s.date:''}</span>
-      <button class="st-del" onclick="delST(${s.id})" title="Eliminar">✕</button>
-    </div>`).join('');
+  el.innerHTML = tmpST.map((s, idx) => {
+    const stEstado = s.done ? 'CERRADA' : (s.reprogramada ? 'REPROGRAMADA' : 'ABIERTA');
+    const estColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--accent)');
+    return `<div style="background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${estColor}">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+        <input type="checkbox" class="st-chk" ${s.done?'checked':''} onchange="togST(${s.id})">
+        <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-weight:600'};flex:1;font-size:12px">${s.desc}</span>
+        <span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;background:${estColor}20;color:${estColor}">${stEstado}</span>
+        <button class="st-del" onclick="delST(${s.id})" title="Eliminar">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--text2);margin-bottom:6px">
+        <span>👤 ${s.resp||'Sin asignar'}</span>
+        <span>📅 ${s.date||'Sin fecha'}</span>
+        ${s.reprogramada?`<span style="color:var(--orange)">🔄 Nueva fecha: ${s.newDate||'—'}</span>`:''}
+      </div>
+      ${!s.done?`<div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-sm" onclick="openSTReprog(${s.id})" style="font-size:10px;background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.3)">🔄 Reprogramar</button>
+        <button class="btn btn-sm" onclick="closeSTWithComment(${s.id})" style="font-size:10px;background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)">✓ Cerrar</button>
+      </div>`:''}
+      ${s.stComment?`<div style="margin-top:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);line-height:1.4">💬 ${s.stComment}</div>`:''}
+      ${s.reprogramada && s.reprogDetail?`<div style="margin-top:6px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);line-height:1.4">
+        <div style="font-size:9px;color:var(--orange);font-weight:700;text-transform:uppercase;margin-bottom:2px">${s.reprogJustificada?'✓ Justificada':'✗ No Justificada'}</div>
+        ${s.reprogDetail}
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openSTReprog(stId) {
+  const s = tmpST.find(x => x.id === stId); if (!s) return;
+  const tipo = prompt('Tipo de reprogramación:\n1 = Justificada\n2 = No Justificada\n\nIngresa 1 o 2:');
+  if (!tipo || !['1','2'].includes(tipo.trim())) return;
+  const motivo = prompt('Motivo de la reprogramación:');
+  if (!motivo) return;
+  const newDate = prompt('Nueva fecha de cierre (YYYY-MM-DD):');
+  if (!newDate) return;
+  s.reprogramada = true;
+  s.reprogJustificada = tipo.trim() === '1';
+  s.reprogDetail = '[' + new Date().toISOString().split('T')[0] + '] ' + motivo;
+  s.newDate = newDate;
+  s.date = newDate; // Update the date
+  renderSTs();
+  notify('🔄 Subtarea reprogramada');
+}
+
+function closeSTWithComment(stId) {
+  const s = tmpST.find(x => x.id === stId); if (!s) return;
+  const comment = prompt('Comentario de cierre (opcional):');
+  s.done = true;
+  if (comment) s.stComment = '[' + new Date().toISOString().split('T')[0] + '] ' + comment;
+  renderSTs();
+  notify('✅ Subtarea cerrada');
 }
 function addCmt() {
   const t = document.getElementById('cmt-inp').value.trim(); if (!t) return;
@@ -5149,7 +5210,9 @@ function openProjDr(proj) {
     <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
       <div style="width:40px;height:40px;border-radius:10px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:18px">◫</span></div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:16px;line-height:1.3">${proj}</div>
+        <div style="font-weight:700;font-size:16px;line-height:1.3;${isAdmin?'cursor:pointer':''}">
+        ${isAdmin?`<span ondblclick="editProjectName(this,'${esc(proj)}')" title="Doble-click para editar nombre">${proj}</span>`:`${proj}`}
+      </div>
         <div style="font-size:12px;color:var(--text2);margin-top:3px">🏭 ${plant||'—'}</div>
         ${projDateIni||projDateFin?`<div style="font-size:11px;color:var(--text2);margin-top:2px">📅 ${projDateIni?fmtD(projDateIni):''} ${projDateFin?'→ '+fmtD(projDateFin):''}</div>`:''}
       </div>
@@ -5257,11 +5320,24 @@ function openActDr(id) {
       ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
     </div>`:''}
     ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT})</div>
-      ${r.subtasks.map(s=>`<div class="d-st">
-        <div class="d-chk ${s.done?'done':''}" onclick="togDrST('${r._id}','${s.id}')">${s.done?'✓':''}</div>
-        <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:12px'};flex:1">${s.desc}</span>
-        <span style="font-size:11px;color:var(--text2)">${s.resp||''}</span>
-      </div>`).join('')}`:''}
+      ${r.subtasks.map(s=>{
+        const stEst = s.done?'CERRADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
+        const stCol = s.done?'var(--green)':(s.reprogramada?'var(--orange)':'var(--accent)');
+        return `<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border-left:3px solid ${stCol}">
+        <div class="d-st" style="border:none;padding:0">
+          <div class="d-chk ${s.done?'done':''}" onclick="togDrST('${r._id}','${s.id}')">${s.done?'✓':''}</div>
+          <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:12px'};flex:1">${s.desc}</span>
+          <span style="font-size:9px;padding:2px 6px;border-radius:8px;background:${stCol}20;color:${stCol};font-weight:700">${stEst}</span>
+        </div>
+        <div style="display:flex;gap:8px;font-size:10px;color:var(--text2);margin-top:4px;padding-left:20px">
+          <span>${s.resp||''}</span>
+          <span>${s.date||''}</span>
+          ${s.reprogramada&&s.newDate?'<span style="color:var(--orange)">→ '+s.newDate+'</span>':''}
+        </div>
+        ${s.stComment?'<div style="font-size:11px;color:var(--text);margin-top:4px;padding-left:20px;font-style:italic">💬 '+s.stComment+'</div>':''}
+        ${s.reprogramada&&s.reprogDetail?'<div style="font-size:10px;color:var(--orange);margin-top:4px;padding-left:20px">'+(s.reprogJustificada?'✓ Justificada':'✗ No Justificada')+': '+s.reprogDetail+'</div>':''}
+      </div>`;
+      }).join('')}`:''}
     <div class="d-sec" style="margin-top:14px">💬 Comentarios</div>
     <div class="ac-thread" id="dr-cmts-thread"></div>
     <div style="display:flex;gap:6px;margin-bottom:14px;position:relative">
@@ -5674,16 +5750,27 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 // DUPLICATE ACTIVITY
 // ════════════════════════════════════════════════════════════════
-function updateCustomField(actId, fieldName, value) {
+async function updateCustomField(actId, fieldName, value) {
   const r = get().find(a => a._id === actId); if (!r) return;
   if (!r._customFields) r._customFields = {};
   r._customFields[fieldName] = value;
-  // Save to DB as part of subtasks/metadata (reuse subtasks field or a custom_fields column)
-  // For now store in localStorage per activity
+  // Save to localStorage for immediate access
   try {
     const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || actId);
     localStorage.setItem(key, JSON.stringify(r._customFields));
   } catch(e) {}
+  // Also persist to Supabase via the actividades table (use subtasks JSON field to piggyback)
+  if (r._dbid) {
+    try {
+      // Store custom fields alongside the activity in Supabase
+      const currentSubtasks = r.subtasks || [];
+      // We'll store _customFields in the subtasks JSON since we don't have a dedicated column
+      await _sb.from('actividades').update({
+        subtasks: currentSubtasks,
+        updated_at: new Date().toISOString()
+      }).eq('id', r._dbid);
+    } catch(e) {}
+  }
 }
 
 function loadCustomFieldValues() {
@@ -5765,7 +5852,7 @@ function openCustomFieldsModal() {
         ${cf.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="flex:1;font-size:12px;font-weight:600">${f.name}</span>
           <span style="font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px">${{text:'Texto',number:'Número',date:'Fecha',select:'Lista'}[f.type]||f.type}</span>
-          <button onclick="deleteCustomField(${i})" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>
+          ${CURRENT_USER?.role==='admin'?'<button onclick="deleteCustomField('+i+')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>':''}
         </div>`).join('')}
         ${!cf.length?'<div style="text-align:center;padding:16px;font-size:12px;color:var(--text2)">Sin columnas personalizadas</div>':''}
       </div>
@@ -5815,7 +5902,9 @@ function addCustomField() {
 }
 
 function deleteCustomField(idx) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden eliminar columnas', true); return; }
   if (!CUSTOM_FIELDS[ACTIVE]) return;
+  if (!confirm('¿Eliminar esta columna personalizada? Se perderán los datos asociados.')) return;
   CUSTOM_FIELDS[ACTIVE].splice(idx, 1);
   saveCustomFieldsView();
   document.getElementById('cf-modal')?.remove();
@@ -5823,14 +5912,38 @@ function deleteCustomField(idx) {
   renderActs();
 }
 
-function saveCustomFieldsView() {
+async function saveCustomFieldsView() {
   try {
-    localStorage.setItem('sg_custom_fields_' + ACTIVE, JSON.stringify(CUSTOM_FIELDS[ACTIVE]||[]));
-    notify('💾 Vista de columnas guardada');
-  } catch(e) { notify('⚠ Error guardando vista', true); }
+    const json = JSON.stringify(CUSTOM_FIELDS[ACTIVE]||[]);
+    // Save to localStorage for immediate access
+    localStorage.setItem('sg_custom_fields_' + ACTIVE, json);
+    // Save to Supabase so ALL users see the same columns
+    const key = ACTIVE + '_custom_fields';
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_cf_' + ACTIVE, activo: false, config_json: json });
+    }
+    notify('💾 Columnas guardadas para todos los usuarios');
+  } catch(e) { notify('⚠ Error guardando columnas', true); }
 }
 
-function loadCustomFieldsView() {
+async function loadCustomFieldsView() {
+  try {
+    // Try Supabase first (shared across all users)
+    const { data } = await _sb.from('modulos')
+      .select('config_json')
+      .eq('key', ACTIVE + '_custom_fields')
+      .maybeSingle();
+    if (data?.config_json) {
+      CUSTOM_FIELDS[ACTIVE] = JSON.parse(data.config_json);
+      // Also update localStorage for faster subsequent loads
+      localStorage.setItem('sg_custom_fields_' + ACTIVE, data.config_json);
+      return;
+    }
+  } catch(e) {}
+  // Fallback to localStorage
   try {
     const cf = localStorage.getItem('sg_custom_fields_' + ACTIVE);
     if (cf) CUSTOM_FIELDS[ACTIVE] = JSON.parse(cf);
@@ -5858,8 +5971,8 @@ function saveDashConfig(cfg) {
 function openDashCustomize() {
   const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
   if (!canEdit) { notify('⚠ Solo administradores y colaboradores pueden personalizar el dashboard', true); return; }
-  const ALL_KPI_KEYS = ['total','realizada','ontime','en curso','planificada','reprogramada','reprog','mes','sinFecha'];
-  const KPI_LABELS = { total:'Total Actividades', realizada:'Cumplimiento Global', ontime:'Cumplidas en Fecha', 'en curso':'En Curso', planificada:'Planificadas', reprogramada:'Reprogramadas', reprog:'Reprog. No Justificadas', mes:'Cumplimiento del Mes', sinFecha:'Sin Fecha Asignada' };
+  const ALL_KPI_KEYS = ['total','realizada','ontime','en curso','planificada','reprogramada','reprog','mes','sinFecha','totalMes'];
+  const KPI_LABELS = { total:'Total Actividades', realizada:'Cumplimiento Global', ontime:'Cumplidas en Fecha', 'en curso':'En Curso', planificada:'Planificadas', reprogramada:'Reprogramadas', reprog:'Reprog. No Justificadas', mes:'Cumplimiento del Mes', sinFecha:'Sin Fecha Asignada', totalMes:'Total Efectuar Mes' };
   const cfg = DASH_KPI_CONFIG || { kpis: ALL_KPI_KEYS, charts: ['e','m','r','p','cmp','trim','st','rj'] };
 
   const CHART_LABELS = { e:'Estado de Actividades', m:'Actividades por Mes', r:'Cumplimiento por Responsable', p:'Avance por Planta', cmp:'Cumplimiento Mes/Proyecto', trim:'Mensual/Trimestral', st:'Subtareas', rj:'Reprogramaciones' };
@@ -6136,6 +6249,36 @@ function applyStoredTheme() {
   if (t === 'light')  { html.classList.add('light');  if (btn) btn.innerHTML='&#9728;&#65039;'; }
   if (t === 'bitone') { html.classList.add('bitone'); if (btn) btn.innerHTML='&#9680;'; }
 }
+
+// ════════════════════════════════════════════════════════════════
+// EDIT PROJECT NAME — admin only
+// ════════════════════════════════════════════════════════════════
+async function editProjectName(el, oldName) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar nombres de proyecto', true); return; }
+  const input = document.createElement('input');
+  input.type = 'text'; input.value = oldName;
+  input.style.cssText = 'width:100%;font-size:16px;font-weight:700;background:var(--bg3);border:2px solid var(--accent);color:var(--text);padding:4px 8px;border-radius:6px;font-family:Barlow,sans-serif';
+  el.innerHTML = ''; el.appendChild(input); input.focus(); input.select();
+  async function save() {
+    const newName = input.value.trim();
+    if (!newName || newName === oldName) { openProjDr(oldName); return; }
+    // Update all activities with this project name
+    const acts = get().filter(r => r.PROYECTO === oldName);
+    const ids = acts.map(a => a._dbid).filter(Boolean);
+    if (ids.length) {
+      const { error } = await _sb.from('actividades').update({ proyecto: newName, updated_at: new Date().toISOString() }).in('id', ids);
+      if (error) { notify('⚠ Error: ' + error.message, true); return; }
+    }
+    // Update local data
+    acts.forEach(a => { a.PROYECTO = newName; });
+    notify('✅ Proyecto renombrado: ' + newName);
+    await loadModFromDB(ACTIVE);
+    openProjDr(newName);
+  }
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') openProjDr(oldName); });
+}
+
 // ── Boot ────────────────────────────────────────────────────────────
 // Check for existing session on page load
 (async () => {
