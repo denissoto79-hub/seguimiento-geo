@@ -1625,8 +1625,17 @@ function renderCharts(d, real, enc, plan, rep) {
   // Get filtered data from all activities (not just current filter) for the bar chart
   const allActs = get();
   const fMesVal = document.getElementById('f-mes')?.value;
-  const moT = MESES.map((_, i) => allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i).length);
-  const moD = MESES.map((_, i) => allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i && r.ESTADO === 'REALIZADA').length);
+  // Count activities per month (including subtasks)
+  const moT = MESES.map((_, i) => {
+    const actCount = allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i).length;
+    const stCount  = allActs.reduce((cnt, r) => cnt + (r.subtasks||[]).filter(s => s.date && new Date(s.date).getMonth() === i).length, 0);
+    return actCount + stCount;
+  });
+  const moD = MESES.map((_, i) => {
+    const actDone = allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i && r.ESTADO === 'REALIZADA').length;
+    const stDone  = allActs.reduce((cnt, r) => cnt + (r.subtasks||[]).filter(s => s.date && new Date(s.date).getMonth() === i && s.done).length, 0);
+    return actDone + stDone;
+  });
   // Highlight the filtered month
   const highlightColors = moT.map((_,i) => fMesVal && (i+1)===parseInt(fMesVal) ? 'rgba(56,189,248,.6)' : 'rgba(56,189,248,.2)');
   const c2 = document.getElementById('ch-m')?.getContext('2d');
@@ -1779,6 +1788,12 @@ function renderProjProg(d) {
 // ── KPI Popup ─────────────────────────────────────────────────────
 function openKP(type) {
   const d = getFiltered();
+  // Determine filtered month/year (same logic as renderDash)
+  const fMes = document.getElementById('f-mes')?.value;
+  const refMonth = fMes ? parseInt(fMes)-1 : TODAY.getMonth();
+  const fAnio = document.getElementById('f-anio')?.value;
+  const refYear  = fAnio ? parseInt(fAnio) : TODAY.getFullYear();
+
   const MAP = {
     realizada:    { l:'Realizadas',            fn: r => r.ESTADO === 'REALIZADA' },
     'en curso':   { l:'En Curso',              fn: r => r.ESTADO === 'EN CURSO' },
@@ -1787,14 +1802,43 @@ function openKP(type) {
     ontime:       { l:'Cumplidas en Fecha',     fn: r => r.ESTADO==='REALIZADA' && r['FECHA COMPLETADA'] && r['FECHA FIN'] && r['FECHA COMPLETADA'] <= r['FECHA FIN'] },
     reprog:       { l:'Con Reprogramaciones',   fn: r => (r['CANTIDAD DE REPROGRAMACIONES']||0) > 0 },
     total:        { l:'Todas las Actividades',  fn: () => true },
-    mes:          { l:'Actividades del Mes',    fn: r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === TODAY.getMonth() },
+    mes:          { l:'Cumplimiento del Mes',   fn: r => {
+      const ff = r['FECHA FIN'];
+      if (ff && new Date(ff).getMonth()===refMonth && new Date(ff).getFullYear()===refYear) return true;
+      return (r.subtasks||[]).some(s => s.date && new Date(s.date).getMonth()===refMonth && new Date(s.date).getFullYear()===refYear);
+    }},
     sinFecha:     { l:'Sin Fecha Asignada',     fn: r => !r['FECHA FIN'] || r['FECHA FIN'] === null },
-    totalMes:     { l:'Total a Efectuar del Mes', fn: r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === TODAY.getMonth() },
+    totalMes:     { l:'Total a Efectuar del Mes', fn: r => {
+      const ff = r['FECHA FIN'];
+      if (ff && new Date(ff).getMonth()===refMonth && new Date(ff).getFullYear()===refYear) return true;
+      return (r.subtasks||[]).some(s => s.date && new Date(s.date).getMonth()===refMonth && new Date(s.date).getFullYear()===refYear);
+    }},
   };
   const cfg = MAP[type] || MAP.total;
   const acts = d.filter(cfg.fn);
-  document.getElementById('kp-title').textContent = cfg.l + ' (' + acts.length + ')';
-  document.getElementById('kp-body').innerHTML = acts.length === 0
+
+  // For 'mes' and 'totalMes', also collect matching subtasks as virtual rows
+  let subtaskRows = '';
+  if (type === 'mes' || type === 'totalMes') {
+    d.forEach(r => {
+      (r.subtasks||[]).forEach(s => {
+        if (s.date && new Date(s.date).getMonth()===refMonth && new Date(s.date).getFullYear()===refYear) {
+          const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PLANIFICADA');
+          subtaskRows += `<tr style="border-bottom:1px solid rgba(33,38,45,.4);background:rgba(56,189,248,.04)">
+            <td style="padding:6px 10px"><span class="code-lbl" style="background:rgba(168,85,247,.15);color:var(--purple);border-color:rgba(168,85,247,.3)">${r['CÓDIGO']||'—'}</span></td>
+            <td style="padding:6px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:var(--purple);font-size:9px;font-weight:700;margin-right:4px">▪ SUBTAREA</span>${(s.desc||'—').substring(0,30)}</td>
+            <td style="padding:6px 10px">${badge(stEstado)}</td>
+            <td style="padding:6px 10px;color:var(--accent)">${s.done?'100':'0'}%</td>
+            <td style="padding:6px 10px;color:var(--text2)">${fmtD(s.date)}</td>
+          </tr>`;
+        }
+      });
+    });
+  }
+
+  const totalCount = acts.length + (subtaskRows ? subtaskRows.split('<tr ').length - 1 : 0);
+  document.getElementById('kp-title').textContent = cfg.l + ' (' + totalCount + ')';
+  document.getElementById('kp-body').innerHTML = (acts.length === 0 && !subtaskRows)
     ? '<div style="text-align:center;color:var(--text2);padding:24px;font-size:12px">Sin actividades</div>'
     : `<table style="width:100%;border-collapse:collapse;font-size:11px">
         <thead><tr style="background:var(--bg3)">
@@ -1812,6 +1856,7 @@ function openKP(type) {
             <td style="padding:6px 10px;color:var(--accent)">${r.AVANCE}%</td>
             <td style="padding:6px 10px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</td>
           </tr>`).join('')}
+        ${subtaskRows}
         </tbody>
       </table>`;
   document.getElementById('kp-ov').classList.add('open');
@@ -2462,6 +2507,31 @@ function exportPlanPDF() {
   const projs = uniq(d,'PROYECTO');
   let planTable = projs.map(p => {
     const ap = d.filter(r=>r.PROYECTO===p);
+    // Collect subtasks that match the month filter for this project
+    const stRows = ap.flatMap(r => (r.subtasks||[]).filter(s => {
+      if (!s.date) return false;
+      if (hasMonth) {
+        const m = new Date(s.date).getMonth() + 1;
+        if (m < mesN || m > mesFinN) return false;
+      }
+      if (hasDate) {
+        if (planFrom && s.date < planFrom) return false;
+        if (planTo   && s.date > planTo)   return false;
+      }
+      return true;
+    }).map(s => {
+      const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PLANIFICADA');
+      const stColor  = s.done ? '#16a34a' : (s.reprogramada ? '#c2410c' : '#64748b');
+      const stObs = [s.stComment, s.reprogDetail].filter(Boolean).join(' | ') || '—';
+      return `<tr style="background:#f8f9fc"><td style="padding:4px 8px;font-family:monospace;font-size:9px;white-space:nowrap;color:#94a3b8">↳ ${r['CÓDIGO']}</td>
+        <td style="padding:4px 8px;font-size:9px;color:#334155"><em>▪ ${(s.desc||'—').substring(0,45)}</em></td>
+        <td style="padding:4px 8px;font-size:9px;color:#334155">${s.resp||'—'}</td>
+        <td style="padding:4px 8px;font-size:9px;text-align:center;font-weight:700;color:${stColor}">${stEstado}</td>
+        <td style="padding:4px 8px;font-size:9px;text-align:center;color:#64748b">${s.done?'100':'0'}%</td>
+        <td style="padding:4px 8px;font-size:9px;text-align:center;color:#64748b">${s.date||'—'}</td>
+        <td style="padding:4px 8px;font-size:9px;color:#64748b;max-width:180px;overflow:hidden;text-overflow:ellipsis">${stObs.substring(0,50)}</td>
+      </tr>`;
+    }));
     const rows = ap.map(r=>`<tr><td style="padding:5px 8px;font-family:monospace;font-size:10px;white-space:nowrap">${r['CÓDIGO']}</td>
       <td style="padding:5px 8px;font-size:10px">${r.ACTIVIDAD||'—'}</td>
       <td style="padding:5px 8px;font-size:10px;color:#64748b">${r.RESPONSABLE||'—'}</td>
@@ -2482,10 +2552,21 @@ function exportPlanPDF() {
           <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">F.Fin</th>
           <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Observaciones</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}${stRows.join('')}</tbody>
       </table>
     </div>`;
   }).join('');
+
+  const totalActivities = d.length;
+  const totalSubtasks = projs.reduce((cnt, p) => {
+    const ap = d.filter(r=>r.PROYECTO===p);
+    return cnt + ap.reduce((c2, r) => c2 + (r.subtasks||[]).filter(s => {
+      if (!s.date) return false;
+      if (hasMonth) { const m = new Date(s.date).getMonth()+1; if (m<mesN||m>mesFinN) return false; }
+      if (hasDate) { if (planFrom&&s.date<planFrom) return false; if (planTo&&s.date>planTo) return false; }
+      return true;
+    }).length, 0);
+  }, 0);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Planificación ${mesNm}</title>
   <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;margin:18mm 15mm;color:#1e293b}@media print{body{margin:0}.no-print{display:none}}</style>
@@ -2502,7 +2583,7 @@ function exportPlanPDF() {
       </td>
       <td style="width:25%;padding:8px 12px;text-align:right;vertical-align:middle">
         <div style="font-size:10px;color:#64748b">Generado: ${new Date().toLocaleDateString('es-BO')}</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">${d.length} actividades</div>
+        <div style="font-size:12px;font-weight:700;margin-top:4px">${totalActivities} actividades${totalSubtasks>0?' + '+totalSubtasks+' subtareas':''}</div>
         <div style="font-size:11px;color:#64748b">${projs.length} proyectos</div>
       </td>
     </tr>
@@ -2820,6 +2901,7 @@ function renderSTs() {
         ${s.reprogramada?`<span style="color:var(--orange)">🔄 Nueva fecha: ${s.newDate||'—'}</span>`:''}
       </div>
       ${!s.done?`<div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-sm" onclick="editST(${s.id})" style="font-size:10px;background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">✏ Editar</button>
         <button class="btn btn-sm" onclick="openSTReprog(${s.id})" style="font-size:10px;background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.3)">🔄 Reprogramar</button>
         <button class="btn btn-sm" onclick="closeSTWithComment(${s.id})" style="font-size:10px;background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)">✓ Cerrar</button>
       </div>`:''}
@@ -2856,6 +2938,24 @@ function closeSTWithComment(stId) {
   if (comment) s.stComment = '[' + new Date().toISOString().split('T')[0] + '] ' + comment;
   renderSTs();
   notify('✅ Subtarea cerrada');
+}
+
+function editST(stId) {
+  const s = tmpST.find(x => x.id === stId); if (!s) return;
+  // Create a small inline edit modal
+  const newDesc = prompt('Descripción de la subtarea:', s.desc || '');
+  if (newDesc === null) return; // cancelled
+  if (newDesc.trim()) s.desc = newDesc.trim();
+  const newDate = prompt('Fecha límite (YYYY-MM-DD):', s.date || '');
+  if (newDate !== null && newDate.trim()) s.date = newDate.trim();
+  const newResp = prompt('Responsable:', s.resp || '');
+  if (newResp !== null) s.resp = newResp.trim();
+  const newComment = prompt('Comentario / observación:', s.stComment ? s.stComment.replace(/^\[.*?\] /, '') : '');
+  if (newComment !== null && newComment.trim()) {
+    s.stComment = '[' + new Date().toISOString().split('T')[0] + '] ' + newComment.trim();
+  }
+  renderSTs();
+  notify('✏️ Subtarea actualizada');
 }
 function addCmt() {
   const t = document.getElementById('cmt-inp').value.trim(); if (!t) return;
