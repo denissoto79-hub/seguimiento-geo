@@ -2252,12 +2252,13 @@ function exportPDF() {
   const pla  = document.getElementById('rep-planta')?.value || '';
   const proj = document.getElementById('rep-proj')?.value  || '';
   const d = get().filter(r => {
-    if (!r['FECHA FIN']) return false;
-    if (from && r['FECHA FIN'] < from) return false;
-    if (to   && r['FECHA FIN'] > to)   return false;
     if (pla  && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     if (proj && (r.PROYECTO||'').trim().toUpperCase() !== proj.trim().toUpperCase()) return false;
-    return true;
+    // Check if activity date falls in range
+    const actInRange = r['FECHA FIN'] && (!from || r['FECHA FIN'] >= from) && (!to || r['FECHA FIN'] <= to);
+    // Check if any subtask date falls in range
+    const stInRange = (r.subtasks||[]).some(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    return actInRange || stInRange;
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
   const cum  = n ? Math.round(real/n*100) : 0;
@@ -2290,15 +2291,35 @@ function exportPDF() {
       </tr>`;
     }).join('');
     const actRows = ap.map(r => {
-      const stRows = (r.subtasks||[]).map(s => {
+      // Helper to determine justification text from reprog detail
+      const getJustLabel = (detail) => {
+        if (!detail) return '—';
+        if (detail.includes('[JUSTIFICADA]')) return '✔ Sí';
+        if (detail.includes('[NO JUSTIFICADA')) return '✖ No';
+        return detail ? '✔ Sí' : '—';
+      };
+      const actJust = getJustLabel(r['DETALLE DE REPROGRAMACION']);
+      // Filter subtasks to those within the date range
+      const filteredST = (r.subtasks||[]).filter(s => {
+        if (!s.date && !s.desc) return false;
+        if (from && s.date && s.date < from) return false;
+        if (to   && s.date && s.date > to)   return false;
+        return true;
+      });
+      const stRows = filteredST.map(s => {
         const stEst = s.done?'CERRADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'#22c55e':(s.reprogramada?'#f97316':'#0ea5e9');
-        return `<tr style="background:#f8fafc"><td style="padding:3px 8px 3px 24px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9" colspan="2">↳ ${s.desc}</td>
-          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9"></td>
+        const stDetail = s.reprogDetail || '';
+        const stJust = stDetail.includes('[JUSTIFICADA]') ? '✔ Sí' : stDetail.includes('[NO JUSTIFICADA') ? '✖ No' : (s.reprogramada ? '—' : '');
+        return `<tr style="background:#f8fafc">
+          <td style="padding:3px 8px 3px 24px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9;font-style:italic">↳ SUBTAREA</td>
+          <td style="padding:3px 8px;font-size:9px;color:#64748b;border-bottom:1px solid #f1f5f9">${s.desc||'—'}</td>
+          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">—</td>
           <td style="padding:3px 8px;font-size:9px;border-bottom:1px solid #f1f5f9"><span style="color:${stCol};font-weight:600">${stEst}</span></td>
           <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#94a3b8">${s.done?'100':'0'}%</td>
-          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#94a3b8">${s.date||'—'}</td>
-          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${s.stComment||''}${s.reprogDetail?' | Reprog: '+s.reprogDetail:''}</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#64748b">${s.date||'—'}</td>
+          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${s.stComment||''}${stDetail?' | '+stDetail.replace(/\[.*?\]\s*/,''):''}</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;font-weight:700;color:${stJust==='✔ Sí'?'#22c55e':stJust==='✖ No'?'#ef4444':'#94a3b8'}">${stJust||'—'}</td>
         </tr>`;
       }).join('');
       return `<tr><td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;font-family:monospace;white-space:nowrap">${r['CÓDIGO']}</td>
@@ -2308,6 +2329,7 @@ function exportPDF() {
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#0ea5e9;font-weight:700">${r.AVANCE}%</td>
         <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#64748b;white-space:nowrap">${r['FECHA FIN']||'—'}</td>
         <td style="padding:5px 8px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;max-width:240px;white-space:normal;word-wrap:break-word;word-break:break-word;line-height:1.4">${r.OBSERVACIONES||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;font-weight:700;color:${actJust==='✔ Sí'?'#22c55e':actJust==='✖ No'?'#ef4444':'#94a3b8'}">${(r['CANTIDAD DE REPROGRAMACIONES']||0)>0?actJust:'—'}</td>
       </tr>${stRows}`;
     }).join('');
     return `
@@ -2343,6 +2365,7 @@ function exportPDF() {
               <th style="padding:5px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase">Avance</th>
               <th style="padding:5px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase">F.Fin</th>
               <th style="padding:5px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase">Observaciones</th>
+              <th style="padding:5px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase">¿Justificada?</th>
             </tr></thead>
             <tbody>${actRows}</tbody>
           </table>
