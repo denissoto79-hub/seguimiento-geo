@@ -883,6 +883,7 @@ tr:hover .act-btns { opacity:1 }
               </div>
             </div>
             <button class="rep-btn rep-pdf" style="padding:5px 12px;font-size:11px" onclick="exportPlanPDF()">📄 Exportar Planificación PDF</button>
+            <button class="rep-btn" style="padding:5px 12px;font-size:11px;background:rgba(100,100,100,.15);color:var(--text2)" onclick="document.getElementById('rep-plan-from').value='';document.getElementById('rep-plan-to').value='';document.getElementById('rep-plan-planta').value='';document.getElementById('rep-plan-proj').value='';renderRepPlan()">🗑 Limpiar Filtros</button>
           </div>
         </div>
         <div id="rep-plan-content">
@@ -2148,7 +2149,22 @@ function renderRep() {
     return true;
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  const cum = n ? Math.round(real/n*100) : 0, avg = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
+  // Cumplimiento: (actividades cerradas + subtareas cerradas en el periodo) / (actividades planificadas + subtareas planificadas en el periodo)
+  let stPlanned = 0, stDone = 0;
+  get().forEach(r => {
+    (r.subtasks||[]).forEach(s => {
+      if (!s.date) return;
+      if (from && s.date < from) return;
+      if (to   && s.date > to)   return;
+      if (pla  && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return;
+      if (proj && (r.PROYECTO||'').trim().toUpperCase() !== proj.trim().toUpperCase()) return;
+      stPlanned++;
+      if (s.done) stDone++;
+    });
+  });
+  const totalPlanned = n + stPlanned, totalDone = real + stDone;
+  const cum = totalPlanned ? Math.round(totalDone/totalPlanned*100) : 0;
+  const avg = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r) => s+(r['CANTIDAD DE REPROGRAMACIONES']||0), 0);
   document.getElementById('rep-kpis').innerHTML = [
     {l:'Total',v:n},{l:'Realizadas',v:real},{l:'En Curso',v:d.filter(r=>r.ESTADO==='EN CURSO').length},
@@ -2164,7 +2180,8 @@ function renderRep() {
       ${plantas.map(pl => {
         const ap = d.filter(r=>r.PLANTA===pl);
         const avP  = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
-        const cumP = ap.length?Math.round(ap.filter(r=>r.ESTADO==='REALIZADA').length/ap.length*100):0;
+        let plStPl=0,plStDn=0; ap.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;plStPl++;if(s.done)plStDn++;}));
+        const cumP = (ap.length+plStPl)?Math.round((ap.filter(r=>r.ESTADO==='REALIZADA').length+plStDn)/(ap.length+plStPl)*100):0;
         const avColor  = avP>=70?'#22c55e':avP>=40?'#38bdf8':'#f97316';
         const cumColor = cumP>=70?'#22c55e':cumP>=40?'#38bdf8':'#ef4444';
         return `<div class="chart-card">
@@ -2206,7 +2223,8 @@ function renderRep() {
         ${projs.map(p => {
           const a = ap.filter(r=>r.PROYECTO===p);
           const av = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-          const cu = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+          let pjStPl=0,pjStDn=0; a.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;pjStPl++;if(s.done)pjStDn++;}));
+          const cu = (a.length+pjStPl)?Math.round((a.filter(r=>r.ESTADO==='REALIZADA').length+pjStDn)/(a.length+pjStPl)*100):0;
           const trp = a.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
           const col = pcol(p), cc = cu>=70?'var(--green)':cu>=40?'var(--orange)':'var(--red)';
           return `<div class="prog-item" onclick="openProjDr('${esc(p)}')">
@@ -2228,7 +2246,8 @@ function renderRep() {
   document.getElementById('rep-projs').innerHTML = uniq(d,'PROYECTO').map(p => {
     const a = d.filter(r=>r.PROYECTO===p);
     const av = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-    const cu = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+    let rpjStPl=0,rpjStDn=0; a.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;rpjStPl++;if(s.done)rpjStDn++;}));
+    const cu = (a.length+rpjStPl)?Math.round((a.filter(r=>r.ESTADO==='REALIZADA').length+rpjStDn)/(a.length+rpjStPl)*100):0;
     const col = pcol(p);
     return `<div class="prog-item"><div class="prog-hdr"><span class="prog-name">${p}</span><span class="prog-vals"><span style="color:${col}">${av}%</span><span>${cu}% cpl.</span></span></div><div class="prog-bar"><div class="prog-fill" style="width:${av}%;background:${col}"></div></div></div>`;
   }).join('');
@@ -2248,7 +2267,8 @@ function exportPDF() {
     return actInRange || stInRange;
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  const cum  = n ? Math.round(real/n*100) : 0;
+  let expStPl=0,expStDn=0; d.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;expStPl++;if(s.done)expStDn++;}));
+  const cum  = (n+expStPl) ? Math.round((real+expStDn)/(n+expStPl)*100) : 0;
   const avg  = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
   const plantas = uniq(d, 'PLANTA');
@@ -2265,11 +2285,13 @@ function exportPDF() {
     const ap = d.filter(r=>r.PLANTA===pl);
     const projs = uniq(ap,'PROYECTO');
     const avP  = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
-    const cumP = ap.length?Math.round(ap.filter(r=>r.ESTADO==='REALIZADA').length/ap.length*100):0;
+    let epStPl=0,epStDn=0; ap.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;epStPl++;if(s.done)epStDn++;}));
+    const cumP = (ap.length+epStPl)?Math.round((ap.filter(r=>r.ESTADO==='REALIZADA').length+epStDn)/(ap.length+epStPl)*100):0;
     const projRows = projs.map(p => {
       const a = ap.filter(r=>r.PROYECTO===p);
       const av = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-      const cu = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+      let epjStPl=0,epjStDn=0; a.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;epjStPl++;if(s.done)epjStDn++;}));
+      const cu = (a.length+epjStPl)?Math.round((a.filter(r=>r.ESTADO==='REALIZADA').length+epjStDn)/(a.length+epjStPl)*100):0;
       return `<tr><td style="padding:6px 10px;font-size:11px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:240px">${p}</td>
         <td style="padding:6px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0">${a.length}</td>
         <td style="padding:6px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0;color:#0ea5e9;font-weight:700">${av}%</td>
@@ -2564,6 +2586,7 @@ function exportPlanPDF() {
   });
 
   const plantas = [...new Set([...d.map(r=>r.PLANTA), ...stMatchedPDF.map(x=>x.act.PLANTA)].filter(Boolean))].sort();
+  const projs = [...new Set([...d.map(r=>r.PROYECTO), ...stMatchedPDF.map(x=>x.act.PROYECTO)].filter(Boolean))];
 
   let planTable = '';
   plantas.forEach(planta => {
@@ -2900,8 +2923,9 @@ function _DISABLED_saveAct_sync() {
   if (est === 'REPROGRAMADA') {
     const det = document.getElementById('m-repdet').value.trim();
     if (det) { detRep = (detRep ? detRep + '\n' : '') + `[${tds()}] ` + det; cntRep++; }
-    if (nfc) newFin = nfc;
-    finalEst = 'EN CURSO';
+    // REPROGRAMADA: keep original FECHA FIN unchanged (for period reports), only set NUEVA FECHA DE CIERRE
+    // DO NOT replace newFin (FECHA FIN) — keep the original planned date
+    finalEst = 'REPROGRAMADA'; // Keep REPROGRAMADA state (don't change to EN CURSO)
   }
 
   const obj = {
@@ -4378,12 +4402,10 @@ async function saveAct() {
       detRep = (detRep ? detRep + '\n' : '') + `[${tds()} - ${userName}] ${tipoLabel} ${det}`;
       cntRep++;
     }
-    // Save original FECHA FIN before reprogramming so reports still show in original period
-    if (existing && !existing._originalFin) {
-      existing._originalFin = existing['FECHA FIN'];
-    }
-    if (nfc) newFin = nfc;
-    finalEst = 'EN CURSO';
+    // REPROGRAMADA: keep original FECHA FIN unchanged (for period reports), only set NUEVA FECHA DE CIERRE
+    // DO NOT replace newFin (FECHA FIN) — keep the original planned date
+    // Only update nueva_fecha_cierre with nfc
+    finalEst = 'REPROGRAMADA'; // Keep REPROGRAMADA state (don't change to EN CURSO)
     // Track justified vs not for cumplimiento
     if (existing) {
       if (isJust) existing._reprog_just = (existing._reprog_just||0) + 1;
@@ -4573,7 +4595,7 @@ async function switchMod(key, el) {
   document.getElementById('tb-mod').textContent = label;
   if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
   // Clear all filters
-  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est'].forEach(id => {
+  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est','rep-plan-from','rep-plan-to','rep-plan-planta','rep-plan-proj'].forEach(id => {
     const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
   });
   try {
