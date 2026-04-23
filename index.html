@@ -2141,29 +2141,31 @@ function renderRep() {
   const pla  = document.getElementById('rep-planta')?.value || '';
   const proj = document.getElementById('rep-proj')?.value  || '';
   const d = get().filter(r => {
-    if (!r['FECHA FIN']) return false;
-    if (from && r['FECHA FIN'] < from) return false;
-    if (to   && r['FECHA FIN'] > to)   return false;
     if (pla  && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     if (proj && (r.PROYECTO||'').trim().toUpperCase() !== proj.trim().toUpperCase()) return false;
-    return true;
+    // Activity in range by FECHA FIN
+    const actInRange = r['FECHA FIN'] && (!from || r['FECHA FIN'] >= from) && (!to || r['FECHA FIN'] <= to);
+    // Any subtask in range
+    const stInRange = (r.subtasks||[]).some(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    return actInRange || stInRange;
+  });
+  // KPI: activities WITH subtasks only count via their subtasks; without subtasks count themselves
+  // Effective items for KPI: subtasks (if act has any in range) OR act itself (if no subtasks)
+  let effPlanned = 0, effDone = 0;
+  d.forEach(r => {
+    const stInRange = (r.subtasks||[]).filter(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    if (stInRange.length > 0) {
+      // Only subtasks count
+      effPlanned += stInRange.length;
+      effDone += stInRange.filter(s => s.done).length;
+    } else {
+      // Activity itself counts
+      effPlanned++;
+      if (r.ESTADO === 'REALIZADA') effDone++;
+    }
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  // Cumplimiento: (actividades cerradas + subtareas cerradas en el periodo) / (actividades planificadas + subtareas planificadas en el periodo)
-  let stPlanned = 0, stDone = 0;
-  get().forEach(r => {
-    (r.subtasks||[]).forEach(s => {
-      if (!s.date) return;
-      if (from && s.date < from) return;
-      if (to   && s.date > to)   return;
-      if (pla  && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return;
-      if (proj && (r.PROYECTO||'').trim().toUpperCase() !== proj.trim().toUpperCase()) return;
-      stPlanned++;
-      if (s.done) stDone++;
-    });
-  });
-  const totalPlanned = n + stPlanned, totalDone = real + stDone;
-  const cum = totalPlanned ? Math.round(totalDone/totalPlanned*100) : 0;
+  const cum = effPlanned ? Math.round(effDone/effPlanned*100) : 0;
   const avg = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r) => s+(r['CANTIDAD DE REPROGRAMACIONES']||0), 0);
   document.getElementById('rep-kpis').innerHTML = [
@@ -2316,7 +2318,7 @@ function exportPDF() {
         return true;
       });
       const stRows = filteredST.map(s => {
-        const stEst = s.done?'CERRADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
+        const stEst = s.done?'REALIZADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'#22c55e':(s.reprogramada?'#f97316':'#0ea5e9');
         const stDetail = s.reprogDetail || '';
         const stJust = stDetail.includes('[JUSTIFICADA]') ? '✔ Sí' : stDetail.includes('[NO JUSTIFICADA') ? '✖ No' : (s.reprogramada ? '—' : '');
@@ -2449,15 +2451,17 @@ function renderRepPlan() {
   const dt = planTo   ? new Date(planTo).toLocaleDateString('es-BO',{day:'2-digit',month:'short',year:'numeric'}) : '';
   const mesNm = df && dt ? `${df} → ${dt}` : df || dt;
 
-  // Filter activities: use _originalFin for reprogrammed ones, match by FECHA FIN inside range
+  // Filter activities: match by FECHA FIN OR any subtask in range
   const d = get().filter(r => {
-    const effFin = r._originalFin || r['FECHA FIN'];
-    if (!effFin) return false;
-    if (planFrom && effFin < planFrom) return false;
-    if (planTo   && effFin > planTo)   return false;
     if (planPlanta && (r.PLANTA||'').trim().toUpperCase() !== planPlanta.trim().toUpperCase()) return false;
     if (planProj && (r.PROYECTO||'').trim().toUpperCase() !== planProj.trim().toUpperCase()) return false;
-    return true;
+    const effFin = r._originalFin || r['FECHA FIN'];
+    const actInRange = effFin && (!planFrom || effFin >= planFrom) && (!planTo || effFin <= planTo);
+    const stInRange = (r.subtasks||[]).some(s => {
+      const sd = s._originalDate || s.date;
+      return sd && (!planFrom || sd >= planFrom) && (!planTo || sd <= planTo);
+    });
+    return actInRange || stInRange;
   });
 
   // Also collect subtasks in range
@@ -2483,8 +2487,40 @@ function renderRepPlan() {
   // Get all plants from results
   const plantas = [...new Set([...d.map(r=>r.PLANTA), ...stMatched.map(x=>x.act.PLANTA)].filter(Boolean))].sort();
 
-  let html = `<div style="margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">
-    ${mesNm} — ${d.length} actividades · ${stMatched.length} subtareas
+  // Calculate %cumplimiento for the period
+  // Items with subtasks: only subtasks count; items without subtasks count themselves
+  // REPROGRAMADA [NO JUSTIFICADA] counts as NOT done (penalizes %)
+  let planCumPl = 0, planCumDn = 0;
+  d.forEach(r => {
+    const stInRange = (r.subtasks||[]).filter(s => {
+      const sd = s._originalDate || s.date;
+      return sd && (!planFrom || sd >= planFrom) && (!planTo || sd <= planTo);
+    });
+    if (stInRange.length > 0) {
+      planCumPl += stInRange.length;
+      planCumDn += stInRange.filter(s => s.done).length;
+    } else {
+      planCumPl++;
+      const isReprogNJ = r.ESTADO === 'REPROGRAMADA' && (r['DETALLE DE REPROGRAMACION']||'').includes('[NO JUSTIFICADA');
+      if (r.ESTADO === 'REALIZADA') planCumDn++;
+      // else if isReprogNJ: penaliza - no suma
+    }
+  });
+  const cumPlan = planCumPl ? Math.round(planCumDn/planCumPl*100) : 0;
+  const cumColor = cumPlan >= 80 ? 'var(--green)' : cumPlan >= 50 ? 'var(--orange)' : 'var(--red)';
+
+  let html = `<div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">
+      ${mesNm} — ${d.length} actividades · ${stMatched.length} subtareas
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border-radius:10px;padding:8px 14px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;font-weight:600">%Cumplimiento</div>
+      <div style="font-size:26px;font-weight:800;color:${cumColor}">${cumPlan}%</div>
+      <div style="width:80px;height:8px;background:var(--bg);border-radius:99px;overflow:hidden">
+        <div style="height:100%;border-radius:99px;background:${cumColor};width:${cumPlan}%"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text2)">${planCumDn}/${planCumPl}</div>
+    </div>
   </div>`;
 
   plantas.forEach(planta => {
@@ -2504,14 +2540,17 @@ function renderRepPlan() {
       const avg = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
 
       const actRows = ap.map(r => {
-        const isReprog = !!r._originalFin;
-        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer${isReprog?';background:rgba(249,115,22,.05)':''}" onclick="openActDr('${r._id}')">
+        const isReprog = !!r._originalFin || r.ESTADO === 'REPROGRAMADA';
+        const isReprogNJ = r.ESTADO === 'REPROGRAMADA' && (r['DETALLE DE REPROGRAMACION']||'').includes('[NO JUSTIFICADA');
+        let rowBg = isReprogNJ ? ';background:rgba(239,68,68,.05)' : (isReprog ? ';background:rgba(249,115,22,.05)' : '');
+        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer${rowBg}" onclick="openActDr('${r._id}')">
           <td style="padding:5px 8px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isReprog?'<span title="Reprogramada" style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}</td>
-          <td style="padding:5px 8px;max-width:220px;white-space:normal;word-wrap:break-word">${r.ACTIVIDAD||'—'}</td>
+          <td style="padding:5px 8px;word-wrap:break-word;white-space:normal">${r.ACTIVIDAD||'—'}</td>
           <td style="padding:5px 8px;font-size:10px;color:var(--text2);white-space:nowrap">${r.RESPONSABLE||'—'}</td>
           <td style="padding:5px 8px;text-align:center">${badge(r.ESTADO||'PLANIFICADA')}</td>
           <td style="padding:5px 8px;text-align:center;color:var(--accent);font-weight:700">${r.AVANCE}%</td>
           <td style="padding:5px 8px;text-align:center;color:var(--text2);font-size:10px;white-space:nowrap">${fmtD(r._originalFin||r['FECHA FIN'])}</td>
+          <td style="padding:5px 8px;font-size:10px;color:var(--text2);word-wrap:break-word;white-space:normal">${r.OBSERVACIONES||'—'}</td>
         </tr>`;
       }).join('');
 
@@ -2522,11 +2561,12 @@ function renderRepPlan() {
         const estColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--text2)');
         return `<tr style="border-bottom:1px solid var(--border);background:rgba(139,148,158,.05)">
           <td style="padding:4px 8px;color:var(--text3);font-size:9px">↳ ${x.act['CÓDIGO']||'—'}</td>
-          <td style="padding:4px 8px;font-size:10px;color:var(--text2);max-width:220px;white-space:normal;word-wrap:break-word">▪ ${s.desc||'—'}${isReprogST?'<span style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}</td>
+          <td style="padding:4px 8px;font-size:10px;color:var(--text2);word-wrap:break-word;white-space:normal">▪ ${s.desc||'—'}${isReprogST?'<span style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}</td>
           <td style="padding:4px 8px;font-size:10px;color:var(--text2);white-space:nowrap">${s.resp||'—'}</td>
           <td style="padding:4px 8px;text-align:center;font-size:10px;font-weight:700;color:${estColor}">${stEstado}</td>
           <td style="padding:4px 8px;text-align:center;font-size:10px;color:var(--text2)">${s.done?'100':'0'}%</td>
           <td style="padding:4px 8px;text-align:center;font-size:10px;color:var(--text2);white-space:nowrap">${fmtD(s._originalDate||s.date)}</td>
+          <td style="padding:4px 8px;font-size:10px;color:var(--text2);word-wrap:break-word;white-space:normal">${s.stComment||'—'}</td>
         </tr>`;
       }).join('');
 
@@ -2534,8 +2574,8 @@ function renderRepPlan() {
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:4px;padding:4px 8px;background:rgba(56,189,248,.07);border-radius:5px;border-left:3px solid ${pcol(p)}">${p}</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">
           <colgroup>
-            <col style="width:90px"><col style="min-width:180px"><col style="width:120px">
-            <col style="width:100px"><col style="width:60px"><col style="width:80px">
+            <col style="width:80px"><col style="min-width:160px"><col style="width:100px">
+            <col style="width:90px"><col style="width:50px"><col style="width:70px"><col>
           </colgroup>
           <thead><tr style="background:var(--bg3)">
             <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase;white-space:nowrap">Código</th>
@@ -2544,6 +2584,7 @@ function renderRepPlan() {
             <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text2);text-transform:uppercase">Estado</th>
             <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text2);text-transform:uppercase">Av.</th>
             <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text2);text-transform:uppercase;white-space:nowrap">F.Fin</th>
+            <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text2);text-transform:uppercase">Observaciones</th>
           </tr></thead>
           <tbody>${actRows}${stRows}</tbody>
         </table>
@@ -2826,6 +2867,15 @@ function onEstChange() {
   const sec = document.getElementById('reprog-sec');
   if (est === 'REPROGRAMADA') { sec.classList.add('show'); document.getElementById('reprog-dt').textContent = '📅 Fecha de reprogramación: ' + tds(); }
   else sec.classList.remove('show');
+  // Auto-manage FECHA COMPLETADA: only set when REALIZADA
+  const compField = document.getElementById('m-comp');
+  if (compField) {
+    if (est === 'REALIZADA') {
+      if (!compField.value) compField.value = tds();
+    } else {
+      compField.value = ''; // Clear fecha completada when not REALIZADA
+    }
+  }
 }
 
 function autoGenST() {
@@ -2971,7 +3021,7 @@ function renderSTs() {
   const el = document.getElementById('st-list');
   if (!tmpST.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:18px">Sin subtareas.</div>'; return; }
   el.innerHTML = tmpST.map((s, idx) => {
-    const stEstado = s.done ? 'CERRADA' : (s.reprogramada ? 'REPROGRAMADA' : 'ABIERTA');
+    const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'ABIERTA');
     const estColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--accent)');
     return `<div style="background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${estColor}">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
@@ -3012,6 +3062,45 @@ function openSTReprog(stId) {
   s.reprogDetail = '[' + new Date().toISOString().split('T')[0] + '] ' + motivo;
   s.newDate = newDate;
   s.date = newDate; // Update the date
+
+  // Check if new date exceeds current activity FECHA FIN (from the modal)
+  const actFin = document.getElementById('m-fin')?.value;
+  if (actFin && newDate > actFin) {
+    // Update activity FECHA FIN in the modal
+    document.getElementById('m-fin').value = newDate;
+    // Generate additional monthly subtasks for months between old actFin and newDate
+    const oldFin = new Date(actFin + 'T00:00:00');
+    const newFin = new Date(newDate + 'T00:00:00');
+    // Start from month AFTER old actFin
+    let curY = oldFin.getFullYear(), curM = oldFin.getMonth() + 1;
+    if (curM > 11) { curM = 0; curY++; }
+    const endM = newFin.getMonth(), endY = newFin.getFullYear();
+    const actNm = document.getElementById('m-act')?.value.trim() || 'Actividad';
+    const resp  = document.getElementById('m-resp')?.value || '';
+    const MESES_F = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    let added = 0;
+    while (curY < endY || (curY === endY && curM <= endM)) {
+      const lastDay = new Date(curY, curM + 1, 0).toISOString().split('T')[0];
+      // Only add if no existing subtask has this date
+      const alreadyExists = tmpST.some(x => x.date === lastDay);
+      if (!alreadyExists) {
+        tmpST.push({
+          id: Date.now() + curM + curY * 12 + Math.random(),
+          desc: actNm + ', seguimiento de ' + MESES_F[curM] + ' ' + curY,
+          date: lastDay,
+          resp: resp,
+          done: false,
+          auto: true
+        });
+        added++;
+      }
+      curM++;
+      if (curM > 11) { curM = 0; curY++; }
+    }
+    if (added > 0) notify('📅 Fecha fin actualizada. ' + added + ' nuevas subtareas generadas');
+    else notify('📅 Fecha fin de actividad actualizada a ' + newDate);
+  }
+
   renderSTs();
   notify('🔄 Subtarea reprogramada');
 }
@@ -3111,7 +3200,43 @@ function togDrST(aId, sId) {
   openActDr(aId);
 }
 
-function _origOpenProjDr_DISABLED(proj) {
+async function removeReprog(actId) {
+  if (CURRENT_USER?.role !== 'admin') return;
+  if (!confirm('¿Eliminar la última reprogramación? Esta acción no se puede deshacer.')) return;
+  const r = get().find(a => a._id === actId); if (!r) return;
+  let detRep = r['DETALLE DE REPROGRAMACION'] || '';
+  let cntRep = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
+  // Remove last entry (last line)
+  const lines = detRep.split('\n').filter(Boolean);
+  if (lines.length > 0) lines.pop();
+  detRep = lines.join('\n');
+  cntRep = Math.max(0, cntRep - 1);
+  const newEstado = cntRep === 0 ? (r['FECHA COMPLETADA'] ? 'REALIZADA' : 'EN CURSO') : 'REPROGRAMADA';
+  const newNFC = cntRep === 0 ? null : r['NUEVA FECHA DE CIERRE'];
+  r['DETALLE DE REPROGRAMACION'] = detRep;
+  r['CANTIDAD DE REPROGRAMACIONES'] = cntRep;
+  r.ESTADO = newEstado;
+  r['NUEVA FECHA DE CIERRE'] = newNFC;
+  await saveActToDB({ ...r, 'CANTIDAD DE REPROGRAMACIONES': cntRep, 'DETALLE DE REPROGRAMACION': detRep, 'ESTADO': newEstado, 'NUEVA FECHA DE CIERRE': newNFC }, r._dbid);
+  await loadModFromDB(ACTIVE);
+  openActDr(actId);
+  notify('✅ Reprogramación eliminada');
+}
+
+async function editReprog(actId) {
+  if (CURRENT_USER?.role !== 'admin') return;
+  const r = get().find(a => a._id === actId); if (!r) return;
+  const current = r['DETALLE DE REPROGRAMACION'] || '';
+  const newDetail = prompt('Editar detalle de reprogramación:', current);
+  if (newDetail === null) return;
+  r['DETALLE DE REPROGRAMACION'] = newDetail;
+  await saveActToDB({ ...r, 'DETALLE DE REPROGRAMACION': newDetail }, r._dbid);
+  await loadModFromDB(ACTIVE);
+  openActDr(actId);
+  notify('✏️ Detalle de reprogramación actualizado');
+}
+
+function openProjDr(proj) {
   const acts = get().filter(r => r.PROYECTO === proj);
   const avg  = acts.length ? Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length) : 0;
   const cum  = acts.length ? Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100) : 0;
@@ -4152,9 +4277,11 @@ async function kanbanDrop(event, newEstado) {
   const oldEstado = r.ESTADO;
   r.ESTADO = newEstado;
   if (newEstado === 'REALIZADA') { r.AVANCE = 100; r['FECHA COMPLETADA'] = tds(); }
+  else { r['FECHA COMPLETADA'] = null; } // Clear fecha completada when not REALIZADA
   // Save to DB
   const update = { estado: newEstado, updated_at: new Date().toISOString() };
   if (newEstado === 'REALIZADA') { update.avance = 100; update.fecha_completada = tds(); }
+  else { update.fecha_completada = null; }
   await _sb.from('actividades').update(update).eq('id', r._dbid);
   await saveHistoryToDB(r._dbid, 'ESTADO', oldEstado, newEstado);
   notify('✅ ' + (r['CÓDIGO']||'Actividad') + ' → ' + newEstado);
@@ -4383,6 +4510,7 @@ async function saveAct() {
   let avance = parseInt(document.getElementById('m-avance').value) || 0;
   let comp   = document.getElementById('m-comp').value || null;
   if (est === 'REALIZADA') { avance = 100; if (!comp) comp = tds(); }
+  else { comp = null; } // Clear fecha completada if not REALIZADA
 
   const existing = editingId !== null ? get().find(a => a._id === editingId) : null;
   let detRep = existing?.['DETALLE DE REPROGRAMACION'] || '';
@@ -5505,13 +5633,18 @@ function openActDr(id) {
       <div class="d-mb"><div class="d-ml">Planta</div><div class="d-mv">${(r.PLANTA||'—').replace('PLANTA ','')}</div></div>
     </div>
     ${r.OBSERVACIONES?`<div class="d-obs"><div class="d-obs-l">Observaciones</div>${nlBr(r.OBSERVACIONES)}</div>`:''}
-    ${rn>0?`<div class="d-rep-box"><div class="d-rep-l">Reprogramaciones (${rn})</div>
+    ${rn>0?`<div class="d-rep-box"><div class="d-rep-l">Reprogramaciones (${rn})
+      ${isAdmin?`<span style="float:right;display:flex;gap:5px;margin-top:-2px">
+        <button onclick="editReprog('${r._id}')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer">✏ Editar</button>
+        <button onclick="removeReprog('${r._id}')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);color:var(--red);cursor:pointer">✕ Remover</button>
+      </span>`:''}
+    </div>
       ${r['NUEVA FECHA DE CIERRE']?`<div style="font-size:12px;color:var(--text2);margin-top:4px">Nueva fecha cierre: <span style="color:var(--orange);font-weight:600">${r['NUEVA FECHA DE CIERRE']}</span></div>`:''}
       ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
     </div>`:''}
     ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT})</div>
       ${r.subtasks.map(s=>{
-        const stEst = s.done?'CERRADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
+        const stEst = s.done?'REALIZADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'var(--green)':(s.reprogramada?'var(--orange)':'var(--accent)');
         return `<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border-left:3px solid ${stCol}">
         <div class="d-st" style="border:none;padding:0">
