@@ -216,6 +216,16 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .fg label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; font-weight:600 }
 .fg select, .fg input[type=text] { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:5px 9px; border-radius:6px; font-size:12px; font-family:'Barlow',sans-serif; cursor:pointer; min-width:130px; transition:border-color .15s }
 .fg select:focus, .fg input:focus { outline:none; border-color:var(--accent) }
+/* Searchable select styles */
+.srch-select-wrap { position:relative; display:inline-block; min-width:130px }
+.srch-select-wrap input.srch-inp { width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:5px 28px 5px 9px;border-radius:6px;font-size:12px;font-family:'Barlow',sans-serif;cursor:pointer;transition:border-color .15s;box-sizing:border-box }
+.srch-select-wrap input.srch-inp:focus { outline:none;border-color:var(--accent) }
+.srch-select-wrap .srch-arrow { position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text2);font-size:10px }
+.srch-dropdown { position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;min-width:160px;max-height:220px;overflow-y:auto;display:none }
+.srch-dropdown.open { display:block }
+.srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);transition:background .12s }
+.srch-opt:hover,.srch-opt.sel { background:rgba(56,189,248,.12);color:var(--accent) }
+.srch-opt.placeholder { color:var(--text2);font-style:italic }
 
 /* ── KPI ── */
 .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:11px; margin-bottom:18px }
@@ -1015,7 +1025,7 @@ tr:hover .act-btns { opacity:1 }
         </div>
         <div class="fg"><span class="fl">Fecha Inicio</span><input class="fi" id="m-ini" type="date"></div>
         <div class="fg"><span class="fl">Fecha Fin</span><input class="fi" id="m-fin" type="date" onchange="autoGenST()"></div>
-        <div class="fg"><span class="fl">Fecha Completada (auto)</span><input class="fi" id="m-comp" readonly placeholder="Se asigna al cerrar"></div>
+        <div class="fg"><span class="fl">Fecha Completada <span id="m-comp-lbl" style="font-size:9px;color:var(--text3)">(solo admin)</span></span><input class="fi" id="m-comp" readonly placeholder="Se asigna al cerrar"></div>
         <div class="fg"><span class="fl">Estado</span>
           <select class="fi" id="m-est" onchange="onEstChange()">
             <option>PLANIFICADA</option><option>EN CURSO</option><option>REALIZADA</option><option>REPROGRAMADA</option>
@@ -1307,6 +1317,130 @@ function setDD(id, vals, keepFirst = true, addNew = false) {
     const o = document.createElement('option'); o.value = '__new'; o.textContent = '+ Agregar nuevo'; s.appendChild(o);
   }
   if (cur && [...s.options].some(o => o.value === cur)) s.value = cur;
+  // Update searchable wrapper if exists
+  const wrap = document.getElementById('srch-' + id);
+  if (wrap) { const inp = wrap.querySelector('.srch-inp'); if (inp && s.value) inp.value = s.options[s.selectedIndex]?.textContent || ''; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEARCHABLE SELECT — wraps filter <select> elements
+// ═══════════════════════════════════════════════════════════
+const _srchSelectState = {};
+function makeSearchableSelect(selectId, placeholder) {
+  const origSel = document.getElementById(selectId);
+  if (!origSel || origSel._searchable) return;
+  origSel._searchable = true;
+  const wrap = document.createElement('div');
+  wrap.className = 'srch-select-wrap';
+  wrap.id = 'srch-' + selectId;
+  origSel.parentNode.insertBefore(wrap, origSel);
+  origSel.style.display = 'none';
+  wrap.appendChild(origSel);
+  const inp = document.createElement('input');
+  inp.className = 'srch-inp';
+  inp.placeholder = placeholder || 'Todos';
+  inp.autocomplete = 'off';
+  const arrow = document.createElement('span');
+  arrow.className = 'srch-arrow';
+  arrow.textContent = '▾';
+  wrap.insertBefore(inp, origSel);
+  wrap.appendChild(arrow);
+  // Dropdown
+  const dd = document.createElement('div');
+  dd.className = 'srch-dropdown';
+  document.body.appendChild(dd);
+  _srchSelectState[selectId] = { inp, dd, origSel, open: false };
+  function getOpts() { return [...origSel.options].filter(o => o.value !== '__new'); }
+  function renderDD(filter) {
+    const opts = getOpts().filter(o => !filter || o.textContent.toLowerCase().includes(filter.toLowerCase()));
+    dd.innerHTML = opts.map(o =>
+      `<div class="srch-opt${o.value===origSel.value?' sel':''}${!o.value?' placeholder':''}" data-val="${o.value}">${o.textContent}</div>`
+    ).join('');
+    dd.querySelectorAll('.srch-opt').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        origSel.value = el.dataset.val;
+        inp.value = el.dataset.val ? el.textContent : '';
+        closeDD();
+        origSel.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+  function openDD() {
+    const r = inp.getBoundingClientRect();
+    dd.style.left = r.left + 'px';
+    dd.style.top  = (r.bottom + 2) + 'px';
+    dd.style.width = Math.max(r.width, 180) + 'px';
+    dd.classList.add('open');
+    _srchSelectState[selectId].open = true;
+    renderDD(inp.value);
+  }
+  function closeDD() {
+    dd.classList.remove('open');
+    _srchSelectState[selectId].open = false;
+    // Reset inp to match current select value
+    const cur = [...origSel.options].find(o => o.value === origSel.value);
+    inp.value = (cur && cur.value) ? cur.textContent : '';
+  }
+  inp.addEventListener('focus', () => { inp.value = ''; openDD(); });
+  inp.addEventListener('blur', () => setTimeout(closeDD, 200));
+  inp.addEventListener('input', () => renderDD(inp.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeDD(); inp.blur(); }
+    if (e.key === 'ArrowDown') {
+      const items = dd.querySelectorAll('.srch-opt');
+      const cur = dd.querySelector('.srch-opt.sel');
+      const idx = [...items].indexOf(cur);
+      if (items[idx+1]) { items.forEach(i => i.classList.remove('sel')); items[idx+1].classList.add('sel'); items[idx+1].scrollIntoView({block:'nearest'}); }
+    }
+    if (e.key === 'ArrowUp') {
+      const items = dd.querySelectorAll('.srch-opt');
+      const cur = dd.querySelector('.srch-opt.sel');
+      const idx = [...items].indexOf(cur);
+      if (idx > 0) { items.forEach(i => i.classList.remove('sel')); items[idx-1].classList.add('sel'); items[idx-1].scrollIntoView({block:'nearest'}); }
+    }
+    if (e.key === 'Enter') {
+      const sel = dd.querySelector('.srch-opt.sel');
+      if (sel) { origSel.value = sel.dataset.val; inp.value = sel.dataset.val ? sel.textContent : ''; closeDD(); origSel.dispatchEvent(new Event('change')); }
+    }
+  });
+}
+
+// Initialize searchable selects on the filter bars
+function initSearchableFilters() {
+  const filterSelects = [
+    {id:'f-planta',ph:'Todas las plantas'},
+    {id:'f-proyecto',ph:'Todos los proyectos'},
+    {id:'f-resp',ph:'Todos los responsables'},
+    {id:'f-mes',ph:'Todos los meses'},
+    {id:'f-trim',ph:'Todos los trimestres'},
+    {id:'a-planta',ph:'Todas las plantas'},
+    {id:'a-proj',ph:'Todos los proyectos'},
+    {id:'a-resp2',ph:'Todos los responsables'},
+    {id:'a-est',ph:'Todos los estados'},
+    {id:'rep-planta',ph:'Todas las plantas'},
+    {id:'rep-proj',ph:'Todos los proyectos'},
+    {id:'rep-plan-planta',ph:'Todas las plantas'},
+    {id:'rep-plan-proj',ph:'Todos los proyectos'},
+  ];
+  filterSelects.forEach(({id, ph}) => makeSearchableSelect(id, ph));
+}
+
+// Cascade dashboard filters: when planta changes, filter available projects and responsables
+function cascadeFilters() {
+  const pla = document.getElementById('f-planta')?.value || '';
+  const prj = document.getElementById('f-proyecto')?.value || '';
+  let d = get();
+  // Filter by current selections to get available options
+  const byPlanta = pla ? d.filter(r => (r.PLANTA||'').trim().toUpperCase() === pla.trim().toUpperCase()) : d;
+  const byPlaAndProj = (pla && prj) ? byPlanta.filter(r => (r.PROYECTO||'').trim().toUpperCase() === prj.trim().toUpperCase()) : byPlanta;
+  // Update proyecto options based on planta
+  const projs = uniq(byPlanta, 'PROYECTO');
+  setDD('f-proyecto', projs);
+  if (prj && !projs.includes(prj)) { const pEl = document.getElementById('f-proyecto'); if (pEl) pEl.value = ''; }
+  // Update responsable options based on planta + project
+  const resps = uniq(byPlaAndProj, 'RESPONSABLE').filter(Boolean);
+  setDD('f-resp', resps);
 }
 
 function _DISABLED_populateDDs_old() {
@@ -1493,7 +1627,7 @@ function getFiltered() {
     return true;
   });
 }
-function applyF()  { renderDash(); renderActs(); renderProjs(); renderGantt(); renderCal(); }
+function applyF()  { cascadeFilters(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCal(); }
 function clearF()  {
   ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','rep-proj','rep-plan-proj','rep-plan-from','rep-plan-to'].forEach(id => {
     const e = document.getElementById(id); if (e) e.value = '';
@@ -1910,7 +2044,7 @@ function renderActs() {
     return `<tr id="act-row-${r._id}">
       <td><span class="code-lbl">${r['CÓDIGO']}</span></td>
       <td>
-        <button class="name-btn" onclick="openActDr('${r._id}')" title="${r.ACTIVIDAD||''}">${(r.ACTIVIDAD||'—').substring(0,33)}${(r.ACTIVIDAD||'').length>33?'…':''}</button>
+        <button class="name-btn" onclick="openActDr('${r._id}')" title="${r.ACTIVIDAD||''}" style="white-space:normal;text-align:left;word-break:break-word;max-width:220px">${r.ACTIVIDAD||'—'}</button>
         ${r.subtasks?.length ? `<div style="font-size:10px;color:var(--text2)">${r.subtasks.filter(s=>s.done).length}/${r.subtasks.length} subtareas</div>` : ''}
       </td>
       <td style="font-size:10px;color:var(--text2)">${(r.PLANTA||'').replace('PLANTA ','')}</td>
@@ -1926,7 +2060,7 @@ function renderActs() {
       </select>`:badge(r.ESTADO||'PLANIFICADA')}</td>
       <td style="text-align:center"><span style="font-size:11px;font-weight:700;color:${rn>0?'var(--orange)':'var(--text2)'}">${rn}</span></td>
       <td>${ie?`<input type="number" min="0" max="100" value="${r.AVANCE}" class="fi" style="padding:2px 5px;font-size:11px;width:55px;border-radius:4px;background:transparent;border:1px solid transparent;text-align:center" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','avance',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:
-      `<div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${r.AVANCE}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${r.AVANCE}%</span></div>`}</td>
+      (() => { const stT = r.subtasks?.length||0; const stD = r.subtasks?.filter(s=>s.done).length||0; const effAv = stT>0?Math.round(stD/stT*100):r.AVANCE; return `<div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${effAv}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${effAv}%${stT>0?`<span style="font-size:9px;color:var(--text3)"> (${stD}/${stT})</span>`:''}` + `</span></div>`; })()}</td>
       ${cfCells}
       <td><div class="act-btns">
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
@@ -2174,37 +2308,54 @@ function renderRep() {
     {l:'Cumplimiento',v:cum+'%'},{l:'Avance Prom.',v:avg+'%'},{l:'Total Reprog.',v:tRep}
   ].map(k => `<div class="rep-kpi"><div class="rk-v">${k.v}</div><div class="rk-l">${k.l}</div></div>`).join('');
 
-  // ── GAUGES por planta ──
+  // ── GAUGES — solo % cumplimiento global del período/selección ──
   const plantas = uniq(d, 'PLANTA');
-  const gaugeColors = { avance:'var(--accent)', cumplimiento:'var(--green)' };
-  document.getElementById('rep-plant-gauges').innerHTML = plantas.length === 0 ? '' :
-    `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-      ${plantas.map(pl => {
-        const ap = d.filter(r=>r.PLANTA===pl);
-        const avP  = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
-        let plStPl=0,plStDn=0; ap.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;plStPl++;if(s.done)plStDn++;}));
-        const cumP = (ap.length+plStPl)?Math.round((ap.filter(r=>r.ESTADO==='REALIZADA').length+plStDn)/(ap.length+plStPl)*100):0;
-        const avColor  = avP>=70?'#22c55e':avP>=40?'#38bdf8':'#f97316';
-        const cumColor = cumP>=70?'#22c55e':cumP>=40?'#38bdf8':'#ef4444';
-        return `<div class="chart-card">
-          <div class="chart-head">${pl.replace('PLANTA ','')}</div>
-          <div style="display:flex;justify-content:space-around;align-items:flex-start">
-            <div style="text-align:center">
-              ${gaugeArc(avP, avColor)}
-              <div style="font-size:10px;color:var(--text2);margin-top:-4px">Avance Prom.</div>
-            </div>
-            <div style="text-align:center">
-              ${gaugeArc(cumP, cumColor)}
-              <div style="font-size:10px;color:var(--text2);margin-top:-4px">Cumplimiento</div>
-            </div>
+  const cumColor = cum>=70?'#22c55e':cum>=40?'#38bdf8':'#ef4444';
+  const avColor  = avg>=70?'#22c55e':avg>=40?'#38bdf8':'#f97316';
+  // Calcular totales de actividades y subtareas
+  let totalSubtasks = 0;
+  d.forEach(r => {
+    const stInRange = (r.subtasks||[]).filter(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    totalSubtasks += stInRange.length;
+  });
+  const periodoLabel = (from || to) ? ((from?from:'inicio')+' → '+(to?to:'fin')) : 'Todo el período';
+  document.getElementById('rep-plant-gauges').innerHTML = `
+    <div class="chart-card" style="margin-bottom:0">
+      <div class="chart-head">% Cumplimiento del Período Seleccionado</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">${periodoLabel}</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:24px">
+        <div style="text-align:center">
+          ${gaugeArc(cum, cumColor)}
+          <div style="font-size:11px;color:var(--text2);margin-top:-4px;font-weight:700">% Cumplimiento</div>
+          <div style="font-size:10px;color:var(--text2)">${effDone}/${effPlanned} realizadas</div>
+        </div>
+        <div style="text-align:center">
+          ${gaugeArc(avg, avColor)}
+          <div style="font-size:11px;color:var(--text2);margin-top:-4px;font-weight:700">% Avance Prom.</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+            <div style="font-size:22px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif">${n}</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total Actividades</div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px">
-            <div class="rep-kpi" style="padding:6px"><div class="rk-v" style="font-size:18px">${ap.length}</div><div class="rk-l">Total</div></div>
-            <div class="rep-kpi" style="padding:6px"><div class="rk-v" style="font-size:18px;color:var(--green)">${ap.filter(r=>r.ESTADO==='REALIZADA').length}</div><div class="rk-l">Realiz.</div></div>
-            <div class="rep-kpi" style="padding:6px"><div class="rk-v" style="font-size:18px;color:var(--orange)">${ap.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0)}</div><div class="rk-l">T.Reprog</div></div>
+          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+            <div style="font-size:22px;font-weight:700;color:var(--purple);font-family:'Barlow Condensed',sans-serif">${totalSubtasks}</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total Subtareas</div>
           </div>
-        </div>`;
-      }).join('')}
+          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+            <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:'Barlow Condensed',sans-serif">${n + totalSubtasks}</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total General</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+            <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'Barlow Condensed',sans-serif">${real}</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Realizadas</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+            <div style="font-size:22px;font-weight:700;color:var(--orange);font-family:'Barlow Condensed',sans-serif">${tRep}</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">T. Reprog.</div>
+          </div>
+        </div>
+      </div>
     </div>`;
 
   // ── SECCIONES por planta ──
@@ -2940,6 +3091,14 @@ function openModal(id = null) {
   document.getElementById('m-ini').value     = r['FECHA INICIO']|| '';
   document.getElementById('m-fin').value     = r['FECHA FIN']  || '';
   document.getElementById('m-comp').value    = r['FECHA COMPLETADA'] || '';
+  // Only admin can edit fecha completada
+  const compEl = document.getElementById('m-comp');
+  if (compEl) {
+    const isAdminUser = CURRENT_USER?.role === 'admin';
+    compEl.readOnly = !isAdminUser;
+    compEl.style.opacity = isAdminUser ? '1' : '0.6';
+    compEl.title = isAdminUser ? '' : 'Solo administradores pueden editar la fecha completada';
+  }
   document.getElementById('m-est').value     = r.ESTADO        || 'PLANIFICADA';
   document.getElementById('m-avance').value  = r.AVANCE        || 0;
   document.getElementById('m-avl').textContent = r.AVANCE      || 0;
@@ -3039,7 +3198,9 @@ function renderSTs() {
         <button class="btn btn-sm" onclick="editST(${s.id})" style="font-size:10px;background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">✏ Editar</button>
         <button class="btn btn-sm" onclick="openSTReprog(${s.id})" style="font-size:10px;background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.3)">🔄 Reprogramar</button>
         <button class="btn btn-sm" onclick="closeSTWithComment(${s.id})" style="font-size:10px;background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)">✓ Cerrar</button>
-      </div>`:''}
+      </div>`:(CURRENT_USER?.role==='admin'?`<div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-sm" onclick="editSTAdmin(${s.id})" style="font-size:10px;background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">✏ Editar (Admin)</button>
+      </div>`:'')}
       ${s.stComment?`<div style="margin-top:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);line-height:1.4">💬 ${s.stComment}</div>`:''}
       ${s.reprogramada && s.reprogDetail?`<div style="margin-top:6px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);line-height:1.4">
         <div style="font-size:9px;color:var(--orange);font-weight:700;text-transform:uppercase;margin-bottom:2px">${s.reprogJustificada?'✓ Justificada':'✗ No Justificada'}</div>
@@ -3130,6 +3291,30 @@ function editST(stId) {
   }
   renderSTs();
   notify('✏️ Subtarea actualizada');
+}
+
+function editSTAdmin(stId) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar subtareas cerradas', true); return; }
+  const s = tmpST.find(x => x.id === stId); if (!s) return;
+  const newDesc = prompt('Descripción de la subtarea:', s.desc || '');
+  if (newDesc === null) return;
+  if (newDesc.trim()) s.desc = newDesc.trim();
+  const newDate = prompt('Fecha límite (YYYY-MM-DD):', s.date || '');
+  if (newDate !== null && newDate.trim()) s.date = newDate.trim();
+  const newResp = prompt('Responsable:', s.resp || '');
+  if (newResp !== null) s.resp = newResp.trim();
+  const reopenST = confirm('¿Reabrir esta subtarea (marcarla como pendiente)?');
+  if (reopenST) {
+    s.done = false;
+    s.reprogramada = false;
+    s.stComment = (s.stComment || '') + ' [Reabierta por admin ' + new Date().toISOString().split('T')[0] + ']';
+  }
+  const newComment = prompt('Comentario de edición admin:', '');
+  if (newComment !== null && newComment.trim()) {
+    s.stComment = (s.stComment||'') + ' [Admin ' + new Date().toISOString().split('T')[0] + '] ' + newComment.trim();
+  }
+  renderSTs();
+  notify('✏️ Subtarea editada por administrador');
 }
 function addCmt() {
   const t = document.getElementById('cmt-inp').value.trim(); if (!t) return;
@@ -4314,7 +4499,18 @@ function subscribeRealtime() {
     })
     .subscribe();
 
-  REALTIME_SUBS = [actSub, cmtSub];
+  // Subscribe to modulos changes (project active/inactive state shared across users)
+  const modSub = _sb.channel('modulos-proj-status')
+    .on('postgres_changes', { event:'*', schema:'public', table:'modulos' }, async payload => {
+      const key = payload.new?.key || payload.old?.key || '';
+      if (key.includes('_proj_status')) {
+        await loadDisabledProjects();
+        renderProjs();
+      }
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub, modSub];
 }
 
 function unsubscribeRealtime() {
@@ -4776,6 +4972,8 @@ function populateDDs() {
   setDD('np-planta', plantas, true, false);
   // Subtask responsible — all users
   setDD('st-resp', SB_PROFILES.length ? SB_PROFILES.map(p=>p.name).sort() : resps, true, false);
+  // Initialize searchable selects (only once)
+  if (!window._searchableInited) { window._searchableInited = true; setTimeout(initSearchableFilters, 100); }
 }
 
 // Mention autocomplete
