@@ -24,6 +24,16 @@ html.light {
 }
 html.light .kpi:hover { box-shadow:0 4px 16px rgba(14,165,233,.15) }
 html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
+/* ContentEditable placeholder */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text3);
+  pointer-events: none;
+  font-style: italic;
+}
+[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0 }
+[contenteditable] table th, [contenteditable] table td { border:1px solid var(--border); padding:4px 7px; font-size:11px }
+[contenteditable] table th { background:var(--bg3); font-weight:700 }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
@@ -1747,15 +1757,36 @@ function renderCharts(d, real, enc, plan, rep) {
   // Get filtered data from all activities (not just current filter) for the bar chart
   const allActs = get();
   const fMesVal = document.getElementById('f-mes')?.value;
-  // Count activities per month (including subtasks)
+  // Count activities per month: use _originalFin if reprogrammed, otherwise FECHA FIN
+  // This ensures reprogrammed activities are ALSO counted in their original month (plus any in new month)
   const moT = MESES.map((_, i) => {
-    const actCount = allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i).length;
-    const stCount  = allActs.reduce((cnt, r) => cnt + (r.subtasks||[]).filter(s => s.date && new Date(s.date).getMonth() === i).length, 0);
+    const actCount = allActs.filter(r => {
+      const origFin = r._originalFin || r['FECHA FIN'];
+      // Count in original month
+      if (origFin && new Date(origFin).getMonth() === i) return true;
+      // Also count in current FECHA FIN if different (reprogrammed)
+      if (r._originalFin && r['FECHA FIN'] && r['FECHA FIN'] !== r._originalFin && new Date(r['FECHA FIN']).getMonth() === i) return true;
+      return false;
+    }).length;
+    const stCount  = allActs.reduce((cnt, r) => {
+      return cnt + (r.subtasks||[]).filter(s => {
+        const origDate = s._originalDate || s.date;
+        if (origDate && new Date(origDate).getMonth() === i) return true;
+        if (s._originalDate && s.date && s.date !== s._originalDate && new Date(s.date).getMonth() === i) return true;
+        return false;
+      }).length;
+    }, 0);
     return actCount + stCount;
   });
   const moD = MESES.map((_, i) => {
-    const actDone = allActs.filter(r => r['FECHA FIN'] && new Date(r['FECHA FIN']).getMonth() === i && r.ESTADO === 'REALIZADA').length;
-    const stDone  = allActs.reduce((cnt, r) => cnt + (r.subtasks||[]).filter(s => s.date && new Date(s.date).getMonth() === i && s.done).length, 0);
+    const actDone = allActs.filter(r => {
+      const origFin = r._originalFin || r['FECHA FIN'];
+      return origFin && new Date(origFin).getMonth() === i && r.ESTADO === 'REALIZADA';
+    }).length;
+    const stDone  = allActs.reduce((cnt, r) => cnt + (r.subtasks||[]).filter(s => {
+      const origDate = s._originalDate || s.date;
+      return origDate && new Date(origDate).getMonth() === i && s.done;
+    }).length, 0);
     return actDone + stDone;
   });
   // Highlight the filtered month
@@ -2277,10 +2308,14 @@ function renderRep() {
   const d = get().filter(r => {
     if (pla  && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     if (proj && (r.PROYECTO||'').trim().toUpperCase() !== proj.trim().toUpperCase()) return false;
-    // Activity in range by FECHA FIN
-    const actInRange = r['FECHA FIN'] && (!from || r['FECHA FIN'] >= from) && (!to || r['FECHA FIN'] <= to);
-    // Any subtask in range
-    const stInRange = (r.subtasks||[]).some(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    // Activity in range: check ORIGINAL date for reprogrammed activities
+    const origFin = r._originalFin || r['FECHA FIN'];
+    const actInRange = origFin && (!from || origFin >= from) && (!to || origFin <= to);
+    // Any subtask in range (using original date)
+    const stInRange = (r.subtasks||[]).some(s => {
+      const sd = s._originalDate || s.date;
+      return sd && (!from || sd >= from) && (!to || sd <= to);
+    });
     return actInRange || stInRange;
   });
   // KPI: activities WITH subtasks only count via their subtasks; without subtasks count themselves
@@ -2602,12 +2637,15 @@ function renderRepPlan() {
   const dt = planTo   ? new Date(planTo).toLocaleDateString('es-BO',{day:'2-digit',month:'short',year:'numeric'}) : '';
   const mesNm = df && dt ? `${df} → ${dt}` : df || dt;
 
-  // Filter activities: match by FECHA FIN OR any subtask in range
+  // Filter activities: match by ORIGINAL FECHA FIN (before reprogramming) OR current FECHA FIN in range
+  // Reprogrammed activities must appear in their ORIGINAL month, not just the rescheduled month
   const d = get().filter(r => {
     if (planPlanta && (r.PLANTA||'').trim().toUpperCase() !== planPlanta.trim().toUpperCase()) return false;
     if (planProj && (r.PROYECTO||'').trim().toUpperCase() !== planProj.trim().toUpperCase()) return false;
-    const effFin = r._originalFin || r['FECHA FIN'];
-    const actInRange = effFin && (!planFrom || effFin >= planFrom) && (!planTo || effFin <= planTo);
+    // Use original date if reprogrammed - so it shows in original month
+    const origFin = r._originalFin || r['FECHA FIN'];
+    const actInRange = origFin && (!planFrom || origFin >= planFrom) && (!planTo || origFin <= planTo);
+    // Also check subtasks original dates
     const stInRange = (r.subtasks||[]).some(s => {
       const sd = s._originalDate || s.date;
       return sd && (!planFrom || sd >= planFrom) && (!planTo || sd <= planTo);
@@ -2818,14 +2856,14 @@ function exportPlanPDF() {
           <td style="padding:5px 8px;font-size:10px;text-align:center">${r.ESTADO||'PLANIFICADA'}</td>
           <td style="padding:5px 8px;font-size:10px;text-align:center;font-weight:700;color:#0ea5e9">${r.AVANCE}%</td>
           <td style="padding:5px 8px;font-size:10px;text-align:center;color:#64748b">${fmtD(r._originalFin||r['FECHA FIN'])}</td>
-          <td style="padding:5px 8px;font-size:10px;color:#64748b;max-width:160px;word-wrap:break-word">${(r.OBSERVACIONES||'—').substring(0,60)}</td>
+          <td style="padding:5px 8px;font-size:10px;color:#64748b;max-width:160px;word-wrap:break-word;white-space:pre-wrap">${r.OBSERVACIONES||'—'}</td>
         </tr>`;
       }).join('');
 
       planTable += `<div style="margin-bottom:14px;page-break-inside:avoid">
         <div style="background:#1e40af;color:#fff;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">${p}</div>
         <table style="width:100%;border-collapse:collapse;font-family:sans-serif;table-layout:fixed">
-          <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:90px"><col style="width:45px"><col style="width:70px"><col style="width:130px"></colgroup>
+          <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:90px"><col style="width:45px"><col style="width:70px"><col style="width:180px"></colgroup>
           <thead><tr style="background:#e2e8f0">
             <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Código</th>
             <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Actividad</th>
@@ -2843,6 +2881,28 @@ function exportPlanPDF() {
 
   const totalActivities = d.length;
   const totalSubtasks = stMatchedPDF.length;
+
+  // Calculate KPIs for PDF
+  const kpiRealiz = d.filter(r => r.ESTADO === 'REALIZADA').length;
+  const kpiEnCurso = d.filter(r => r.ESTADO === 'EN CURSO').length;
+  const kpiReprog = d.filter(r => r.ESTADO === 'REPROGRAMADA').length;
+  const kpiPlan = d.filter(r => r.ESTADO === 'PLANIFICADA').length;
+  const kpiAvgAvance = totalActivities ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/totalActivities) : 0;
+  const kpiCumpl = totalActivities ? Math.round(kpiRealiz/totalActivities*100) : 0;
+  const kpiCumplColor = kpiCumpl >= 80 ? '#16a34a' : kpiCumpl >= 50 ? '#ea580c' : '#dc2626';
+  const kpiCards = [
+    { l:'Total Actividades', v: totalActivities + (totalSubtasks > 0 ? ' + ' + totalSubtasks + ' sub.' : ''), c: '#0284c7' },
+    { l:'Cumplimiento', v: kpiCumpl + '%', c: kpiCumplColor },
+    { l:'Avance Prom.', v: kpiAvgAvance + '%', c: '#0284c7' },
+    { l:'Realizadas', v: kpiRealiz, c: '#16a34a' },
+    { l:'En Curso', v: kpiEnCurso, c: '#0ea5e9' },
+    { l:'Reprogramadas', v: kpiReprog, c: '#ea580c' },
+    { l:'Planificadas', v: kpiPlan, c: '#64748b' },
+    { l:'Proyectos', v: projs.length, c: '#7c3aed' },
+  ].map(k => `<div style="text-align:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 8px;border-top:3px solid ${k.c}">
+    <div style="font-size:20px;font-weight:800;color:${k.c};font-family:'Barlow Condensed',sans-serif,Arial">${k.v}</div>
+    <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;font-weight:600">${k.l}</div>
+  </div>`).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Planificación ${mesNm}</title>
   <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;margin:18mm 15mm;color:#1e293b}@media print{body{margin:0}.no-print{display:none}}</style>
@@ -2864,6 +2924,10 @@ function exportPlanPDF() {
       </td>
     </tr>
   </table>
+  <!-- KPI CARDS -->
+  <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px">
+    ${kpiCards}
+  </div>
   ${planTable}
   <div class="no-print" style="position:fixed;bottom:20px;right:20px;display:flex;gap:10px">
     <button onclick="window.print()" style="padding:10px 22px;background:#1e40af;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨 Imprimir / PDF</button>
@@ -2969,11 +3033,71 @@ function openNewProj() {
   document.getElementById('mo-proj').classList.add('open');
 }
 function closeProjMo() { document.getElementById('mo-proj').classList.remove('open'); }
-function saveProj() {
+async function saveProj() {
   const name = document.getElementById('np-name')?.value.trim(); if (!name) { notify('⚠ Nombre requerido', true); return; }
   const col = document.getElementById('np-color')?.value || '#38bdf8';
+  const planta = document.getElementById('np-planta')?.value || '';
   if (!COLORS_ALL[ACTIVE]) COLORS_ALL[ACTIVE] = {};
   COLORS_ALL[ACTIVE][name] = col;
+  // Check if project already exists in current module
+  const existing = get().find(r => (r.PROYECTO||'').toLowerCase() === name.toLowerCase());
+  if (existing) { notify('⚠ Ya existe un proyecto con ese nombre', true); return; }
+  // Create a placeholder activity to "anchor" the project in the module
+  // This way the project appears immediately in the projects view
+  const placeholderRow = {
+    modulo: ACTIVE,
+    codigo: 'PROJ-' + Date.now().toString(36).toUpperCase().slice(-4),
+    anio: new Date().getFullYear(),
+    actividad: '(Proyecto creado — agrega actividades)',
+    planta: planta,
+    proyecto: name,
+    responsable: CURRENT_USER?.name || '',
+    fecha_inicio: null,
+    fecha_fin: null,
+    fecha_completada: null,
+    estado: 'PLANIFICADA',
+    avance: 0,
+    observaciones: '',
+    cant_reprog: 0,
+    detalle_reprog: '',
+    nueva_fecha_cierre: null,
+    subtasks: [],
+    attachments: [],
+    created_by: CURRENT_USER?.id
+  };
+  let newId = null;
+  try {
+    const { data, error } = await _sb.from('actividades').insert(placeholderRow).select().single();
+    if (error) {
+      // If DB fails, add locally
+      console.warn('DB insert failed, adding locally:', error.message);
+    } else {
+      newId = data?.id;
+    }
+  } catch(e) { console.warn('saveProj DB error:', e); }
+
+  // Always add to local state so UI updates immediately
+  if (!MS[ACTIVE]) MS[ACTIVE] = { acts: [], sF: 'CÓDIGO', sA: true, pg: 1 };
+  const localAct = {
+    _id: newId || ('local_' + Date.now()),
+    _dbid: newId || null,
+    'CÓDIGO': placeholderRow.codigo,
+    'AÑO': placeholderRow.anio,
+    'ACTIVIDAD': placeholderRow.actividad,
+    'PLANTA': planta,
+    'PROYECTO': name,
+    'RESPONSABLE': placeholderRow.responsable,
+    'FECHA INICIO': null, 'FECHA FIN': null, 'FECHA COMPLETADA': null,
+    'ESTADO': 'PLANIFICADA',
+    'AVANCE': 0,
+    'OBSERVACIONES': '',
+    'CANTIDAD DE REPROGRAMACIONES': 0,
+    'DETALLE DE REPROGRAMACION': '',
+    'NUEVA FECHA DE CIERRE': null,
+    MODULE: ACTIVE, subtasks: [], attachments: [], comments: [], _history: []
+  };
+  MS[ACTIVE].acts.push(localAct);
+
   // Add to all project selects
   ['f-proyecto','m-proj','a-proj','g-proj'].forEach(id => {
     const s = document.getElementById(id); if (!s) return;
@@ -2982,8 +3106,13 @@ function saveProj() {
     else s.appendChild(o);
   });
   const mp = document.getElementById('m-proj'); if (mp) mp.value = name;
-  closeProjMo(); renderProjs(); notify('✅ Proyecto "' + name + '" creado');
+  closeProjMo();
+  populateDDs();
+  renderProjs();
+  renderDash();
+  notify('✅ Proyecto "' + name + '" creado');
   document.getElementById('np-name').value = '';
+  if (document.getElementById('np-planta')) document.getElementById('np-planta').value = '';
 }
 function addNewPlanta() {
   const v = prompt('Nombre de la nueva planta:'); if (!v) return;
@@ -3604,41 +3733,161 @@ function parseComment(txt) {
   return txt.replace(/@(\w+)/g, '<span class="ac-mention">@$1</span>');
 }
 
-function addDrawerComment(actId) {
-  const inp = document.getElementById('dr-cmt-inp'); if (!inp) return;
-  const txt = inp.value.trim(); if (!txt) return;
-  const r = get().find(a => a._id === actId); if (!r) return;
-  if (!r.comments) r.comments = [];
-  const usr = USERS.find(u => u.role === 'admin') || USERS[0];
-  const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow() };
-  r.comments.push(cmt);
-  inp.value = '';
-  // Check for mentions and notify
-  const mentions = txt.match(/@(\S+)/g);
-  if (mentions) {
-    mentions.forEach(m => addNotif('mention', `Te mencionaron en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${txt.substring(0,40)}`, actId));
+function cmtPlaceholder(el) {
+  if (el.textContent.trim() === '' && !el.querySelector('*')) {
+    el.style.color = 'var(--text3)';
+  } else {
+    el.style.color = 'var(--text)';
   }
+}
+function cmtExecCmd(cmd) {
+  const el = document.getElementById('dr-cmt-inp');
+  if (el) { el.focus(); document.execCommand(cmd, false, null); }
+}
+function cmtInsertTable(actId) {
+  const rows = parseInt(prompt('Número de filas:', '3') || '3');
+  const cols = parseInt(prompt('Número de columnas:', '3') || '3');
+  if (!rows || !cols) return;
+  let tbl = '<table style="border-collapse:collapse;width:100%;margin:6px 0" contenteditable="true"><thead><tr>';
+  for (let c = 0; c < cols; c++) tbl += `<th style="border:1px solid var(--border);padding:5px 8px;background:var(--bg3);font-size:11px;font-weight:700;text-align:left" contenteditable="true">Col ${c+1}</th>`;
+  tbl += '</tr></thead><tbody>';
+  for (let r = 0; r < rows; r++) {
+    tbl += '<tr>';
+    for (let c = 0; c < cols; c++) tbl += '<td style="border:1px solid var(--border);padding:5px 8px;font-size:11px;min-width:60px" contenteditable="true"></td>';
+    tbl += '</tr>';
+  }
+  tbl += '</tbody></table>';
+  const el = document.getElementById('dr-cmt-inp');
+  if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
+}
+// Store pending attachments per activity
+if (!window._pendingAttachments) window._pendingAttachments = {};
+function cmtHandleAttach(actId, input) {
+  const files = [...input.files];
+  if (!files.length) return;
+  if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
+  const preview = document.getElementById('dr-attach-preview-' + actId);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const isImg = file.type.startsWith('image/');
+      const attach = { name: file.name, type: file.type, data: ev.target.result, isImg };
+      window._pendingAttachments[actId].push(attach);
+      if (preview) {
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
+        item.innerHTML = isImg
+          ? `<img src="${ev.target.result}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="window.open('${ev.target.result}','_blank')">`
+          + `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
+          + `<button onclick="this.parentNode.remove();window._pendingAttachments['${actId}'].splice(${window._pendingAttachments[actId].length-1},1)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`
+          : `<span style="font-size:14px">📄</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
+          + `<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
+        preview.appendChild(item);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function addDrawerComment(actId) {
+  const el = document.getElementById('dr-cmt-inp'); if (!el) return;
+  const txt = el.innerHTML.trim();
+  const plainTxt = el.innerText.trim();
+  if (!plainTxt && !(window._pendingAttachments?.[actId]?.length)) return;
+  const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
+  if (!r.comments) r.comments = [];
+  const usr = CURRENT_USER || USERS.find(u => u.role === 'admin') || USERS[0];
+  const attachments = window._pendingAttachments?.[actId] || [];
+  const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments: [...attachments] };
+  r.comments.push(cmt);
+  // Clear
+  el.innerHTML = '';
+  if (window._pendingAttachments) window._pendingAttachments[actId] = [];
+  const preview = document.getElementById('dr-attach-preview-' + actId);
+  if (preview) preview.innerHTML = '';
+  // Save to DB
+  const htmlTxt = txt;
+  if (r._dbid) {
+    saveCommentToDB(r._dbid, htmlTxt).then(data => {
+      if (data) { cmt._dbid = data.id; }
+    });
+  }
+  // Mentions
+  const mentions = plainTxt.match(/@(\S+)/g);
+  if (mentions) mentions.forEach(m => addNotif('mention', `Te mencionaron en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${plainTxt.substring(0,40)}`, actId));
   addNotif('comment', `Nuevo comentario en "${(r.ACTIVIDAD||'').substring(0,25)}…"`, actId);
   renderDrawerComments(actId);
 }
 
 function renderDrawerComments(actId) {
-  const r = get().find(a => a._id === actId); if (!r) return;
+  const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
   const el = document.getElementById('dr-cmts-thread'); if (!el) return;
   const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
+  const isAdmin = CURRENT_USER?.role === 'admin';
   if (!r.comments || !r.comments.length) {
     el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:10px">Sin comentarios aún.</div>';
     return;
   }
-  el.innerHTML = r.comments.map((c, i) =>
-    `<div class="ac-msg">
+  el.innerHTML = r.comments.map((c, i) => {
+    const attachHtml = (c.attachments||[]).map(att => att.isImg
+      ? `<div style="margin-top:6px"><img src="${att.data}" style="max-width:220px;max-height:160px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border)" onclick="window.open('${att.data}','_blank')" title="${att.name}"></div>`
+      : `<div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text2);cursor:pointer" onclick="window.open('${att.data}','_blank')">📄 ${att.name}</div>`
+    ).join('');
+    const editBtn = isAdmin ? `<button onclick="editComment('${actId}',${c.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 4px;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'" title="Editar">✏</button>
+      <button onclick="deleteComment('${actId}',${c.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 4px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" title="Eliminar">🗑</button>` : '';
+    return `<div class="ac-msg" id="cmt-${c.id}">
       <div class="ac-av" style="background:${avColors[i % avColors.length]}">${(c.user||'?')[0].toUpperCase()}</div>
-      <div class="ac-bubble">
-        <div class="ac-meta">${c.user} &nbsp;·&nbsp; ${c.ts}</div>
-        <div class="ac-text">${parseComment(c.text)}</div>
+      <div class="ac-bubble" style="flex:1">
+        <div class="ac-meta" style="display:flex;align-items:center;gap:6px">${c.user} &nbsp;·&nbsp; ${c.ts}${editBtn}</div>
+        <div class="ac-text" style="white-space:pre-wrap;word-break:break-word">${parseComment(c.text||'')}</div>
+        ${attachHtml}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.scrollTop = el.scrollHeight;
+}
+
+function editComment(actId, cmtId) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar comentarios', true); return; }
+  const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
+  const c = r.comments?.find(x => x.id === cmtId); if (!c) return;
+  const bubble = document.querySelector(`#cmt-${cmtId} .ac-text`); if (!bubble) return;
+  const orig = c.text;
+  bubble.contentEditable = 'true';
+  bubble.style.border = '1px solid var(--accent)';
+  bubble.style.borderRadius = '4px';
+  bubble.style.padding = '4px';
+  bubble.focus();
+  function save() {
+    bubble.contentEditable = 'false';
+    bubble.style.border = '';
+    bubble.style.padding = '';
+    c.text = bubble.innerHTML;
+    c.ts = c.ts + ' (editado)';
+    // Save to DB if available
+    if (c._dbid && r._dbid) {
+      _sb.from('comentarios').update({ texto: c.text }).eq('id', c._dbid).then(()=>{});
+    }
+    renderDrawerComments(actId);
+    notify('✅ Comentario editado');
+  }
+  bubble.addEventListener('blur', save, { once: true });
+  bubble.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); bubble.blur(); } });
+}
+
+function deleteComment(actId, cmtId) {
+  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden eliminar comentarios', true); return; }
+  if (!confirm('¿Eliminar este comentario?')) return;
+  const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
+  const idx = r.comments?.findIndex(x => x.id === cmtId);
+  if (idx >= 0) {
+    const c = r.comments[idx];
+    if (c._dbid) _sb.from('comentarios').delete().eq('id', c._dbid).then(()=>{});
+    r.comments.splice(idx, 1);
+  }
+  renderDrawerComments(actId);
+  notify('🗑 Comentario eliminado');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -5855,17 +6104,40 @@ function openActDr(id) {
           <span>${s.date||''}</span>
           ${s.reprogramada&&s.newDate?'<span style="color:var(--orange)">→ '+s.newDate+'</span>':''}
         </div>
-        ${s.stComment?'<div style="font-size:11px;color:var(--text);margin-top:4px;padding-left:20px;font-style:italic">💬 '+s.stComment+'</div>':''}
+        ${s.stComment?'<div style="font-size:11px;color:var(--text);margin-top:4px;padding-left:20px;font-style:italic;white-space:pre-line">💬 '+s.stComment+'</div>':''}
         ${s.reprogramada&&s.reprogDetail?'<div style="font-size:10px;color:var(--orange);margin-top:4px;padding-left:20px">'+(s.reprogJustificada?'✓ Justificada':'✗ No Justificada')+': '+s.reprogDetail+'</div>':''}
       </div>`;
       }).join('')}`:''}
-    <div class="d-sec" style="margin-top:14px">💬 Comentarios</div>
+    <div class="d-sec" style="margin-top:14px">💬 Comentarios y Observaciones</div>
     <div class="ac-thread" id="dr-cmts-thread"></div>
-    <div style="display:flex;gap:6px;margin-bottom:14px;position:relative">
-      <input class="fi" id="dr-cmt-inp" placeholder="Escribe un comentario… usa @nombre para mencionar" style="flex:1;font-size:12px;padding:7px 10px"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addDrawerComment('${r._id}')}">
-      <button class="btn btn-sm" onclick="addDrawerComment('${r._id}')">Enviar</button>
+    <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg3)">
+      <!-- Rich toolbar -->
+      <div style="display:flex;flex-wrap:wrap;gap:3px;padding:6px 8px;background:var(--bg2);border-bottom:1px solid var(--border)">
+        <button type="button" title="Negrita" onclick="cmtExecCmd('bold')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:11px">B</button>
+        <button type="button" title="Cursiva" onclick="cmtExecCmd('italic')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:11px">I</button>
+        <button type="button" title="Subrayado" onclick="cmtExecCmd('underline')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;text-decoration:underline;font-size:11px">U</button>
+        <div style="width:1px;background:var(--border);margin:0 3px"></div>
+        <button type="button" title="Lista" onclick="cmtExecCmd('insertUnorderedList')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">☰</button>
+        <button type="button" title="Insertar tabla" onclick="cmtInsertTable('${r._id}')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">⊞ Tabla</button>
+        <div style="width:1px;background:var(--border);margin:0 3px"></div>
+        <label title="Adjuntar archivo/imagen" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
+          📎 Adjuntar
+          <input type="file" id="dr-cmt-file-${r._id}" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="cmtHandleAttach('${r._id}',this)">
+        </label>
+        <div style="flex:1"></div>
+        <button type="button" onclick="addDrawerComment('${r._id}')" class="btn btn-accent btn-sm">Enviar</button>
+      </div>
+      <!-- Editable area -->
+      <div id="dr-cmt-inp" contenteditable="true" 
+        style="min-height:70px;max-height:200px;overflow-y:auto;padding:10px 12px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
+        data-placeholder="Escribe un comentario… usa @nombre para mencionar. Puedes pegar tablas o insertar una con el botón."
+        onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addDrawerComment('${r._id}')}"
+        oninput="cmtPlaceholder(this)"></div>
+      <!-- Attach preview -->
+      <div id="dr-attach-preview-${r._id}" style="padding:0 8px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
+    <!-- Pending attachments buffer -->
+    <div id="dr-pending-attach-${r._id}" style="display:none"></div>
     <div class="d-sec">📋 Historial de cambios</div>
     <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
       ${renderHistory(r)}
@@ -5878,7 +6150,11 @@ function openActDr(id) {
 
   openDr();
   renderDrawerComments(r._id);
-  setTimeout(()=>setupMentionAutocomplete('dr-cmt-inp',r._id),100);
+  // No mention autocomplete needed - contenteditable handles it
+  setTimeout(()=>{
+    const cmtEl = document.getElementById('dr-cmt-inp');
+    if(cmtEl) { cmtEl.style.color='var(--text)'; }
+  },100);
 }
 
 // ════════════════════════════════════════════════════════════════
