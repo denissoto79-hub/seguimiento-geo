@@ -34,6 +34,8 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
 [contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0 }
 [contenteditable] table th, [contenteditable] table td { border:1px solid var(--border); padding:4px 7px; font-size:11px }
 [contenteditable] table th { background:var(--bg3); font-weight:700 }
+/* obs editor images */
+#m-obs-editor img { max-width:100%; border-radius:6px; margin:4px 0; }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
@@ -1044,7 +1046,24 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><span class="fl">Avance (<span id="m-avl">0</span>%)</span>
           <input class="fi-range" id="m-avance" type="range" min="0" max="100" value="0" oninput="document.getElementById('m-avl').textContent=this.value">
         </div>
-        <div class="fg fg-full"><span class="fl">Observaciones</span><textarea class="fi fi-ta" id="m-obs" placeholder="Notas, contexto&#8230;"></textarea></div>
+        <div class="fg fg-full"><span class="fl">Observaciones</span>
+          <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg3)">
+            <div style="display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;background:var(--bg2);border-bottom:1px solid var(--border)">
+              <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('bold')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:10px">B</button>
+              <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('italic')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:10px">I</button>
+              <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('insertUnorderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px">☰</button>
+              <button type="button" onclick="obsInsertTable()" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:10px;font-weight:700">⊞ Tabla</button>
+              <label style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
+                📎 Imagen
+                <input type="file" id="m-obs-img-input" accept="image/*" style="display:none" onchange="obsInsertImage(this)">
+              </label>
+            </div>
+            <div id="m-obs-editor" contenteditable="true"
+              style="min-height:80px;max-height:220px;overflow-y:auto;padding:8px 10px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
+              data-placeholder="Notas, contexto… Puedes insertar tablas e imágenes"></div>
+          </div>
+          <textarea id="m-obs" style="display:none" placeholder="Notas, contexto…"></textarea>
+        </div>
       </div>
       <div class="reprog-sec" id="reprog-sec">
         <div class="reprog-hdr">&#9888; Detalle de Reprogramaci&#243;n</div>
@@ -2318,23 +2337,27 @@ function renderRep() {
     });
     return actInRange || stInRange;
   });
-  // KPI: activities WITH subtasks only count via their subtasks; without subtasks count themselves
-  // Effective items for KPI: subtasks (if act has any in range) OR act itself (if no subtasks)
-  let effPlanned = 0, effDone = 0;
+  // KPI: cumplimiento = promedio de AVANCE% de actividades/subtareas en el rango
+  // Ejemplo: 2 actividades con 100% y 1 con 0% → cumplimiento = 66%
+  let effPlanned = 0, effAvanceSum = 0, effDone = 0;
   d.forEach(r => {
-    const stInRange = (r.subtasks||[]).filter(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
+    const stInRange = (r.subtasks||[]).filter(s => {
+      const sd = s._originalDate || s.date;
+      return sd && (!from || sd >= from) && (!to || sd <= to);
+    });
     if (stInRange.length > 0) {
-      // Only subtasks count
       effPlanned += stInRange.length;
-      effDone += stInRange.filter(s => s.done).length;
+      const doneST = stInRange.filter(s => s.done).length;
+      effAvanceSum += doneST * 100;
+      effDone += doneST;
     } else {
-      // Activity itself counts
       effPlanned++;
+      effAvanceSum += (r.AVANCE || 0);
       if (r.ESTADO === 'REALIZADA') effDone++;
     }
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  const cum = effPlanned ? Math.round(effDone/effPlanned*100) : 0;
+  const cum = effPlanned ? Math.round(effAvanceSum / effPlanned) : 0;
   const avg = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r) => s+(r['CANTIDAD DE REPROGRAMACIONES']||0), 0);
   document.getElementById('rep-kpis').innerHTML = [
@@ -2677,9 +2700,8 @@ function renderRepPlan() {
   const plantas = [...new Set([...d.map(r=>r.PLANTA), ...stMatched.map(x=>x.act.PLANTA)].filter(Boolean))].sort();
 
   // Calculate %cumplimiento for the period
-  // Items with subtasks: only subtasks count; items without subtasks count themselves
-  // REPROGRAMADA [NO JUSTIFICADA] counts as NOT done (penalizes %)
-  let planCumPl = 0, planCumDn = 0;
+  // Cumplimiento = promedio de AVANCE% de actividades/subtareas del período
+  let planCumPl = 0, planCumDn = 0, planAvanceSum = 0;
   d.forEach(r => {
     const stInRange = (r.subtasks||[]).filter(s => {
       const sd = s._originalDate || s.date;
@@ -2687,15 +2709,16 @@ function renderRepPlan() {
     });
     if (stInRange.length > 0) {
       planCumPl += stInRange.length;
-      planCumDn += stInRange.filter(s => s.done).length;
+      const doneST = stInRange.filter(s => s.done).length;
+      planCumDn += doneST;
+      planAvanceSum += doneST * 100;
     } else {
       planCumPl++;
-      const isReprogNJ = r.ESTADO === 'REPROGRAMADA' && (r['DETALLE DE REPROGRAMACION']||'').includes('[NO JUSTIFICADA');
       if (r.ESTADO === 'REALIZADA') planCumDn++;
-      // else if isReprogNJ: penaliza - no suma
+      planAvanceSum += (r.AVANCE || 0);
     }
   });
-  const cumPlan = planCumPl ? Math.round(planCumDn/planCumPl*100) : 0;
+  const cumPlan = planCumPl ? Math.round(planAvanceSum / planCumPl) : 0;
   const cumColor = cumPlan >= 80 ? 'var(--green)' : cumPlan >= 50 ? 'var(--orange)' : 'var(--red)';
 
   let html = `<div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2888,7 +2911,7 @@ function exportPlanPDF() {
   const kpiReprog = d.filter(r => r.ESTADO === 'REPROGRAMADA').length;
   const kpiPlan = d.filter(r => r.ESTADO === 'PLANIFICADA').length;
   const kpiAvgAvance = totalActivities ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/totalActivities) : 0;
-  const kpiCumpl = totalActivities ? Math.round(kpiRealiz/totalActivities*100) : 0;
+  const kpiCumpl = totalActivities ? Math.round(d.reduce((s,r)=>s+(r.AVANCE||0),0)/totalActivities) : 0;
   const kpiCumplColor = kpiCumpl >= 80 ? '#16a34a' : kpiCumpl >= 50 ? '#ea580c' : '#dc2626';
   const kpiCards = [
     { l:'Total Actividades', v: totalActivities + (totalSubtasks > 0 ? ' + ' + totalSubtasks + ' sub.' : ''), c: '#0284c7' },
@@ -3231,7 +3254,7 @@ function openModal(id = null) {
   document.getElementById('m-est').value     = r.ESTADO        || 'PLANIFICADA';
   document.getElementById('m-avance').value  = r.AVANCE        || 0;
   document.getElementById('m-avl').textContent = r.AVANCE      || 0;
-  document.getElementById('m-obs').value     = r.OBSERVACIONES || '';
+  setObsValue(r.OBSERVACIONES || '');
   document.getElementById('reprog-sec').classList.remove('show');
   document.getElementById('m-nfcierre').value = r['NUEVA FECHA DE CIERRE'] || '';
   document.getElementById('m-repdet').value  = '';
@@ -3278,7 +3301,7 @@ function _DISABLED_saveAct_sync() {
     'FECHA COMPLETADA': comp,
     'ESTADO':  finalEst,
     'AVANCE':  avance,
-    'OBSERVACIONES':               document.getElementById('m-obs').value,
+    'OBSERVACIONES':               getObsValue(),
     'CANTIDAD DE REPROGRAMACIONES': cntRep,
     'DETALLE DE REPROGRAMACION':    detRep,
     'NUEVA FECHA DE CIERRE':        nfc,
@@ -3739,6 +3762,46 @@ function cmtPlaceholder(el) {
   } else {
     el.style.color = 'var(--text)';
   }
+}
+
+// Obs editor helpers
+function obsInsertTable() {
+  const rows = parseInt(prompt('Número de filas:', '3') || '3');
+  const cols = parseInt(prompt('Número de columnas:', '3') || '3');
+  if (!rows || !cols) return;
+  let tbl = '<table><thead><tr>';
+  for (let c = 0; c < cols; c++) tbl += `<th contenteditable="true">Col ${c+1}</th>`;
+  tbl += '</tr></thead><tbody>';
+  for (let r = 0; r < rows; r++) {
+    tbl += '<tr>';
+    for (let c = 0; c < cols; c++) tbl += '<td contenteditable="true"></td>';
+    tbl += '</tr>';
+  }
+  tbl += '</tbody></table>';
+  const el = document.getElementById('m-obs-editor');
+  if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
+}
+function obsInsertImage(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const el = document.getElementById('m-obs-editor');
+    if (el) { el.focus(); document.execCommand('insertHTML', false, `<img src="${ev.target.result}" style="max-width:100%;border-radius:6px;margin:4px 0">`); }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function getObsValue() {
+  const editor = document.getElementById('m-obs-editor');
+  if (editor) return editor.innerHTML.trim();
+  const ta = document.getElementById('m-obs');
+  return ta ? ta.value : '';
+}
+function setObsValue(val) {
+  const editor = document.getElementById('m-obs-editor');
+  if (editor) editor.innerHTML = val || '';
+  const ta = document.getElementById('m-obs');
+  if (ta) ta.value = val || '';
 }
 function cmtExecCmd(cmd) {
   const el = document.getElementById('dr-cmt-inp');
@@ -4998,7 +5061,7 @@ async function saveAct() {
     'FECHA COMPLETADA': comp,
     'ESTADO':    finalEst,
     'AVANCE':    avance,
-    'OBSERVACIONES': document.getElementById('m-obs').value,
+    'OBSERVACIONES': getObsValue(),
     'CANTIDAD DE REPROGRAMACIONES': cntRep,
     'DETALLE DE REPROGRAMACION': detRep,
     'NUEVA FECHA DE CIERRE': nfc,
@@ -5110,51 +5173,74 @@ async function deleteProject(proj) {
 }
 
 // addDrawerComment — use CURRENT_USER name, save to DB
+// addDrawerComment — unified version supporting rich contenteditable + old plain input
 async function addDrawerComment(actId) {
-  const inp = document.getElementById('dr-cmt-inp'); if (!inp) return;
-  const txt = inp.value.trim(); if (!txt) return;
-  const r = get().find(a => a._id === actId); if (!r) return;
-  inp.value = '';
-
-  // Save to Supabase
-  const saved = await saveCommentToDB(r._dbid, txt);
-  if (!saved) return;
-
-  // Add locally
+  const el = document.getElementById('dr-cmt-inp'); if (!el) return;
+  // Support both contenteditable div (new) and plain input (legacy)
+  const isContentEditable = el.contentEditable === 'true' || el.getAttribute('contenteditable') === 'true';
+  const txt = isContentEditable ? el.innerHTML.trim() : (el.value || '').trim();
+  const plainTxt = isContentEditable ? (el.innerText || '').trim() : (el.value || '').trim();
+  const hasAttachments = window._pendingAttachments?.[actId]?.length > 0;
+  if (!plainTxt && !hasAttachments) return;
+  const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   if (!r.comments) r.comments = [];
-  r.comments.push({ id:saved.id, user:CURRENT_USER.name, text:txt, ts:new Date(saved.created_at).toLocaleString('es-BO') });
-
-  // Notify mentioned users
-  const mentionedIds = getUsersFromMentions(txt);
-  if (mentionedIds.length) {
-    await addNotifForUsers(mentionedIds, 'mention',
-      `${CURRENT_USER.name} te mencionó en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${txt.substring(0,40)}`, r._dbid);
-  }
-  // Notify responsible and admin
-  const relUsers = getUsersRelatedToAct(r).filter(uid => uid !== CURRENT_USER.id);
-  if (relUsers.length) {
-    await addNotifForUsers(relUsers, 'comment',
-      `${CURRENT_USER.name} comentó en "${(r.ACTIVIDAD||'').substring(0,25)}…"`, r._dbid);
-  }
-
+  const usr = CURRENT_USER || USERS.find(u => u.role === 'admin') || USERS[0];
+  const attachments = window._pendingAttachments?.[actId] || [];
+  const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments: [...attachments] };
+  // Clear input
+  if (isContentEditable) { el.innerHTML = ''; }
+  else { el.value = ''; }
+  if (window._pendingAttachments) window._pendingAttachments[actId] = [];
+  const preview = document.getElementById('dr-attach-preview-' + actId);
+  if (preview) preview.innerHTML = '';
+  // Save to Supabase
+  try {
+    if (r._dbid) {
+      const saved = await saveCommentToDB(r._dbid, txt);
+      if (saved) { cmt._dbid = saved.id; cmt.ts = new Date(saved.created_at).toLocaleString('es-BO'); }
+    }
+  } catch(e) { console.warn('Comment DB save error:', e); }
+  r.comments.push(cmt);
+  // Notify
+  try {
+    const mentionedIds = typeof getUsersFromMentions === 'function' ? getUsersFromMentions(plainTxt) : [];
+    if (mentionedIds.length && typeof addNotifForUsers === 'function') {
+      await addNotifForUsers(mentionedIds, 'mention', `${usr.name} te mencionó en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${plainTxt.substring(0,40)}`, r._dbid);
+    }
+    const relUsers = typeof getUsersRelatedToAct === 'function' ? getUsersRelatedToAct(r).filter(uid => uid !== usr.id) : [];
+    if (relUsers.length && typeof addNotifForUsers === 'function') {
+      await addNotifForUsers(relUsers, 'comment', `${usr.name} comentó en "${(r.ACTIVIDAD||'').substring(0,25)}…"`, r._dbid);
+    }
+  } catch(e) {}
   renderDrawerComments(actId);
 }
 
+// renderDrawerComments — unified version with admin edit/delete and attachment display
 function renderDrawerComments(actId) {
-  const r = get().find(a => a._id === actId); if (!r) return;
+  const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   const el = document.getElementById('dr-cmts-thread'); if (!el) return;
   const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
+  const isAdmin = CURRENT_USER?.role === 'admin';
   if (!r.comments || !r.comments.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:10px">Sin comentarios aún.</div>'; return;
+    el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:10px">Sin comentarios aún.</div>';
+    return;
   }
-  el.innerHTML = r.comments.map((c, i) => `
-    <div class="ac-msg">
-      <div class="ac-av" style="background:${avColors[i%avColors.length]}">${(c.user||'?')[0].toUpperCase()}</div>
-      <div class="ac-bubble">
-        <div class="ac-meta">${c.user} &nbsp;·&nbsp; ${c.ts}</div>
-        <div class="ac-text">${parseComment(c.text)}</div>
+  el.innerHTML = r.comments.map((c, i) => {
+    const attachHtml = (c.attachments||[]).map(att => att.isImg
+      ? `<div style="margin-top:6px"><img src="${att.data}" style="max-width:220px;max-height:160px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border)" onclick="window.open('${att.data}','_blank')" title="${att.name}"></div>`
+      : `<div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text2);cursor:pointer" onclick="window.open('${att.data}','_blank')">📄 ${att.name}</div>`
+    ).join('');
+    const editBtn = isAdmin ? `<button onclick="editComment('${actId}',${c.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 4px" title="Editar">✏</button>
+      <button onclick="deleteComment('${actId}',${c.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 4px" title="Eliminar">🗑</button>` : '';
+    return `<div class="ac-msg" id="cmt-${c.id}">
+      <div class="ac-av" style="background:${avColors[i % avColors.length]}">${(c.user||'?')[0].toUpperCase()}</div>
+      <div class="ac-bubble" style="flex:1">
+        <div class="ac-meta" style="display:flex;align-items:center;gap:6px">${c.user} &nbsp;·&nbsp; ${c.ts}${editBtn}</div>
+        <div class="ac-text" style="white-space:pre-wrap;word-break:break-word">${parseComment(c.text||'')}</div>
+        ${attachHtml}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.scrollTop = el.scrollHeight;
 }
 
@@ -5310,12 +5396,26 @@ function _DISABLED_openActDr_v2(id) {
         <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:11px'};flex:1">${s.desc}</span>
         <span style="font-size:10px;color:var(--text2)">${s.resp||''}</span>
       </div>`).join('')}` : ''}
-    <div class="d-sec" style="margin-top:14px">💬 Comentarios</div>
+    <div class="d-sec" style="margin-top:14px">💬 Comentarios y Observaciones</div>
     <div class="ac-thread" id="dr-cmts-thread"></div>
-    <div style="display:flex;gap:6px;margin-bottom:14px;position:relative">
-      <input class="fi" id="dr-cmt-inp" placeholder="Escribe un comentario… usa @nombre para mencionar" style="flex:1;font-size:11px;padding:6px 9px"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addDrawerComment('${r._id}')}">
-      <button class="btn btn-sm" onclick="addDrawerComment('${r._id}')">Enviar</button>
+    <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg3)">
+      <div style="display:flex;flex-wrap:wrap;gap:3px;padding:6px 8px;background:var(--bg2);border-bottom:1px solid var(--border)">
+        <button type="button" title="Negrita" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('bold')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:11px">B</button>
+        <button type="button" title="Cursiva" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('italic')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:11px">I</button>
+        <button type="button" title="Lista" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('insertUnorderedList')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">☰</button>
+        <button type="button" title="Insertar tabla" onclick="cmtInsertTable('${r._id}')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">⊞ Tabla</button>
+        <label title="Adjuntar archivo/imagen" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
+          📎 Adjuntar
+          <input type="file" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="cmtHandleAttach('${r._id}',this)">
+        </label>
+        <div style="flex:1"></div>
+        <button type="button" onclick="addDrawerComment('${r._id}')" class="btn btn-accent btn-sm">Enviar</button>
+      </div>
+      <div id="dr-cmt-inp" contenteditable="true"
+        style="min-height:60px;max-height:180px;overflow-y:auto;padding:10px 12px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
+        data-placeholder="Escribe un comentario… Ctrl+Enter para enviar"
+        onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addDrawerComment('${r._id}')}"></div>
+      <div id="dr-attach-preview-${r._id}" style="padding:0 8px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="d-sec">📋 Historial de cambios</div>
     <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
@@ -5329,7 +5429,7 @@ function _DISABLED_openActDr_v2(id) {
 
   openDr();
   renderDrawerComments(r._id);
-  setTimeout(() => setupMentionAutocomplete('dr-cmt-inp', r._id), 100);
+  // contenteditable-based input; no legacy autocomplete needed
 }
 
 function togDrST(aId, sId) {
