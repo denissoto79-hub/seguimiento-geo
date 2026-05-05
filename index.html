@@ -4016,15 +4016,45 @@ function addDrawerComment(actId) {
   renderDrawerComments(actId);
 }
 
-// ── Global attachment store — persists across view changes ─────────────
-if (!window._cmtAttachStore) window._cmtAttachStore = {}; // { [cmtId]: [{name,type,data,isImg}, ...] }
+// ── Global attachment store — persists across view changes AND navigations ─
+// Uses sessionStorage so data survives SPA navigation (not hard refresh,
+// but MS state also resets on hard refresh so that's consistent behavior)
+const _CMT_SS_PREFIX = '_cmtAtt_';
 
 function storeCmtAttachments(cmtId, attachments) {
+  // Keep in-memory map as primary cache
+  if (!window._cmtAttachStore) window._cmtAttachStore = {};
   window._cmtAttachStore[cmtId] = attachments;
+  // Also persist to sessionStorage for cross-view navigation
+  try {
+    const payload = JSON.stringify(attachments.map(a => ({
+      name: a.name, type: a.type, isImg: a.isImg, data: a.data
+    })));
+    sessionStorage.setItem(_CMT_SS_PREFIX + cmtId, payload);
+  } catch(e) {
+    // sessionStorage may be full (e.g. too many large images) — in-memory only
+    console.warn('Could not persist attachment to sessionStorage:', e);
+  }
 }
+
 function getCmtAttachments(cmt) {
-  // Try stored cache first (survives navigation), fallback to cmt.attachments
-  return window._cmtAttachStore[cmt.id] || cmt.attachments || [];
+  if (!cmt || !cmt.id) return [];
+  // 1. Check in-memory cache
+  if (!window._cmtAttachStore) window._cmtAttachStore = {};
+  if (window._cmtAttachStore[cmt.id]) return window._cmtAttachStore[cmt.id];
+  // 2. Check sessionStorage
+  try {
+    const raw = sessionStorage.getItem(_CMT_SS_PREFIX + cmt.id);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      window._cmtAttachStore[cmt.id] = parsed; // hydrate cache
+      // Also hydrate the comment object itself so future renders work
+      if (cmt.attachments && !cmt.attachments.length) cmt.attachments = parsed;
+      return parsed;
+    }
+  } catch(e) {}
+  // 3. Fallback to comment.attachments (works if comment was just created this session)
+  return cmt.attachments || [];
 }
 
 // ── Image lightbox ──────────────────────────────────────────────────────
@@ -6528,73 +6558,94 @@ function generateProjSummaryPDF(proj) {
   w.document.close();
   notify('📋 Resumen ejecutivo generado');
 }
-if (!window._projActOrder) window._projActOrder = {}; // { [projName]: [actId, actId, ...] }
-function projTblDragStart(e, actId, proj) {
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', actId);
-  e.currentTarget.style.opacity = '0.4';
-  window._tblDragActId = actId; window._tblDragProj = proj;
+if (!window._projActOrder) window._projActOrder = {};
+
+// ── Unified drag state ───────────────────────────────────────────────────
+const _drag = { el: null, proj: null, actId: null, clone: null };
+
+function _dragCleanup() {
+  document.querySelectorAll('._drag-indicator').forEach(el => el.remove());
+  if (_drag.el) { _drag.el.style.opacity = ''; _drag.el.style.background = ''; }
+  _drag.el = null; _drag.proj = null; _drag.actId = null;
 }
-function projTblDragEnd(e) {
-  e.currentTarget.style.opacity = '';
-  document.querySelectorAll('[id^="proj-row-"]').forEach(r => r.style.boxShadow = '');
-  window._tblDragActId = null;
+
+// Called on the drag handle element (⋮⋮), NOT the row
+function _dragHandleDown(e, rowEl, actId, proj) {
+  // Use HTML5 drag API on the row itself
+  rowEl.draggable = true;
+  _drag.el = rowEl; _drag.proj = proj; _drag.actId = String(actId);
+  rowEl.style.opacity = '0.45';
 }
-function projTblDragOver(e, targetId, proj) {
-  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('[id^="proj-row-"]').forEach(r => r.style.boxShadow = '');
-  const row = document.getElementById('proj-row-' + targetId);
-  if (row) row.style.boxShadow = 'inset 0 2px 0 var(--accent)';
-}
-function projTblDrop(e, targetId, proj) {
-  e.preventDefault();
-  document.querySelectorAll('[id^="proj-row-"]').forEach(r => r.style.boxShadow = '');
-  const srcId = window._tblDragActId;
-  if (!srcId || srcId === targetId || window._tblDragProj !== proj) return;
-  loadProjActOrder(proj);
-  const acts = getOrderedActs(proj);
-  const ids = acts.map(a => String(a._id));
-  const fromIdx = ids.indexOf(String(srcId));
-  const toIdx = ids.indexOf(String(targetId));
-  if (fromIdx < 0 || toIdx < 0) return;
-  ids.splice(fromIdx, 1); ids.splice(toIdx, 0, String(srcId));
-  window._projActOrder[proj] = ids;
-  // Re-render tbody only without closing the drawer
-  const tbodyId = 'proj-acts-tbody-' + proj.replace(/[^a-zA-Z0-9]/g, '_');
-  const tbody = document.getElementById(tbodyId);
-  if (tbody) {
-    const isAdmin = CURRENT_USER?.role === 'admin';
-    const canEdit = CURRENT_USER?.role !== 'viewer';
-    tbody.innerHTML = getOrderedActs(proj).map(r => {
-      const isOverdue = r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']) < TODAY;
-      const hasOverdueST = (r.subtasks||[]).some(s => !s.done && s.date && new Date(s.date) < TODAY);
-      return `<tr style="border-bottom:1px solid rgba(33,38,45,.5)" id="proj-row-${r._id}"
-        draggable="true"
-        ondragstart="projTblDragStart(event,'${r._id}','${esc(proj)}')"
-        ondragend="projTblDragEnd(event)"
-        ondragover="projTblDragOver(event,'${r._id}','${esc(proj)}')"
-        ondragleave="this.style.boxShadow=''"
-        ondrop="projTblDrop(event,'${r._id}','${esc(proj)}')">
-        <td style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center">⋮⋮</td>
-        <td style="padding:7px 10px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isOverdue?'<span style="color:var(--red);margin-left:4px;font-size:11px">⚠</span>':''}</td>
-        <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px" onclick="openActDrFromProj('${r._id}','${esc(proj)}')">${r.ACTIVIDAD||'—'}${hasOverdueST?'<span style="color:var(--orange);margin-left:4px;font-size:11px">▲</span>':''}</td>
-        <td style="padding:7px 10px">${badge(r.ESTADO||'PLANIFICADA')}</td>
-        <td style="padding:7px 10px;color:var(--accent);font-weight:700">${r.AVANCE}%</td>
-        <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap">${fmtD(r['FECHA FIN'])}</td>
-        <td style="padding:7px 10px;font-size:11px;max-width:300px;white-space:pre-line;word-break:break-word">${r.OBSERVACIONES||'—'}</td>
-        <td style="padding:7px 10px;text-align:center">
-          ${canEdit && r.ESTADO!=='REALIZADA' ? `<button onclick="markDoneInProj('${r._id}','${esc(proj)}')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">✓ Completar</button>` : '<span style="color:var(--green)">✅</span>'}
-        </td>
-      </tr>`;
-    }).join('');
-  }
+
+// Attach all listeners to a container — event delegation, no inline handlers
+function _makeSortable(containerId, proj, onReorder) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  let dragSrcEl = null;
+
+  container.addEventListener('dragstart', e => {
+    const row = e.target.closest('[data-act-id]');
+    if (!row) return;
+    dragSrcEl = row;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.actId);
+    setTimeout(() => { if (dragSrcEl) dragSrcEl.style.opacity = '0.4'; }, 0);
+  }, false);
+
+  container.addEventListener('dragend', e => {
+    if (dragSrcEl) { dragSrcEl.style.opacity = ''; dragSrcEl = null; }
+    container.querySelectorAll('[data-act-id]').forEach(r => {
+      r.style.borderTop = ''; r.style.borderBottom = '';
+    });
+  }, false);
+
+  container.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const row = e.target.closest('[data-act-id]');
+    if (!row || row === dragSrcEl) return;
+    // Show drop indicator
+    container.querySelectorAll('[data-act-id]').forEach(r => { r.style.borderTop = ''; r.style.borderBottom = ''; });
+    const rect = row.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    if (e.clientY < mid) row.style.borderTop = '2px solid var(--accent)';
+    else row.style.borderBottom = '2px solid var(--accent)';
+  }, false);
+
+  container.addEventListener('dragleave', e => {
+    const row = e.target.closest('[data-act-id]');
+    if (row) { row.style.borderTop = ''; row.style.borderBottom = ''; }
+  }, false);
+
+  container.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    const targetRow = e.target.closest('[data-act-id]');
+    container.querySelectorAll('[data-act-id]').forEach(r => { r.style.borderTop = ''; r.style.borderBottom = ''; });
+    if (!targetRow || !dragSrcEl || targetRow === dragSrcEl) {
+      if (dragSrcEl) { dragSrcEl.style.opacity = ''; dragSrcEl = null; }
+      return;
+    }
+    // Move DOM node
+    const rect = targetRow.getBoundingClientRect();
+    const after = e.clientY >= rect.top + rect.height / 2;
+    if (after) container.insertBefore(dragSrcEl, targetRow.nextSibling);
+    else container.insertBefore(dragSrcEl, targetRow);
+    if (dragSrcEl) { dragSrcEl.style.opacity = ''; }
+    dragSrcEl = null;
+    // Update order from current DOM state
+    const newOrder = [...container.querySelectorAll('[data-act-id]')].map(r => r.dataset.actId);
+    window._projActOrder[proj] = newOrder;
+    if (onReorder) onReorder(newOrder);
+  }, false);
 }
 
 function saveProjActOrder(proj) {
   try { localStorage.setItem('projActOrder_' + proj, JSON.stringify(window._projActOrder[proj] || [])); } catch(e) {}
-  notify('✅ Orden guardado para todos los usuarios');
+  notify('✅ Orden guardado');
 }
 function loadProjActOrder(proj) {
+  if (window._projActOrder[proj]) return; // already loaded
   try {
     const saved = localStorage.getItem('projActOrder_' + proj);
     if (saved) window._projActOrder[proj] = JSON.parse(saved);
@@ -6607,61 +6658,25 @@ function getOrderedActs(proj) {
   if (!order || !order.length) return acts;
   const ordered = [];
   order.forEach(id => { const a = acts.find(r => String(r._id) === String(id)); if (a) ordered.push(a); });
-  acts.forEach(a => { if (!order.includes(String(a._id))) ordered.push(a); });
+  acts.forEach(a => { if (!order.map(String).includes(String(a._id))) ordered.push(a); });
   return ordered;
 }
-function projListDragStart(e, actId, proj) {
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', actId + '|' + proj);
-  e.currentTarget.style.opacity = '0.45';
-  window._dragActId = actId; window._dragProj = proj;
-}
-function projListDragEnd(e) { e.currentTarget.style.opacity = ''; window._dragActId = null; }
-function projListDragOver(e, targetId, proj) {
-  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.proj-list-row').forEach(el => el.style.borderTop = '');
-  const row = document.getElementById('plr-' + targetId);
-  if (row) row.style.borderTop = '2px solid var(--accent)';
-}
-function projListDragLeave(e) {
-  e.currentTarget.style.borderTop = '';
-}
-function projListDrop(e, targetId, proj) {
-  e.preventDefault();
-  document.querySelectorAll('.proj-list-row').forEach(el => el.style.borderTop = '');
-  const srcId = window._dragActId;
-  if (!srcId || srcId === targetId || window._dragProj !== proj) return;
-  loadProjActOrder(proj);
-  const acts = getOrderedActs(proj);
-  const ids = acts.map(a => String(a._id));
-  const fromIdx = ids.indexOf(String(srcId));
-  const toIdx = ids.indexOf(String(targetId));
-  if (fromIdx < 0 || toIdx < 0) return;
-  ids.splice(fromIdx, 1);
-  ids.splice(toIdx, 0, String(srcId));
-  window._projActOrder[proj] = ids;
-  // Re-render the list body only
-  const listId = 'prl-' + proj.replace(/[^a-zA-Z0-9]/g,'_');
-  const container = document.getElementById(listId + '-body');
-  if (container) {
-    const isAdmin = CURRENT_USER?.role === 'admin';
-    const canEdit = CURRENT_USER?.role !== 'viewer';
-    container.innerHTML = getOrderedActs(proj).map(r => buildActListItem(r, proj, isAdmin, canEdit)).join('');
-  }
-}
+
+// ── Old inline drag stubs (kept for backward compat, no-ops) ────────────
+function projTblDragStart(e,a,p){} function projTblDragEnd(e){}
+function projTblDragOver(e,a,p){ e.preventDefault(); } function projTblDrop(e,a,p){ e.preventDefault(); }
+function projListDragStart(e,a,p){} function projListDragEnd(e){}
+function projListDragOver(e,a,p){ e.preventDefault(); } function projListDragLeave(e){}
+function projListDrop(e,a,p){ e.preventDefault(); }
+  // _makeSortable called after render — see toggleProjList and buildProjListRow
 function buildActListItem(r, proj, isAdmin, canEdit) {
   const isLate = r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY;
   const listId = 'prl-' + proj.replace(/[^a-zA-Z0-9]/g,'_');
-  return `<div class="proj-list-row" id="plr-${r._id}"
+  return `<div class="proj-list-row" id="plr-${r._id}" data-act-id="${r._id}"
     draggable="${isAdmin ? 'true' : 'false'}"
-    ${isAdmin ? `ondragstart="projListDragStart(event,'${r._id}','${esc(proj)}')"
-    ondragend="projListDragEnd(event)"
-    ondragover="projListDragOver(event,'${r._id}','${esc(proj)}')"
-    ondragleave="projListDragLeave(event)"
-    ondrop="projListDrop(event,'${r._id}','${esc(proj)}')"` : ''}
-    style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid rgba(33,38,45,.3);background:var(--bg3);transition:background .15s"
+    style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid rgba(33,38,45,.3);background:var(--bg3);transition:background .15s,border-top .1s,border-bottom .1s"
     onmouseover="this.style.background='rgba(56,189,248,.04)'" onmouseout="this.style.background='var(--bg3)'">
-    ${isAdmin ? `<div style="width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:13px;padding:0 2px" title="Arrastrar para reordenar">⋮⋮</div>` : ''}
+    ${isAdmin ? `<div style="width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:13px;padding:0 2px;user-select:none" title="Arrastrar para reordenar">⋮⋮</div>` : ''}
     <div style="width:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;align-self:stretch">
       <div style="width:1px;background:var(--border);height:100%;position:absolute;left:${isAdmin?'17px':'21px'}"></div>
       <div style="width:10px;height:1px;background:var(--border);position:absolute;left:${isAdmin?'17px':'21px'}"></div>
@@ -6693,6 +6708,19 @@ function toggleProjList(id) {
   // Update arrow wrap color
   const wrap = document.getElementById(id+'-arrow-wrap');
   if (wrap) wrap.style.color = open ? 'var(--text3)' : 'var(--accent)';
+  // Attach sortable when opening
+  if (!open && CURRENT_USER?.role === 'admin') {
+    const bodyId = id + '-body';
+    // Find which project this list belongs to — read from first data-act-id row
+    const bodyEl = document.getElementById(bodyId);
+    if (bodyEl) {
+      const firstRow = bodyEl.querySelector('[data-act-id]');
+      if (firstRow) {
+        const r = get().find(a => String(a._id) === firstRow.dataset.actId);
+        if (r) setTimeout(() => _makeSortable(bodyId, r.PROYECTO, newOrder => { window._projActOrder[r.PROYECTO] = newOrder; }), 60);
+      }
+    }
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -6795,16 +6823,8 @@ function openProjDr(proj) {
           ${actsOrdered.map(r => {
             const isOverdue = r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']) < TODAY;
             const hasOverdueST = (r.subtasks||[]).some(s => !s.done && s.date && new Date(s.date) < TODAY);
-            return `<tr style="border-bottom:1px solid rgba(33,38,45,.5);transition:background .1s" id="proj-row-${r._id}"
-              draggable="${isAdmin}"
-              ${isAdmin ? `
-              ondragstart="projTblDragStart(event,'${r._id}','${esc(proj)}')"
-              ondragend="projTblDragEnd(event)"
-              ondragover="projTblDragOver(event,'${r._id}','${esc(proj)}')"
-              ondragleave="this.style.boxShadow=''"
-              ondrop="projTblDrop(event,'${r._id}','${esc(proj)}')"
-              ` : ''}>
-            ${isAdmin ? `<td style="padding:4px 4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;vertical-align:middle" title="Arrastrar para reordenar">⋮⋮</td>` : ''}
+            return `<tr data-act-id="${r._id}" id="proj-row-${r._id}" style="border-bottom:1px solid rgba(33,38,45,.5);cursor:default">
+            ${isAdmin ? `<td style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;user-select:none">⋮⋮</td>` : ''}
             <td style="padding:7px 10px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isOverdue?'<span title="Actividad vencida" style="color:var(--red);margin-left:4px;font-size:11px">⚠</span>':''}</td>
             <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px"
               onclick="openActDrFromProj('${r._id}','${esc(proj)}')"
@@ -6834,6 +6854,10 @@ function openProjDr(proj) {
       ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
     </div>`;
   openDr();
+  if (isAdmin) {
+    const tbodyId = 'proj-acts-tbody-' + proj.replace(/[^a-zA-Z0-9]/g, '_');
+    setTimeout(() => _makeSortable(tbodyId, proj, newOrder => { window._projActOrder[proj] = newOrder; }), 80);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
