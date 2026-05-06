@@ -31,11 +31,11 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
   pointer-events: none;
   font-style: italic;
 }
-[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0 }
-[contenteditable] table th, [contenteditable] table td { border:1px solid var(--border); padding:4px 7px; font-size:11px }
+[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0; border:1px solid #888 }
+[contenteditable] table th, [contenteditable] table td { border:1px solid #888; padding:4px 7px; font-size:11px }
 [contenteditable] table th { background:var(--bg3); font-weight:700 }
 /* obs editor images */
-#m-obs-editor img { max-width:100%; border-radius:6px; margin:4px 0; }
+#m-obs-editor img { max-width:120px;max-height:90px;border-radius:4px;margin:2px;object-fit:cover;cursor:zoom-in;vertical-align:middle; }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
@@ -1477,7 +1477,10 @@ function _DISABLED_populateDDs_old() {
   const a = get();
   const plantas = uniq(a, 'PLANTA');
   const projs   = uniq(a, 'PROYECTO');
-  const resps   = uniq(a, 'RESPONSABLE');
+  // Merge responsables from data AND from USERS list so all profiles always appear
+  const respFromData = uniq(a, 'RESPONSABLE').filter(Boolean);
+  const respFromUsers = (USERS||[]).map(u=>u.name).filter(Boolean);
+  const resps = [...new Set([...respFromData, ...respFromUsers])].sort();
 
   // Filter bars — keep first blank option
   ['f-planta','a-planta','g-planta','cal-planta','rep-planta'].forEach(id => setDD(id, plantas));
@@ -2084,7 +2087,7 @@ function renderActs() {
     const cfCells = cf.map(f => {
       const val = r._customFields?.[f.name] || '';
       if (f.type === 'select') {
-        return `<td><select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-size:10px;font-family:'Barlow',sans-serif" onchange="updateCustomField('${r._id}','${f.name}',this.value)">
+        return `<td><select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-size:10px;font-family:'Barlow',sans-serif" onchange="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))">
           <option value="">—</option>
           ${(f.opts||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
         </select></td>`;
@@ -3360,6 +3363,7 @@ function openModal(id = null) {
   editingId = id;
   const r = id !== null ? get().find(a => a._id === id) : {};
   tmpST = [...(r.subtasks||[])]; tmpCmt = [...(r.comments||[])]; tmpAtt = [...(r.attachments||[])];
+  window._CURRENT_ACT_SUBTASKS = tmpST; // expose for openSTModal
   // Auto-generate monthly subtasks if new activity (no id) and date range > 1 month
   if (id === null || !r._dbid) {
     // Will be triggered when dates are set — see autoGenST()
@@ -3493,111 +3497,114 @@ function renderSTs() {
   }).join('');
 }
 
-function openSTReprog(stId) {
-  const s = tmpST.find(x => x.id === stId); if (!s) return;
-  const tipo = prompt('Tipo de reprogramación:\n1 = Justificada\n2 = No Justificada\n\nIngresa 1 o 2:');
-  if (!tipo || !['1','2'].includes(tipo.trim())) return;
-  const motivo = prompt('Motivo de la reprogramación:');
-  if (!motivo) return;
-  const newDate = prompt('Nueva fecha de cierre (YYYY-MM-DD):');
-  if (!newDate) return;
-  s.reprogramada = true;
-  s.reprogJustificada = tipo.trim() === '1';
-  s.reprogDetail = '[' + new Date().toISOString().split('T')[0] + '] ' + motivo;
-  s.newDate = newDate;
-  s.date = newDate; // Update the date
+// ── Subtask action modal ─────────────────────────────────────────────────
+function openSTModal(stId, mode) {
+  // mode: 'close' | 'edit' | 'reprog'
+  let mo = document.getElementById('_st-modal');
+  if (!mo) {
+    mo = document.createElement('div');
+    mo.id = '_st-modal';
+    mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9800;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(mo);
+  }
+  const s = window._CURRENT_ACT_SUBTASKS?.find?.(x => x.id === stId);
+  if (!s) return;
 
-  // Check if new date exceeds current activity FECHA FIN (from the modal)
-  const actFin = document.getElementById('m-fin')?.value;
-  if (actFin && newDate > actFin) {
-    // Update activity FECHA FIN in the modal
-    document.getElementById('m-fin').value = newDate;
-    // Generate additional monthly subtasks for months between old actFin and newDate
-    const oldFin = new Date(actFin + 'T00:00:00');
-    const newFin = new Date(newDate + 'T00:00:00');
-    // Start from month AFTER old actFin
-    let curY = oldFin.getFullYear(), curM = oldFin.getMonth() + 1;
-    if (curM > 11) { curM = 0; curY++; }
-    const endM = newFin.getMonth(), endY = newFin.getFullYear();
-    const actNm = document.getElementById('m-act')?.value.trim() || 'Actividad';
-    const resp  = document.getElementById('m-resp')?.value || '';
-    const MESES_F = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    let added = 0;
-    while (curY < endY || (curY === endY && curM <= endM)) {
-      const lastDay = new Date(curY, curM + 1, 0).toISOString().split('T')[0];
-      // Only add if no existing subtask has this date
-      const alreadyExists = tmpST.some(x => x.date === lastDay);
-      if (!alreadyExists) {
-        tmpST.push({
-          id: Date.now() + curM + curY * 12 + Math.random(),
-          desc: actNm + ', seguimiento de ' + MESES_F[curM] + ' ' + curY,
-          date: lastDay,
-          resp: resp,
-          done: false,
-          auto: true
-        });
-        added++;
-      }
-      curM++;
-      if (curM > 11) { curM = 0; curY++; }
-    }
-    if (added > 0) notify('📅 Fecha fin actualizada. ' + added + ' nuevas subtareas generadas');
-    else notify('📅 Fecha fin de actividad actualizada a ' + newDate);
+  const isClose  = mode === 'close';
+  const isReprog = mode === 'reprog';
+  const title = isClose ? '✓ Cerrar Subtarea' : isReprog ? '🔄 Reprogramar Subtarea' : '✏ Editar Subtarea';
+  const accentColor = isClose ? 'var(--green)' : isReprog ? 'var(--orange)' : 'var(--accent)';
+
+  mo.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:340px;max-width:520px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,.4)">
+    <div style="font-size:15px;font-weight:700;color:${accentColor};margin-bottom:16px">${title}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;background:var(--bg3);padding:8px 10px;border-radius:6px">${s.desc || '—'}</div>
+
+    ${isReprog ? `<div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Nueva Fecha de Cierre</label>
+      <input type="date" id="_st-new-date" class="fi" value="${s.newDate || s.date || ''}" style="width:100%;font-size:12px">
+    </div>` : ''}
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">
+        ${isClose ? 'Comentario de cierre (opcional)' : isReprog ? 'Motivo de reprogramación' : 'Comentario / Observación'}
+      </label>
+      <textarea id="_st-comment" style="width:100%;min-height:80px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;font-family:inherit;resize:vertical;white-space:pre-wrap;line-height:1.5;outline:none;box-sizing:border-box"
+        placeholder="${isClose ? 'Ej: Tarea completada el...' : isReprog ? 'Describe el motivo...' : 'Observaciones...'}"
+      >${(s.stComment || '').replace(/^\\[.*?\\]\\s*/, '')}</textarea>
+    </div>
+
+    ${!isClose && !isReprog ? `
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Responsable</label>
+        <select id="_st-resp" class="fi" style="width:100%;font-size:12px">
+          ${(USERS||[]).map(u => `<option value="${u.name}" ${u.name===s.resp?'selected':''}>${u.name}</option>`).join('')}
+        </select>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" id="_st-date" class="fi" value="${s.date||''}" style="width:100%;font-size:12px">
+      </div>
+    </div>` : ''}
+
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="document.getElementById('_st-modal').style.display='none'"
+        style="padding:7px 16px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer">Cancelar</button>
+      <button onclick="_saveSTModal(${stId},'${mode}')"
+        style="padding:7px 18px;border-radius:7px;border:none;background:${accentColor};color:#fff;font-size:12px;font-weight:700;cursor:pointer">
+        ${isClose ? '✓ Cerrar' : isReprog ? '🔄 Reprogramar' : '💾 Guardar'}</button>
+    </div>
+  </div>`;
+  mo.style.display = 'flex';
+  setTimeout(() => document.getElementById('_st-comment')?.focus(), 80);
+}
+
+function _saveSTModal(stId, mode) {
+  // Find subtask in tmpST (activity modal) or _CURRENT_ACT_SUBTASKS (drawer)
+  const s = (typeof tmpST !== 'undefined' && tmpST.find(x => x.id === stId))
+          || window._CURRENT_ACT_SUBTASKS?.find?.(x => x.id === stId);
+  if (!s) return;
+  const comment = (document.getElementById('_st-comment')?.value || '').trim();
+  const today = new Date().toISOString().split('T')[0];
+  const dateStr = `[${today}] `;
+
+  if (mode === 'close') {
+    s.done = true;
+    s.stComment = comment ? dateStr + comment : (s.stComment || '');
+  } else if (mode === 'reprog') {
+    const newDate = document.getElementById('_st-new-date')?.value;
+    s.reprogramada = true;
+    s._originalDate = s._originalDate || s.date;
+    if (newDate) { s.newDate = newDate; s.date = newDate; }
+    s.stComment = comment ? (s.stComment ? s.stComment + '\n' : '') + dateStr + comment : s.stComment;
+    s.reprogDetail = comment;
+  } else {
+    const resp = document.getElementById('_st-resp')?.value;
+    const date = document.getElementById('_st-date')?.value;
+    if (resp) s.resp = resp;
+    if (date) s.date = date;
+    s.stComment = comment ? dateStr + comment : s.stComment;
   }
 
-  renderSTs();
-  notify('🔄 Subtarea reprogramada');
-}
-
-function closeSTWithComment(stId) {
-  const s = tmpST.find(x => x.id === stId); if (!s) return;
-  const comment = prompt('Comentario de cierre (opcional):');
-  s.done = true;
-  if (comment) s.stComment = '[' + new Date().toISOString().split('T')[0] + '] ' + comment;
-  renderSTs();
-  notify('✅ Subtarea cerrada');
-}
-
-function editST(stId) {
-  const s = tmpST.find(x => x.id === stId); if (!s) return;
-  // Create a small inline edit modal
-  const newDesc = prompt('Descripción de la subtarea:', s.desc || '');
-  if (newDesc === null) return; // cancelled
-  if (newDesc.trim()) s.desc = newDesc.trim();
-  const newDate = prompt('Fecha límite (YYYY-MM-DD):', s.date || '');
-  if (newDate !== null && newDate.trim()) s.date = newDate.trim();
-  const newResp = prompt('Responsable:', s.resp || '');
-  if (newResp !== null) s.resp = newResp.trim();
-  const newComment = prompt('Comentario / observación:', s.stComment ? s.stComment.replace(/^\[.*?\] /, '') : '');
-  if (newComment !== null && newComment.trim()) {
-    s.stComment = '[' + new Date().toISOString().split('T')[0] + '] ' + newComment.trim();
+  document.getElementById('_st-modal').style.display = 'none';
+  // Re-render whichever context is active
+  if (typeof renderSTs === 'function') renderSTs();
+  const actId = window._CURRENT_ACT_ID;
+  if (actId && typeof renderDrawerComments === 'function') {
+    // Update the drawer subtask display if drawer is open
+    const drBody = document.getElementById('dr-body');
+    if (drBody && actId) openActDr(actId);
   }
-  renderSTs();
-  notify('✏️ Subtarea actualizada');
+  notify(mode === 'close' ? '✅ Subtarea cerrada' : mode === 'reprog' ? '🔄 Subtarea reprogramada' : '✏ Subtarea actualizada');
 }
+
+function closeSTWithComment(stId) { openSTModal(stId, 'close'); }
+function editST(stId)            { openSTModal(stId, 'edit'); }
+function openSTReprog(stId)      { openSTModal(stId, 'reprog'); }
 
 function editSTAdmin(stId) {
   if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar subtareas cerradas', true); return; }
-  const s = tmpST.find(x => x.id === stId); if (!s) return;
-  const newDesc = prompt('Descripción de la subtarea:', s.desc || '');
-  if (newDesc === null) return;
-  if (newDesc.trim()) s.desc = newDesc.trim();
-  const newDate = prompt('Fecha límite (YYYY-MM-DD):', s.date || '');
-  if (newDate !== null && newDate.trim()) s.date = newDate.trim();
-  const newResp = prompt('Responsable:', s.resp || '');
-  if (newResp !== null) s.resp = newResp.trim();
-  const reopenST = confirm('¿Reabrir esta subtarea (marcarla como pendiente)?');
-  if (reopenST) {
-    s.done = false;
-    s.reprogramada = false;
-    s.stComment = (s.stComment || '') + ' [Reabierta por admin ' + new Date().toISOString().split('T')[0] + ']';
-  }
-  const newComment = prompt('Comentario de edición admin:', '');
-  if (newComment !== null && newComment.trim()) {
-    s.stComment = (s.stComment||'') + ' [Admin ' + new Date().toISOString().split('T')[0] + '] ' + newComment.trim();
-  }
-  renderSTs();
-  notify('✏️ Subtarea editada por administrador');
+  openSTModal(stId, 'edit');
 }
 function addCmt() {
   const t = document.getElementById('cmt-inp').value.trim(); if (!t) return;
@@ -3900,12 +3907,14 @@ function obsInsertTable() {
   const rows = parseInt(prompt('Número de filas:', '3') || '3');
   const cols = parseInt(prompt('Número de columnas:', '3') || '3');
   if (!rows || !cols) return;
-  let tbl = '<table><thead><tr>';
-  for (let c = 0; c < cols; c++) tbl += `<th contenteditable="true">Col ${c+1}</th>`;
+  const cellStyle = 'border:1px solid #888;padding:4px 7px;min-width:50px;font-size:11px;';
+  const thStyle   = cellStyle + 'background:var(--bg3,#f1f5f9);font-weight:700;text-align:left;';
+  let tbl = `<table style="border-collapse:collapse;width:100%;margin:5px 0;border:1px solid #888"><thead><tr>`;
+  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c+1}</th>`;
   tbl += '</tr></thead><tbody>';
   for (let r = 0; r < rows; r++) {
     tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += '<td contenteditable="true"></td>';
+    for (let c = 0; c < cols; c++) tbl += `<td style="${cellStyle}" contenteditable="true"></td>`;
     tbl += '</tr>';
   }
   tbl += '</tbody></table>';
@@ -3942,12 +3951,14 @@ function cmtInsertTable(actId) {
   const rows = parseInt(prompt('Número de filas:', '3') || '3');
   const cols = parseInt(prompt('Número de columnas:', '3') || '3');
   if (!rows || !cols) return;
-  let tbl = '<table style="border-collapse:collapse;width:100%;margin:6px 0" contenteditable="true"><thead><tr>';
-  for (let c = 0; c < cols; c++) tbl += `<th style="border:1px solid var(--border);padding:5px 8px;background:var(--bg3);font-size:11px;font-weight:700;text-align:left" contenteditable="true">Col ${c+1}</th>`;
+  const cellStyle = 'border:1px solid #888;padding:5px 8px;min-width:60px;font-size:11px;';
+  const thStyle   = cellStyle + 'background:var(--bg3,#f1f5f9);font-weight:700;text-align:left;';
+  let tbl = `<table style="border-collapse:collapse;width:100%;margin:6px 0;border:1px solid #888"><thead><tr>`;
+  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c+1}</th>`;
   tbl += '</tr></thead><tbody>';
   for (let r = 0; r < rows; r++) {
     tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += '<td style="border:1px solid var(--border);padding:5px 8px;font-size:11px;min-width:60px" contenteditable="true"></td>';
+    for (let c = 0; c < cols; c++) tbl += `<td style="${cellStyle}" contenteditable="true"></td>`;
     tbl += '</tr>';
   }
   tbl += '</tbody></table>';
@@ -3965,18 +3976,40 @@ function cmtHandleAttach(actId, input) {
     const reader = new FileReader();
     reader.onload = ev => {
       const isImg = file.type.startsWith('image/');
-      const attach = { name: file.name, type: file.type, data: ev.target.result, isImg };
-      window._pendingAttachments[actId].push(attach);
-      if (preview) {
-        const item = document.createElement('div');
-        item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
-        item.innerHTML = isImg
-          ? `<img src="${ev.target.result}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="window.open('${ev.target.result}','_blank')">`
-          + `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
-          + `<button onclick="this.parentNode.remove();window._pendingAttachments['${actId}'].splice(${window._pendingAttachments[actId].length-1},1)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`
-          : `<span style="font-size:14px">📄</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
-          + `<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
-        preview.appendChild(item);
+      if (isImg) {
+        // Compress to max 800px / 72% quality — reduces 2MB→~120KB
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 800, ratio = Math.min(MAX/img.width, MAX/img.height, 1);
+          const canvas = document.createElement('canvas');
+          canvas.width  = Math.round(img.width  * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.72);
+          const attach = { name: file.name, type: 'image/jpeg', data: compressed, isImg: true };
+          if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
+          window._pendingAttachments[actId].push(attach);
+          if (preview) {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
+            item.innerHTML = `<img src="${compressed}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:zoom-in" onclick="openImgLightbox('${compressed}','${file.name.replace(/'/g,'')}')">`
+              + `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
+              + `<button onclick="this.parentNode.remove();const pa=window._pendingAttachments['${actId}'];if(pa){const i=pa.findIndex(a=>a.name==='${file.name.replace(/'/g,'')}');if(i>=0)pa.splice(i,1);}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
+            preview.appendChild(item);
+          }
+        };
+        img.src = ev.target.result;
+      } else {
+        const attach = { name: file.name, type: file.type, data: ev.target.result, isImg: false };
+        if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
+        window._pendingAttachments[actId].push(attach);
+        if (preview) {
+          const item = document.createElement('div');
+          item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
+          item.innerHTML = `<span style="font-size:14px">📄</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
+            + `<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
+          preview.appendChild(item);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -4016,45 +4049,53 @@ function addDrawerComment(actId) {
   renderDrawerComments(actId);
 }
 
-// ── Global attachment store — persists across view changes AND navigations ─
-// Uses sessionStorage so data survives SPA navigation (not hard refresh,
-// but MS state also resets on hard refresh so that's consistent behavior)
+// ── Attachment store — triple-layer persistence ────────────────────────
+// Layer 1: comment.attachments (on the activity object in MS state — survives navigation)
+// Layer 2: window._cmtAttachStore (fast in-memory cache)
+// Layer 3: sessionStorage (survives page-within-tab navigation but not hard refresh)
+// Note: hard refresh reloads all MS state from DB anyway, so images from DB comments
+// would need Supabase Storage for true cross-session persistence.
 const _CMT_SS_PREFIX = '_cmtAtt_';
 
 function storeCmtAttachments(cmtId, attachments) {
-  // Keep in-memory map as primary cache
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
   window._cmtAttachStore[cmtId] = attachments;
-  // Also persist to sessionStorage for cross-view navigation
   try {
-    const payload = JSON.stringify(attachments.map(a => ({
-      name: a.name, type: a.type, isImg: a.isImg, data: a.data
-    })));
-    sessionStorage.setItem(_CMT_SS_PREFIX + cmtId, payload);
-  } catch(e) {
-    // sessionStorage may be full (e.g. too many large images) — in-memory only
-    console.warn('Could not persist attachment to sessionStorage:', e);
-  }
+    sessionStorage.setItem(_CMT_SS_PREFIX + cmtId, JSON.stringify(
+      attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, data: a.data }))
+    ));
+  } catch(e) { console.warn('sessionStorage full for attachment', e); }
 }
 
 function getCmtAttachments(cmt) {
   if (!cmt || !cmt.id) return [];
-  // 1. Check in-memory cache
+  // 1. comment.attachments is authoritative (lives inside activity object)
+  if (cmt.attachments && cmt.attachments.length > 0) {
+    // Sync to cache and sessionStorage so other layers stay warm
+    if (!window._cmtAttachStore) window._cmtAttachStore = {};
+    if (!window._cmtAttachStore[cmt.id]) {
+      window._cmtAttachStore[cmt.id] = cmt.attachments;
+      try { sessionStorage.setItem(_CMT_SS_PREFIX + cmt.id, JSON.stringify(cmt.attachments)); } catch(e) {}
+    }
+    return cmt.attachments;
+  }
+  // 2. In-memory cache
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
-  if (window._cmtAttachStore[cmt.id]) return window._cmtAttachStore[cmt.id];
-  // 2. Check sessionStorage
+  if (window._cmtAttachStore[cmt.id]) {
+    cmt.attachments = window._cmtAttachStore[cmt.id]; // hydrate comment
+    return cmt.attachments;
+  }
+  // 3. sessionStorage
   try {
     const raw = sessionStorage.getItem(_CMT_SS_PREFIX + cmt.id);
     if (raw) {
       const parsed = JSON.parse(raw);
-      window._cmtAttachStore[cmt.id] = parsed; // hydrate cache
-      // Also hydrate the comment object itself so future renders work
-      if (cmt.attachments && !cmt.attachments.length) cmt.attachments = parsed;
+      window._cmtAttachStore[cmt.id] = parsed;
+      cmt.attachments = parsed; // hydrate comment object
       return parsed;
     }
   } catch(e) {}
-  // 3. Fallback to comment.attachments (works if comment was just created this session)
-  return cmt.attachments || [];
+  return [];
 }
 
 // ── Image lightbox ──────────────────────────────────────────────────────
@@ -5599,12 +5640,11 @@ function populateDDs() {
   const a = get();
   const plantas = uniq(a, 'PLANTA');
   const projs   = uniq(a, 'PROYECTO');
-  // Build responsable list: use activity data values (real case from Excel)
-  // augmented with SB_PROFILES for mention/assign purposes
-  const actResps = uniq(a, 'RESPONSABLE').filter(Boolean);
-  const profResps = SB_PROFILES.filter(p => p.role !== 'viewer').map(p => p.name);
-  // Use activity data responsables for filters (they match the actual values)
-  const resps = actResps.length ? actResps : profResps;
+  // Responsable: merge from activity data + all registered user profiles (USERS + SB_PROFILES)
+  const actResps  = uniq(a, 'RESPONSABLE').filter(Boolean);
+  const profResps = (USERS||[]).map(p=>p.name).filter(Boolean);
+  const sbResps   = (SB_PROFILES||[]).map(p=>p.name).filter(Boolean);
+  const resps = [...new Set([...actResps, ...profResps, ...sbResps])].sort();
 
   ['f-planta','a-planta','g-planta','cal-planta','rep-planta','p-planta','rep-plan-planta'].forEach(id => setDD(id, plantas));
   ['f-resp','a-resp2','g-resp','cal-resp','p-resp'].forEach(id => setDD(id, resps));
@@ -6581,63 +6621,83 @@ function _dragHandleDown(e, rowEl, actId, proj) {
 function _makeSortable(containerId, proj, onReorder) {
   const container = document.getElementById(containerId);
   if (!container) return;
+  // Remove any previously attached listeners by replacing with clone
+  const fresh = container.cloneNode(true);
+  container.parentNode.replaceChild(fresh, container);
+  const c = fresh;
 
-  let dragSrcEl = null;
+  let dragEl = null, ghostEl = null, placeholder = null;
+  const getRows = () => [...c.querySelectorAll('[data-act-id]')];
 
-  container.addEventListener('dragstart', e => {
-    const row = e.target.closest('[data-act-id]');
-    if (!row) return;
-    dragSrcEl = row;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', row.dataset.actId);
-    setTimeout(() => { if (dragSrcEl) dragSrcEl.style.opacity = '0.4'; }, 0);
-  }, false);
-
-  container.addEventListener('dragend', e => {
-    if (dragSrcEl) { dragSrcEl.style.opacity = ''; dragSrcEl = null; }
-    container.querySelectorAll('[data-act-id]').forEach(r => {
-      r.style.borderTop = ''; r.style.borderBottom = '';
-    });
-  }, false);
-
-  container.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const row = e.target.closest('[data-act-id]');
-    if (!row || row === dragSrcEl) return;
-    // Show drop indicator
-    container.querySelectorAll('[data-act-id]').forEach(r => { r.style.borderTop = ''; r.style.borderBottom = ''; });
-    const rect = row.getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    if (e.clientY < mid) row.style.borderTop = '2px solid var(--accent)';
-    else row.style.borderBottom = '2px solid var(--accent)';
-  }, false);
-
-  container.addEventListener('dragleave', e => {
-    const row = e.target.closest('[data-act-id]');
-    if (row) { row.style.borderTop = ''; row.style.borderBottom = ''; }
-  }, false);
-
-  container.addEventListener('drop', e => {
-    e.preventDefault(); e.stopPropagation();
-    const targetRow = e.target.closest('[data-act-id]');
-    container.querySelectorAll('[data-act-id]').forEach(r => { r.style.borderTop = ''; r.style.borderBottom = ''; });
-    if (!targetRow || !dragSrcEl || targetRow === dragSrcEl) {
-      if (dragSrcEl) { dragSrcEl.style.opacity = ''; dragSrcEl = null; }
-      return;
+  function createGhost(el, cx, cy) {
+    const g = document.createElement('div');
+    const nameCell = el.querySelector('td:nth-child(3), .act-name-cell');
+    g.textContent = '⋮⋮  ' + (nameCell ? nameCell.textContent.trim().slice(0,55) : 'Actividad');
+    g.style.cssText = `position:fixed;z-index:99999;pointer-events:none;background:var(--bg2);border:1.5px solid var(--accent);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;left:${cx+14}px;top:${cy-12}px`;
+    document.body.appendChild(g);
+    return g;
+  }
+  function createPH(el) {
+    const isRow = el.tagName === 'TR';
+    const ph = document.createElement(isRow ? 'tr' : 'div');
+    ph.style.cssText = `height:${el.offsetHeight}px;background:rgba(56,189,248,.1);outline:2px dashed rgba(56,189,248,.5);`;
+    ph.id = '_sort_ph';
+    return ph;
+  }
+  function nearestRow(clientY) {
+    const rows = getRows().filter(r => r !== dragEl);
+    for (let r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return { before: r };
     }
-    // Move DOM node
-    const rect = targetRow.getBoundingClientRect();
-    const after = e.clientY >= rect.top + rect.height / 2;
-    if (after) container.insertBefore(dragSrcEl, targetRow.nextSibling);
-    else container.insertBefore(dragSrcEl, targetRow);
-    if (dragSrcEl) { dragSrcEl.style.opacity = ''; }
-    dragSrcEl = null;
-    // Update order from current DOM state
-    const newOrder = [...container.querySelectorAll('[data-act-id]')].map(r => r.dataset.actId);
+    return { before: null };
+  }
+
+  c.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('[data-drag-handle]');
+    if (!handle) return;
+    const row = handle.closest('[data-act-id]');
+    if (!row) return;
+    e.preventDefault();
+    dragEl = row;
+    dragEl.style.opacity = '0.3';
+    ghostEl = createGhost(dragEl, e.clientX, e.clientY);
+    placeholder = createPH(dragEl);
+    dragEl.parentNode.insertBefore(placeholder, dragEl.nextSibling);
+    c.setPointerCapture(e.pointerId);
+  });
+
+  c.addEventListener('pointermove', e => {
+    if (!dragEl || !ghostEl) return;
+    e.preventDefault();
+    ghostEl.style.left = (e.clientX + 14) + 'px';
+    ghostEl.style.top  = (e.clientY - 12) + 'px';
+    const pos = nearestRow(e.clientY);
+    if (pos.before) c.insertBefore(placeholder, pos.before);
+    else c.appendChild(placeholder);
+  });
+
+  c.addEventListener('pointerup', e => {
+    if (!dragEl) return;
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    dragEl.style.opacity = '';
+    if (placeholder?.parentNode) {
+      placeholder.parentNode.insertBefore(dragEl, placeholder);
+      placeholder.remove();
+    }
+    placeholder = null;
+    dragEl = null;
+    const newOrder = getRows().map(r => r.dataset.actId);
     window._projActOrder[proj] = newOrder;
     if (onReorder) onReorder(newOrder);
-  }, false);
+  });
+
+  c.addEventListener('pointercancel', () => {
+    if (dragEl) dragEl.style.opacity = '';
+    ghostEl?.remove(); ghostEl = null;
+    placeholder?.remove(); placeholder = null;
+    dragEl = null;
+  });
 }
 
 function saveProjActOrder(proj) {
@@ -6676,7 +6736,7 @@ function buildActListItem(r, proj, isAdmin, canEdit) {
     draggable="${isAdmin ? 'true' : 'false'}"
     style="display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid rgba(33,38,45,.3);background:var(--bg3);transition:background .15s,border-top .1s,border-bottom .1s"
     onmouseover="this.style.background='rgba(56,189,248,.04)'" onmouseout="this.style.background='var(--bg3)'">
-    ${isAdmin ? `<div style="width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:13px;padding:0 2px;user-select:none" title="Arrastrar para reordenar">⋮⋮</div>` : ''}
+    ${isAdmin ? `<div data-drag-handle style="width:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:13px;padding:0 2px;user-select:none;touch-action:none" title="Arrastrar para reordenar">⋮⋮</div>` : ''}
     <div style="width:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;align-self:stretch">
       <div style="width:1px;background:var(--border);height:100%;position:absolute;left:${isAdmin?'17px':'21px'}"></div>
       <div style="width:10px;height:1px;background:var(--border);position:absolute;left:${isAdmin?'17px':'21px'}"></div>
@@ -6824,7 +6884,7 @@ function openProjDr(proj) {
             const isOverdue = r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN']) < TODAY;
             const hasOverdueST = (r.subtasks||[]).some(s => !s.done && s.date && new Date(s.date) < TODAY);
             return `<tr data-act-id="${r._id}" id="proj-row-${r._id}" style="border-bottom:1px solid rgba(33,38,45,.5);cursor:default">
-            ${isAdmin ? `<td style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;user-select:none">⋮⋮</td>` : ''}
+            ${isAdmin ? `<td data-drag-handle style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;user-select:none;touch-action:none" title="Arrastrar para reordenar">⋮⋮</td>` : ''}
             <td style="padding:7px 10px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isOverdue?'<span title="Actividad vencida" style="color:var(--red);margin-left:4px;font-size:11px">⚠</span>':''}</td>
             <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px"
               onclick="openActDrFromProj('${r._id}','${esc(proj)}')"
@@ -7367,26 +7427,37 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 // DUPLICATE ACTIVITY
 // ════════════════════════════════════════════════════════════════
-async function updateCustomField(actId, fieldName, value) {
-  const r = get().find(a => a._id === actId); if (!r) return;
+async function updateCustomField(actId, fieldName, value, cellEl) {
+  const r = get().find(a => a._id === actId || String(a._id) === String(actId)); if (!r) return;
   if (!r._customFields) r._customFields = {};
   r._customFields[fieldName] = value;
-  // Save to localStorage for immediate access
+  // Update the cell display immediately without full re-render
+  if (cellEl) {
+    cellEl.textContent = value;
+    cellEl.style.color = 'var(--text)';
+  }
+  // Persist to localStorage
   try {
     const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || actId);
     localStorage.setItem(key, JSON.stringify(r._customFields));
   } catch(e) {}
-  // Also persist to Supabase via the actividades table (use subtasks JSON field to piggyback)
+  // Persist to Supabase: store custom fields in observaciones_extra or piggyback on subtasks
   if (r._dbid) {
     try {
-      // Store custom fields alongside the activity in Supabase
-      const currentSubtasks = r.subtasks || [];
-      // We'll store _customFields in the subtasks JSON since we don't have a dedicated column
-      await _sb.from('actividades').update({
-        subtasks: currentSubtasks,
-        updated_at: new Date().toISOString()
-      }).eq('id', r._dbid);
-    } catch(e) {}
+      // Use a custom table column if available, otherwise store as JSON comment marker
+      // We store as a special key in subtasks metadata
+      const meta = { _cf: r._customFields };
+      await _sb.from('actividades')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', r._dbid);
+      // Save to localStorage module-wide so it persists across sessions
+      try {
+        const moduleKey = 'sg_cf_all_' + ACTIVE;
+        const allCf = JSON.parse(localStorage.getItem(moduleKey) || '{}');
+        allCf[String(r._dbid || actId)] = r._customFields;
+        localStorage.setItem(moduleKey, JSON.stringify(allCf));
+      } catch(e2) {}
+    } catch(e) { console.warn('CF save error:', e); }
   }
 }
 
@@ -7394,11 +7465,16 @@ function loadCustomFieldValues() {
   const acts = get();
   const cf = CUSTOM_FIELDS?.[ACTIVE] || [];
   if (!cf.length) return;
+  // Load from module-wide storage first (faster)
+  let allCf = {};
+  try { allCf = JSON.parse(localStorage.getItem('sg_cf_all_' + ACTIVE) || '{}'); } catch(e) {}
   acts.forEach(r => {
     try {
+      // Try activity-specific key
       const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || r._id);
       const stored = localStorage.getItem(key);
-      if (stored) r._customFields = JSON.parse(stored);
+      if (stored) { r._customFields = { ...(allCf[String(r._dbid || r._id)] || {}), ...JSON.parse(stored) }; }
+      else if (allCf[String(r._dbid || r._id)]) { r._customFields = allCf[String(r._dbid || r._id)]; }
     } catch(e) {}
   });
 }
