@@ -31,9 +31,9 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
   pointer-events: none;
   font-style: italic;
 }
-[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0; border:1px solid #888 }
-[contenteditable] table th, [contenteditable] table td { border:1px solid #888; padding:4px 7px; font-size:11px }
-[contenteditable] table th { background:var(--bg3); font-weight:700 }
+[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0; border:2px solid #666 }
+[contenteditable] table th { border:1px solid #666; padding:5px 8px; font-size:11px; font-weight:700; background:#2d3440; color:#e6edf3 }
+[contenteditable] table td { border:1px solid #555; padding:5px 8px; font-size:11px }
 /* obs editor images */
 #m-obs-editor img { max-width:120px;max-height:90px;border-radius:4px;margin:2px;object-fit:cover;cursor:zoom-in;vertical-align:middle; }
 /* BI-TONE MODE — dark sidebar, light content */
@@ -2043,6 +2043,9 @@ function closeKP() { document.getElementById('kp-ov').classList.remove('open'); 
 function renderActs() {
   const state = MS[ACTIVE];
   if (!state || state.acts === null) return; // data not loaded yet
+  // Always load custom field values from localStorage before rendering
+  // This ensures values saved by updateCustomField are visible immediately
+  if (typeof loadCustomFieldValues === 'function') loadCustomFieldValues();
   let d = [...get()];
   const srch = (document.getElementById('a-srch')?.value || '').toLowerCase();
   const est  = document.getElementById('a-est')?.value   || '';
@@ -2092,7 +2095,7 @@ function renderActs() {
           ${(f.opts||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
         </select></td>`;
       }
-      return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+      return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
     }).join('');
     const ie = ['admin','collaborator'].includes(CURRENT_USER?.role); // inline editable
     return `<tr id="act-row-${r._id}">
@@ -2342,22 +2345,44 @@ function renderRep() {
     return actInRange || stInRange;
   });
   // KPI: cumplimiento = promedio de AVANCE% de actividades/subtareas en el rango
-  // Ejemplo: 2 actividades con 100% y 1 con 0% → cumplimiento = 66%
+  // Regla: subtareas reprogramadas NO Justificadas cuentan 0% (penalizan)
+  //        subtareas reprogramadas Justificadas NO se penalizan (se excluyen del denominador
+  //        si no están hechas, o cuentan 100% si están hechas)
   let effPlanned = 0, effAvanceSum = 0, effDone = 0;
   d.forEach(r => {
     const stInRange = (r.subtasks||[]).filter(s => {
-      const sd = s._originalDate || s.date;
+      const sd = s._originalDate || s.date; // use original date for month matching
       return sd && (!from || sd >= from) && (!to || sd <= to);
     });
     if (stInRange.length > 0) {
-      effPlanned += stInRange.length;
-      const doneST = stInRange.filter(s => s.done).length;
-      effAvanceSum += doneST * 100;
-      effDone += doneST;
+      stInRange.forEach(s => {
+        const isReprogNoJust = s.reprogramada && s.reprogJustificada === false;
+        if (isReprogNoJust && !s.done) {
+          // No justificada y no hecha → penaliza (cuenta 0%)
+          effPlanned++;
+          effAvanceSum += 0;
+        } else if (s.reprogramada && s.reprogJustificada === true && !s.done) {
+          // Justificada y no hecha → no penaliza, no cuenta en el denominador
+          // (excluida del cálculo)
+        } else {
+          // Hecha (100%) o no reprogramada (0%)
+          effPlanned++;
+          effAvanceSum += s.done ? 100 : 0;
+          if (s.done) effDone++;
+        }
+      });
     } else {
-      effPlanned++;
-      effAvanceSum += (r.AVANCE || 0);
-      if (r.ESTADO === 'REALIZADA') effDone++;
+      // Activity level: reprogramada no justificada penaliza si no está realizada
+      const isActReprogNJ = r.ESTADO === 'REPROGRAMADA' &&
+        (r['DETALLE DE REPROGRAMACION']||'').toLowerCase().includes('no justificada');
+      if (r.ESTADO === 'REALIZADA') {
+        effPlanned++; effAvanceSum += 100; effDone++;
+      } else if (isActReprogNJ) {
+        effPlanned++; effAvanceSum += 0; // penaliza
+      } else {
+        effPlanned++;
+        effAvanceSum += (r.AVANCE || 0);
+      }
     }
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
@@ -3519,9 +3544,26 @@ function openSTModal(stId, mode) {
     <div style="font-size:15px;font-weight:700;color:${accentColor};margin-bottom:16px">${title}</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:12px;background:var(--bg3);padding:8px 10px;border-radius:6px">${s.desc || '—'}</div>
 
-    ${isReprog ? `<div style="margin-bottom:12px">
-      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Nueva Fecha de Cierre</label>
-      <input type="date" id="_st-new-date" class="fi" value="${s.newDate || s.date || ''}" style="width:100%;font-size:12px">
+    ${isReprog ? `<div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:8px">Nueva Fecha de Cierre</label>
+      <input type="date" id="_st-new-date" class="fi" value="${s.newDate || s.date || ''}" style="width:100%;font-size:12px;margin-bottom:12px">
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:8px">Tipo de reprogramación</label>
+      <div style="display:flex;gap:16px;margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:7px;border:2px solid ${s.reprogJustificada===false?'var(--border)':'var(--green)'};background:${s.reprogJustificada===false?'transparent':'rgba(34,197,94,.08)'};flex:1;transition:all .15s">
+          <input type="radio" name="_st-reprog-tipo" id="_st-justificada" value="justificada" ${s.reprogJustificada!==false?'checked':''} style="accent-color:var(--green)">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--green)">✓ Justificada</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">No afecta al % de cumplimiento</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:7px;border:2px solid ${s.reprogJustificada===false?'var(--red)':'var(--border)'};background:${s.reprogJustificada===false?'rgba(239,68,68,.08)':'transparent'};flex:1;transition:all .15s">
+          <input type="radio" name="_st-reprog-tipo" id="_st-no-justificada" value="no_justificada" ${s.reprogJustificada===false?'checked':''} style="accent-color:var(--red)">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--red)">✗ No Justificada</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">Penaliza el % de cumplimiento</div>
+          </div>
+        </label>
+      </div>
     </div>` : ''}
 
     <div style="margin-bottom:16px">
@@ -3573,11 +3615,20 @@ function _saveSTModal(stId, mode) {
     s.stComment = comment ? dateStr + comment : (s.stComment || '');
   } else if (mode === 'reprog') {
     const newDate = document.getElementById('_st-new-date')?.value;
+    const tipoRadio = document.querySelector('input[name="_st-reprog-tipo"]:checked');
+    const isJustificada = tipoRadio ? tipoRadio.value === 'justificada' : true;
     s.reprogramada = true;
-    s._originalDate = s._originalDate || s.date;
+    s.reprogJustificada = isJustificada;
+    // _originalDate must be preserved — it's the date used for the original month counting
+    if (!s._originalDate) s._originalDate = s.date; // only set once — preserves initial original
     if (newDate) { s.newDate = newDate; s.date = newDate; }
-    s.stComment = comment ? (s.stComment ? s.stComment + '\n' : '') + dateStr + comment : s.stComment;
-    s.reprogDetail = comment;
+    // Build the comment with the type prefix
+    const tipoLabel = isJustificada ? '[Justificada]' : '[No Justificada]';
+    const commentBody = comment ? `${tipoLabel} ${comment}` : tipoLabel;
+    s.stComment = s.stComment
+      ? s.stComment + '\n' + dateStr + commentBody
+      : dateStr + commentBody;
+    s.reprogDetail = commentBody;
   } else {
     const resp = document.getElementById('_st-resp')?.value;
     const date = document.getElementById('_st-date')?.value;
@@ -3905,19 +3956,20 @@ function cmtPlaceholder(el) {
 // Obs editor helpers
 function obsInsertTable() {
   const rows = parseInt(prompt('Número de filas:', '3') || '3');
-  const cols = parseInt(prompt('Número de columnas:', '3') || '3');
-  if (!rows || !cols) return;
-  const cellStyle = 'border:1px solid #888;padding:4px 7px;min-width:50px;font-size:11px;';
-  const thStyle   = cellStyle + 'background:var(--bg3,#f1f5f9);font-weight:700;text-align:left;';
-  let tbl = `<table style="border-collapse:collapse;width:100%;margin:5px 0;border:1px solid #888"><thead><tr>`;
-  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c+1}</th>`;
+  const cols  = parseInt(prompt('Número de columnas:', '3') || '3');
+  if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
+  const tblStyle = 'border-collapse:collapse;width:100%;margin:6px 0;border:2px solid #666;';
+  const thStyle  = 'border:1px solid #666;padding:5px 8px;background:#2d3440;color:#e6edf3;font-size:11px;font-weight:700;text-align:left;min-width:60px;';
+  const tdStyle  = 'border:1px solid #555;padding:5px 8px;background:transparent;color:inherit;font-size:11px;min-width:60px;';
+  let tbl = `<table style="${tblStyle}"><thead><tr>`;
+  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c + 1}</th>`;
   tbl += '</tr></thead><tbody>';
-  for (let r = 0; r < rows; r++) {
+  for (let ri = 0; ri < rows; ri++) {
     tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += `<td style="${cellStyle}" contenteditable="true"></td>`;
+    for (let c = 0; c < cols; c++) tbl += `<td style="${tdStyle}" contenteditable="true">&nbsp;</td>`;
     tbl += '</tr>';
   }
-  tbl += '</tbody></table>';
+  tbl += '</tbody></table><p><br></p>';
   const el = document.getElementById('m-obs-editor');
   if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
 }
@@ -3949,19 +4001,21 @@ function cmtExecCmd(cmd) {
 }
 function cmtInsertTable(actId) {
   const rows = parseInt(prompt('Número de filas:', '3') || '3');
-  const cols = parseInt(prompt('Número de columnas:', '3') || '3');
-  if (!rows || !cols) return;
-  const cellStyle = 'border:1px solid #888;padding:5px 8px;min-width:60px;font-size:11px;';
-  const thStyle   = cellStyle + 'background:var(--bg3,#f1f5f9);font-weight:700;text-align:left;';
-  let tbl = `<table style="border-collapse:collapse;width:100%;margin:6px 0;border:1px solid #888"><thead><tr>`;
-  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c+1}</th>`;
+  const cols  = parseInt(prompt('Número de columnas:', '3') || '3');
+  if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
+  // Explicit solid hex colors — CSS vars don't work inside execCommand HTML
+  const tblStyle = 'border-collapse:collapse;width:100%;margin:8px 0;border:2px solid #666;';
+  const thStyle  = 'border:1px solid #666;padding:6px 10px;background:#2d3440;color:#e6edf3;font-size:11px;font-weight:700;text-align:left;min-width:70px;';
+  const tdStyle  = 'border:1px solid #555;padding:6px 10px;background:transparent;color:inherit;font-size:11px;min-width:70px;';
+  let tbl = `<table style="${tblStyle}"><thead><tr>`;
+  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c + 1}</th>`;
   tbl += '</tr></thead><tbody>';
-  for (let r = 0; r < rows; r++) {
+  for (let ri = 0; ri < rows; ri++) {
     tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += `<td style="${cellStyle}" contenteditable="true"></td>`;
+    for (let c = 0; c < cols; c++) tbl += `<td style="${tdStyle}" contenteditable="true">&nbsp;</td>`;
     tbl += '</tr>';
   }
-  tbl += '</tbody></table>';
+  tbl += '</tbody></table><p><br></p>';
   const el = document.getElementById('dr-cmt-inp');
   if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
 }
@@ -4049,53 +4103,89 @@ function addDrawerComment(actId) {
   renderDrawerComments(actId);
 }
 
-// ── Attachment store — triple-layer persistence ────────────────────────
-// Layer 1: comment.attachments (on the activity object in MS state — survives navigation)
-// Layer 2: window._cmtAttachStore (fast in-memory cache)
-// Layer 3: sessionStorage (survives page-within-tab navigation but not hard refresh)
-// Note: hard refresh reloads all MS state from DB anyway, so images from DB comments
-// would need Supabase Storage for true cross-session persistence.
-const _CMT_SS_PREFIX = '_cmtAtt_';
+// ── Attachment store — localStorage persistence ───────────────────────
+// localStorage persists across page refreshes AND tab changes, unlike sessionStorage.
+// Base64 images are compressed to ~80-150KB so localStorage (5-10MB limit) can hold
+// dozens of images. Keys: _cmtAtt_<commentId>
+const _CMT_LS_PREFIX = '_cmtAtt_';
 
 function storeCmtAttachments(cmtId, attachments) {
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
   window._cmtAttachStore[cmtId] = attachments;
   try {
-    sessionStorage.setItem(_CMT_SS_PREFIX + cmtId, JSON.stringify(
+    localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(
       attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, data: a.data }))
     ));
-  } catch(e) { console.warn('sessionStorage full for attachment', e); }
+  } catch(e) {
+    // localStorage may be full — try clearing old entries
+    console.warn('localStorage full, trying cleanup:', e);
+    try {
+      // Remove oldest attachment entries to free space
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(_CMT_LS_PREFIX));
+      if (keys.length > 0) {
+        localStorage.removeItem(keys[0]);
+        localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(
+          attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, data: a.data }))
+        ));
+      }
+    } catch(e2) { console.warn('Could not persist attachment:', e2); }
+  }
 }
 
 function getCmtAttachments(cmt) {
   if (!cmt || !cmt.id) return [];
-  // 1. comment.attachments is authoritative (lives inside activity object)
-  if (cmt.attachments && cmt.attachments.length > 0) {
-    // Sync to cache and sessionStorage so other layers stay warm
-    if (!window._cmtAttachStore) window._cmtAttachStore = {};
-    if (!window._cmtAttachStore[cmt.id]) {
-      window._cmtAttachStore[cmt.id] = cmt.attachments;
-      try { sessionStorage.setItem(_CMT_SS_PREFIX + cmt.id, JSON.stringify(cmt.attachments)); } catch(e) {}
-    }
-    return cmt.attachments;
-  }
-  // 2. In-memory cache
+  // 1. In-memory cache (fastest, for current session)
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
-  if (window._cmtAttachStore[cmt.id]) {
-    cmt.attachments = window._cmtAttachStore[cmt.id]; // hydrate comment
+  if (window._cmtAttachStore[cmt.id] && window._cmtAttachStore[cmt.id].length > 0) {
+    // Keep comment.attachments in sync
+    cmt.attachments = window._cmtAttachStore[cmt.id];
+    return window._cmtAttachStore[cmt.id];
+  }
+  // 2. comment.attachments (in-memory on activity object)
+  if (cmt.attachments && cmt.attachments.length > 0) {
+    window._cmtAttachStore[cmt.id] = cmt.attachments;
     return cmt.attachments;
   }
-  // 3. sessionStorage
+  // 3. localStorage (survives page refresh AND tab changes)
   try {
-    const raw = sessionStorage.getItem(_CMT_SS_PREFIX + cmt.id);
+    const raw = localStorage.getItem(_CMT_LS_PREFIX + cmt.id);
     if (raw) {
       const parsed = JSON.parse(raw);
-      window._cmtAttachStore[cmt.id] = parsed;
-      cmt.attachments = parsed; // hydrate comment object
-      return parsed;
+      if (parsed && parsed.length > 0) {
+        window._cmtAttachStore[cmt.id] = parsed;
+        cmt.attachments = parsed; // hydrate comment object for future calls
+        return parsed;
+      }
     }
   } catch(e) {}
   return [];
+}
+
+// Hydrate all attachments from localStorage when app loads (call after MS loads)
+function hydrateAllAttachments() {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(_CMT_LS_PREFIX))
+      .forEach(k => {
+        const cmtId = parseInt(k.replace(_CMT_LS_PREFIX, ''), 10);
+        if (!cmtId) return;
+        const raw = localStorage.getItem(k);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!window._cmtAttachStore) window._cmtAttachStore = {};
+        window._cmtAttachStore[cmtId] = parsed;
+        // Also hydrate into the comment object if it exists in memory
+        Object.values(MS).forEach(mod => {
+          (mod.acts || []).forEach(act => {
+            (act.comments || []).forEach(c => {
+              if (c.id === cmtId && (!c.attachments || c.attachments.length === 0)) {
+                c.attachments = parsed;
+              }
+            });
+          });
+        });
+      });
+  } catch(e) {}
 }
 
 // ── Image lightbox ──────────────────────────────────────────────────────
@@ -4850,6 +4940,7 @@ async function loadModFromDB(key) {
 
   populateDDs();
   loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
+  setTimeout(hydrateAllAttachments, 300); // hydrate image attachments from localStorage
   // Render everything
   applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
   // renderCal() only when on calendar page
@@ -7429,35 +7520,30 @@ function renderInicio() {
 // ════════════════════════════════════════════════════════════════
 async function updateCustomField(actId, fieldName, value, cellEl) {
   const r = get().find(a => a._id === actId || String(a._id) === String(actId)); if (!r) return;
+  // IMPORTANT: set on r._customFields synchronously BEFORE any render
   if (!r._customFields) r._customFields = {};
   r._customFields[fieldName] = value;
-  // Update the cell display immediately without full re-render
-  if (cellEl) {
-    cellEl.textContent = value;
-    cellEl.style.color = 'var(--text)';
-  }
-  // Persist to localStorage
+  // Persist to both localStorage keys immediately (synchronous)
   try {
     const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || actId);
     localStorage.setItem(key, JSON.stringify(r._customFields));
   } catch(e) {}
-  // Persist to Supabase: store custom fields in observaciones_extra or piggyback on subtasks
+  try {
+    const moduleKey = 'sg_cf_all_' + ACTIVE;
+    const allCf = JSON.parse(localStorage.getItem(moduleKey) || '{}');
+    allCf[String(r._dbid || actId)] = r._customFields;
+    allCf[String(actId)] = r._customFields; // also save by local id
+    localStorage.setItem(moduleKey, JSON.stringify(allCf));
+  } catch(e) {}
+  // NOTE: do NOT call cellEl.textContent — that would destroy the <input> element
+  // The input field already shows the correct value the user typed
+  // Async: also save to Supabase (fire and forget)
   if (r._dbid) {
     try {
-      // Use a custom table column if available, otherwise store as JSON comment marker
-      // We store as a special key in subtasks metadata
-      const meta = { _cf: r._customFields };
       await _sb.from('actividades')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', r._dbid);
-      // Save to localStorage module-wide so it persists across sessions
-      try {
-        const moduleKey = 'sg_cf_all_' + ACTIVE;
-        const allCf = JSON.parse(localStorage.getItem(moduleKey) || '{}');
-        allCf[String(r._dbid || actId)] = r._customFields;
-        localStorage.setItem(moduleKey, JSON.stringify(allCf));
-      } catch(e2) {}
-    } catch(e) { console.warn('CF save error:', e); }
+    } catch(e) { console.warn('CF Supabase save error:', e); }
   }
 }
 
