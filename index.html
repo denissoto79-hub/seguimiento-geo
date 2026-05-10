@@ -2326,6 +2326,76 @@ function gaugeArc(pct, col) {
   </svg>`;
 }
 
+// ── Shared cumplimiento engine — used by all 4 report functions ─────────
+// Rules:
+//   Subtask done               → 100%  (counts)
+//   Subtask reprog Justificada not done  → excluded from denominator (no penalty)
+//   Subtask reprog No Justificada not done → 0%  (penalizes)
+//   Subtask pending (no reprog)  → 0%
+//   Activity REALIZADA (no subtasks in range) → 100%
+//   Activity REPROGRAMADA Justificada (no subtasks) → 100% no penalty
+//   Activity REPROGRAMADA No Justificada (no subtasks) → 0%
+//   Activity other (no subtasks) → AVANCE%
+function calcCumplimiento(acts, from, to) {
+  let effPlanned = 0, effAvanceSum = 0, effDone = 0;
+  acts.forEach(r => {
+    const stInRange = (r.subtasks||[]).filter(s => {
+      const sd = s._originalDate || s.date;
+      return sd && (!from || sd >= from) && (!to || sd <= to);
+    });
+    if (stInRange.length > 0) {
+      stInRange.forEach(s => {
+        if (s.done) {
+          effPlanned++; effAvanceSum += 100; effDone++;
+        } else if (s.reprogramada && s.reprogJustificada === true) {
+          // Justificada not done → excluded from denominator (no penalty)
+        } else if (s.reprogramada && s.reprogJustificada === false) {
+          // No Justificada not done → 0% penalty
+          effPlanned++; effAvanceSum += 0;
+        } else {
+          // Pending normal → 0%
+          effPlanned++; effAvanceSum += 0;
+        }
+      });
+    } else {
+      // Activity level
+      if (r.ESTADO === 'REALIZADA') {
+        effPlanned++; effAvanceSum += 100; effDone++;
+      } else if (r.ESTADO === 'REPROGRAMADA') {
+        // Check boolean first, then fallback to text search
+        const isJust = r.reprogJustificada === true ||
+          (r.reprogJustificada === undefined &&
+           !(r['DETALLE DE REPROGRAMACION']||'').toLowerCase().includes('no justificada'));
+        effPlanned++;
+        effAvanceSum += isJust ? 100 : 0;
+      } else {
+        effPlanned++;
+        effAvanceSum += (r.AVANCE || 0);
+      }
+    }
+  });
+  const cum = effPlanned ? Math.round(effAvanceSum / effPlanned) : 0;
+  return { cum, effPlanned, effDone, effAvanceSum };
+}
+
+// Count subtasks in range using _originalDate (so reprogrammed subtasks appear in original month)
+function countSubtasksInRange(acts, from, to) {
+  let total = 0, done = 0, justificadas = 0, noJustificadas = 0;
+  acts.forEach(r => {
+    (r.subtasks||[]).forEach(s => {
+      const sd = s._originalDate || s.date;
+      if (!sd) return;
+      if (from && sd < from) return;
+      if (to && sd > to) return;
+      total++;
+      if (s.done) done++;
+      if (s.reprogramada && s.reprogJustificada === true) justificadas++;
+      if (s.reprogramada && s.reprogJustificada === false) noJustificadas++;
+    });
+  });
+  return { total, done, justificadas, noJustificadas };
+}
+
 function renderRep() {
   const from = document.getElementById('rep-from')?.value || '';
   const to   = document.getElementById('rep-to')?.value   || '';
