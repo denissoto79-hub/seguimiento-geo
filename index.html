@@ -2344,49 +2344,10 @@ function renderRep() {
     });
     return actInRange || stInRange;
   });
-  // KPI: cumplimiento = promedio de AVANCE% de actividades/subtareas en el rango
-  // Regla: subtareas reprogramadas NO Justificadas cuentan 0% (penalizan)
-  //        subtareas reprogramadas Justificadas NO se penalizan (se excluyen del denominador
-  //        si no están hechas, o cuentan 100% si están hechas)
-  let effPlanned = 0, effAvanceSum = 0, effDone = 0;
-  d.forEach(r => {
-    const stInRange = (r.subtasks||[]).filter(s => {
-      const sd = s._originalDate || s.date; // use original date for month matching
-      return sd && (!from || sd >= from) && (!to || sd <= to);
-    });
-    if (stInRange.length > 0) {
-      stInRange.forEach(s => {
-        const isReprogNoJust = s.reprogramada && s.reprogJustificada === false;
-        if (isReprogNoJust && !s.done) {
-          // No justificada y no hecha → penaliza (cuenta 0%)
-          effPlanned++;
-          effAvanceSum += 0;
-        } else if (s.reprogramada && s.reprogJustificada === true && !s.done) {
-          // Justificada y no hecha → no penaliza, no cuenta en el denominador
-          // (excluida del cálculo)
-        } else {
-          // Hecha (100%) o no reprogramada (0%)
-          effPlanned++;
-          effAvanceSum += s.done ? 100 : 0;
-          if (s.done) effDone++;
-        }
-      });
-    } else {
-      // Activity level: reprogramada no justificada penaliza si no está realizada
-      const isActReprogNJ = r.ESTADO === 'REPROGRAMADA' &&
-        (r['DETALLE DE REPROGRAMACION']||'').toLowerCase().includes('no justificada');
-      if (r.ESTADO === 'REALIZADA') {
-        effPlanned++; effAvanceSum += 100; effDone++;
-      } else if (isActReprogNJ) {
-        effPlanned++; effAvanceSum += 0; // penaliza
-      } else {
-        effPlanned++;
-        effAvanceSum += (r.AVANCE || 0);
-      }
-    }
-  });
+  // ── SHARED cumplimiento engine — same as exportPDF, renderRepPlan, exportPlanPDF ──
+  const { cum, effPlanned, effDone } = calcCumplimiento(d, from, to);
+  const { total: totalSubtasksCount } = countSubtasksInRange(d, from, to);
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  const cum = effPlanned ? Math.round(effAvanceSum / effPlanned) : 0;
   const avg = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r) => s+(r['CANTIDAD DE REPROGRAMACIONES']||0), 0);
   document.getElementById('rep-kpis').innerHTML = [
@@ -2399,12 +2360,8 @@ function renderRep() {
   const plantas = uniq(d, 'PLANTA');
   const cumColor = cum>=70?'#22c55e':cum>=40?'#38bdf8':'#ef4444';
   const avColor  = avg>=70?'#22c55e':avg>=40?'#38bdf8':'#f97316';
-  // Calcular totales de actividades y subtareas
-  let totalSubtasks = 0;
-  d.forEach(r => {
-    const stInRange = (r.subtasks||[]).filter(s => s.date && (!from || s.date >= from) && (!to || s.date <= to));
-    totalSubtasks += stInRange.length;
-  });
+  // Use countSubtasksInRange result (already computed above using _originalDate)
+  const totalSubtasks = totalSubtasksCount;
   const periodoLabel = (from || to) ? ((from?from:'inicio')+' → '+(to?to:'fin')) : 'Todo el período';
   document.getElementById('rep-plant-gauges').innerHTML = `
     <div class="chart-card" style="margin-bottom:0">
@@ -2506,22 +2463,9 @@ function exportPDF() {
     return actInRange || stInRange;
   });
   const n = d.length, real = d.filter(r=>r.ESTADO==='REALIZADA').length;
-  // ── SAME KPI logic as renderRep (AVANCE-based cumplimiento) ──
-  let effPlanned=0, effAvanceSum=0, effDone=0, totalSubtasks=0;
-  d.forEach(r => {
-    const stInRange = (r.subtasks||[]).filter(s => { const sd=s._originalDate||s.date; return sd&&(!from||sd>=from)&&(!to||sd<=to); });
-    totalSubtasks += stInRange.length;
-    if (stInRange.length > 0) {
-      effPlanned += stInRange.length;
-      const doneST = stInRange.filter(s=>s.done).length;
-      effAvanceSum += doneST * 100; effDone += doneST;
-    } else {
-      effPlanned++;
-      effAvanceSum += (r.AVANCE||0);
-      if (r.ESTADO==='REALIZADA') effDone++;
-    }
-  });
-  const cum  = effPlanned ? Math.round(effAvanceSum/effPlanned) : 0;
+  // ── SHARED cumplimiento engine — same as renderRep, renderRepPlan, exportPlanPDF ──
+  const { cum, effPlanned, effDone } = calcCumplimiento(d, from, to);
+  const { total: totalSubtasks } = countSubtasksInRange(d, from, to);
   const avg  = n ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/n) : 0;
   const tRep = d.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
   const plantas = uniq(d, 'PLANTA');
@@ -2858,26 +2802,8 @@ function renderRepPlan() {
   // Get all plants from results
   const plantas = [...new Set([...d.map(r=>r.PLANTA), ...stMatched.map(x=>x.act.PLANTA)].filter(Boolean))].sort();
 
-  // Calculate %cumplimiento for the period
-  // Cumplimiento = promedio de AVANCE% de actividades/subtareas del período
-  let planCumPl = 0, planCumDn = 0, planAvanceSum = 0;
-  d.forEach(r => {
-    const stInRange = (r.subtasks||[]).filter(s => {
-      const sd = s._originalDate || s.date;
-      return sd && (!planFrom || sd >= planFrom) && (!planTo || sd <= planTo);
-    });
-    if (stInRange.length > 0) {
-      planCumPl += stInRange.length;
-      const doneST = stInRange.filter(s => s.done).length;
-      planCumDn += doneST;
-      planAvanceSum += doneST * 100;
-    } else {
-      planCumPl++;
-      if (r.ESTADO === 'REALIZADA') planCumDn++;
-      planAvanceSum += (r.AVANCE || 0);
-    }
-  });
-  const cumPlan = planCumPl ? Math.round(planAvanceSum / planCumPl) : 0;
+  // ── SHARED cumplimiento engine — same as renderRep ──
+  const { cum: cumPlan, effPlanned: planCumPl, effDone: planCumDn } = calcCumplimiento(d, planFrom, planTo);
   const cumColor = cumPlan >= 80 ? 'var(--green)' : cumPlan >= 50 ? 'var(--orange)' : 'var(--red)';
 
   let html = `<div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2912,10 +2838,16 @@ function renderRepPlan() {
 
       const actRows = ap.map(r => {
         const isReprog = !!r._originalFin || r.ESTADO === 'REPROGRAMADA';
-        const isReprogNJ = r.ESTADO === 'REPROGRAMADA' && (r['DETALLE DE REPROGRAMACION']||'').includes('[NO JUSTIFICADA');
+        const isReprogNJ = r.ESTADO === 'REPROGRAMADA' && (r['DETALLE DE REPROGRAMACION']||'').toLowerCase().includes('no justificada');
+        const isReprogJ  = r.ESTADO === 'REPROGRAMADA' && !isReprogNJ;
         let rowBg = isReprogNJ ? ';background:rgba(239,68,68,.05)' : (isReprog ? ';background:rgba(249,115,22,.05)' : '');
+        const justChip = isReprogNJ
+          ? `<span style="font-size:8px;background:rgba(239,68,68,.15);color:var(--red);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700">✖ NJ</span>`
+          : isReprogJ
+          ? `<span style="font-size:8px;background:rgba(34,197,94,.15);color:var(--green);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700">✔ J</span>`
+          : '';
         return `<tr style="border-bottom:1px solid var(--border);cursor:pointer${rowBg}" onclick="openActDr('${r._id}')">
-          <td style="padding:5px 8px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isReprog?'<span title="Reprogramada" style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}</td>
+          <td style="padding:5px 8px;white-space:nowrap"><span class="code-lbl">${r['CÓDIGO']}</span>${isReprog?'<span title="Reprogramada" style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}${justChip}</td>
           <td style="padding:5px 8px;word-wrap:break-word;white-space:normal">${r.ACTIVIDAD||'—'}</td>
           <td style="padding:5px 8px;font-size:10px;color:var(--text2);white-space:nowrap">${r.RESPONSABLE||'—'}</td>
           <td style="padding:5px 8px;text-align:center">${badge(r.ESTADO||'PLANIFICADA')}</td>
@@ -2930,9 +2862,14 @@ function renderRepPlan() {
         const isReprogST = !!s._originalDate;
         const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PLANIFICADA');
         const estColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--text2)');
+        const stJust = s.reprogramada
+          ? (s.reprogJustificada === false
+            ? `<span style="font-size:8px;background:rgba(239,68,68,.15);color:var(--red);border-radius:4px;padding:1px 4px;margin-left:3px;font-weight:700">✖ NJ</span>`
+            : `<span style="font-size:8px;background:rgba(34,197,94,.15);color:var(--green);border-radius:4px;padding:1px 4px;margin-left:3px;font-weight:700">✔ J</span>`)
+          : '';
         return `<tr style="border-bottom:1px solid var(--border);background:rgba(139,148,158,.05)">
           <td style="padding:4px 8px;color:var(--text3);font-size:9px">↳ ${x.act['CÓDIGO']||'—'}</td>
-          <td style="padding:4px 8px;font-size:10px;color:var(--text2);word-wrap:break-word;white-space:normal">▪ ${s.desc||'—'}${isReprogST?'<span style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}</td>
+          <td style="padding:4px 8px;font-size:10px;color:var(--text2);word-wrap:break-word;white-space:normal">▪ ${s.desc||'—'}${isReprogST?'<span style="color:var(--orange);font-size:9px;margin-left:3px">↻</span>':''}${stJust}</td>
           <td style="padding:4px 8px;font-size:10px;color:var(--text2);white-space:nowrap">${s.resp||'—'}</td>
           <td style="padding:4px 8px;text-align:center;font-size:10px;font-weight:700;color:${estColor}">${stEstado}</td>
           <td style="padding:4px 8px;text-align:center;font-size:10px;color:var(--text2)">${s.done?'100':'0'}%</td>
@@ -3064,13 +3001,13 @@ function exportPlanPDF() {
   const totalActivities = d.length;
   const totalSubtasks = stMatchedPDF.length;
 
-  // Calculate KPIs for PDF
+  // ── SHARED cumplimiento engine — same as all other reports ──
+  const { cum: kpiCumpl, effPlanned: kpiPl, effDone: kpiDn } = calcCumplimiento(d, planFrom, planTo);
   const kpiRealiz = d.filter(r => r.ESTADO === 'REALIZADA').length;
   const kpiEnCurso = d.filter(r => r.ESTADO === 'EN CURSO').length;
   const kpiReprog = d.filter(r => r.ESTADO === 'REPROGRAMADA').length;
   const kpiPlan = d.filter(r => r.ESTADO === 'PLANIFICADA').length;
   const kpiAvgAvance = totalActivities ? Math.round(d.reduce((s,r)=>s+r.AVANCE,0)/totalActivities) : 0;
-  const kpiCumpl = totalActivities ? Math.round(d.reduce((s,r)=>s+(r.AVANCE||0),0)/totalActivities) : 0;
   const kpiCumplColor = kpiCumpl >= 80 ? '#16a34a' : kpiCumpl >= 50 ? '#ea580c' : '#dc2626';
   const kpiCards = [
     { l:'Total Actividades', v: totalActivities + (totalSubtasks > 0 ? ' + ' + totalSubtasks + ' sub.' : ''), c: '#0284c7' },
