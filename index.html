@@ -2536,27 +2536,29 @@ function renderRep() {
             });
             const stDetailRows = stInR.map(s => {
               let stJust = '—';
+              let stIsJ = null;
               if (s.reprogramada) {
-                let isJ;
-                if (s.reprogJustificada === true) isJ = true;
-                else if (s.reprogJustificada === false) isJ = false;
-                else isJ = !((s.stComment||'')+(s.reprogDetail||'')).toLowerCase().includes('no justificada');
-                stJust = isJ
+                if (s.reprogJustificada === true) stIsJ = true;
+                else if (s.reprogJustificada === false) stIsJ = false;
+                else stIsJ = !((s.stComment||'')+(s.reprogDetail||'')).toLowerCase().includes('no justificada');
+                stJust = stIsJ
                   ? '<span style="color:var(--green);font-weight:700;font-size:10px">✔ J</span>'
                   : '<span style="color:var(--red);font-weight:700;font-size:10px">✖ NJ</span>';
               }
               const stEst = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PENDIENTE');
               const stColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--text2)');
-              const cmt = s.stComment || '';
+              // Avance: done=100, Justificada=100, NoJustificada=0, pending=0
+              const stAvance = s.done ? 100 : (s.reprogramada && stIsJ ? 100 : 0);
+              const stObs = s.stComment || '—';
               return `<tr style="background:rgba(139,148,158,.04);border-bottom:1px solid var(--border)">
                 <td style="padding:3px 8px 3px 20px;font-size:9px;color:var(--text3)">↳ ST</td>
                 <td style="padding:3px 8px;font-size:9px;color:var(--text2)">${s.desc||'—'}</td>
                 <td style="padding:3px 8px;font-size:9px;color:var(--text2)">${s.resp||'—'}</td>
                 <td style="padding:3px 8px;font-size:9px;text-align:center;color:${stColor};font-weight:700">${stEst}</td>
-                <td style="padding:3px 8px;font-size:9px;text-align:center">${s.done?'100':'0'}%</td>
+                <td style="padding:3px 8px;font-size:9px;text-align:center;font-weight:700;color:var(--accent)">${stAvance}%</td>
                 <td style="padding:3px 8px;font-size:9px;text-align:center">${fmtD(s._originalDate||s.date)}</td>
                 <td style="padding:3px 8px;font-size:9px;text-align:center">${stJust}</td>
-                <td style="padding:3px 8px;font-size:9px;color:var(--text2);white-space:pre-wrap;word-break:break-word">${cmt||'—'}</td>
+                <td style="padding:3px 8px;font-size:9px;color:var(--text2);white-space:pre-wrap;word-break:break-word">${stObs}</td>
               </tr>`;
             }).join('');
             return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
@@ -2672,27 +2674,39 @@ function exportPDF() {
         return detail ? '✔ Sí' : '—';
       };
       const actJust = getJustLabel(r['DETALLE DE REPROGRAMACION']);
-      // Filter subtasks to those within the date range
+      // Filter subtasks using _originalDate so reprogrammed subtasks appear in original month
       const filteredST = (r.subtasks||[]).filter(s => {
-        if (!s.date && !s.desc) return false;
-        if (from && s.date && s.date < from) return false;
-        if (to   && s.date && s.date > to)   return false;
+        const sd = s._originalDate || s.date;
+        if (!sd) return false;
+        if (from && sd < from) return false;
+        if (to   && sd > to)   return false;
         return true;
       });
       const stRows = filteredST.map(s => {
         const stEst = s.done?'REALIZADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'#22c55e':(s.reprogramada?'#f97316':'#0ea5e9');
-        const stDetail = s.reprogDetail || '';
-        const stJust = stDetail.includes('[JUSTIFICADA]') ? '✔ Sí' : stDetail.includes('[NO JUSTIFICADA') ? '✖ No' : (s.reprogramada ? '—' : '');
+        // Determine Justificada using boolean first, then text fallback
+        let stIsJ = null;
+        if (s.reprogJustificada === true)  stIsJ = true;
+        else if (s.reprogJustificada === false) stIsJ = false;
+        else if (s.reprogramada) {
+          const det = ((s.stComment||'')+(s.reprogDetail||'')).toLowerCase();
+          stIsJ = !det.includes('no justificada');
+        }
+        const stJust = s.reprogramada ? (stIsJ ? '✔ Sí' : '✖ No') : '';
+        const stJustColor = stIsJ ? '#22c55e' : '#ef4444';
+        // Avance: done=100, Justificada=100, NoJustificada=0, pending=0
+        const stAvance = s.done ? 100 : (s.reprogramada && stIsJ ? 100 : 0);
+        const stObs = [s.stComment, s.reprogDetail ? s.reprogDetail.replace(/\[.*?\]\s*/g,'') : ''].filter(Boolean).join(' | ') || '—';
         return `<tr style="background:#f8fafc">
           <td style="padding:3px 8px 3px 24px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9;font-style:italic">↳ SUBTAREA</td>
           <td style="padding:3px 8px;font-size:9px;color:#64748b;border-bottom:1px solid #f1f5f9">${s.desc||'—'}</td>
-          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">—</td>
+          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${s.resp||'—'}</td>
           <td style="padding:3px 8px;font-size:9px;border-bottom:1px solid #f1f5f9"><span style="color:${stCol};font-weight:600">${stEst}</span></td>
-          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#94a3b8">${s.done?'100':'0'}%</td>
-          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#64748b">${s.date||'—'}</td>
-          <td style="padding:3px 8px;font-size:9px;color:#94a3b8;border-bottom:1px solid #f1f5f9">${s.stComment||''}${stDetail?' | '+stDetail.replace(/\[.*?\]\s*/,''):''}</td>
-          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;font-weight:700;color:${stJust==='✔ Sí'?'#22c55e':stJust==='✖ No'?'#ef4444':'#94a3b8'}">${stJust||'—'}</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#0ea5e9;font-weight:700">${stAvance}%</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;color:#64748b">${fmtD(s._originalDate||s.date)||'—'}</td>
+          <td style="padding:3px 8px;font-size:9px;color:#64748b;border-bottom:1px solid #f1f5f9;word-break:break-word">${stObs}</td>
+          <td style="padding:3px 8px;font-size:9px;text-align:center;border-bottom:1px solid #f1f5f9;font-weight:700;color:${stJust?stJustColor:'#94a3b8'}">${stJust||'—'}</td>
         </tr>`;
       }).join('');
       return `<tr><td style="padding:5px 8px;font-size:10px;color:#1e293b;border-bottom:1px solid #e2e8f0;font-family:monospace;white-space:nowrap">${r['CÓDIGO']}</td>
@@ -2832,15 +2846,9 @@ function exportPDF() {
   <div style="font-size:13px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #1e40af">Resumen por Planta</div>
   ${plantas.map(pl => {
     const ap = d.filter(r => r.PLANTA === pl);
-    // Per-plant KPIs using same AVANCE-based logic
-    let plEffPl=0,plEffSum=0,plEffDn=0,plST=0;
-    ap.forEach(r => {
-      const stIn=(r.subtasks||[]).filter(s=>{const sd=s._originalDate||s.date;return sd&&(!from||sd>=from)&&(!to||sd<=to);});
-      plST+=stIn.length;
-      if(stIn.length>0){plEffPl+=stIn.length;const dn=stIn.filter(s=>s.done).length;plEffSum+=dn*100;plEffDn+=dn;}
-      else{plEffPl++;plEffSum+=(r.AVANCE||0);if(r.ESTADO==='REALIZADA')plEffDn++;}
-    });
-    const plCum = plEffPl?Math.round(plEffSum/plEffPl):0;
+    // Use shared calcCumplimiento engine so Justificada subtasks count as 100%
+    const { cum: plCum, effDone: plEffDn } = calcCumplimiento(ap, from, to);
+    let plST=0; ap.forEach(r=>{const stIn=(r.subtasks||[]).filter(s=>{const sd=s._originalDate||s.date;return sd&&(!from||sd>=from)&&(!to||sd<=to);});plST+=stIn.length;});
     const plAvg = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
     const plReal= ap.filter(r=>r.ESTADO==='REALIZADA').length;
     const plRep = ap.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
@@ -2882,9 +2890,7 @@ function exportPDF() {
         ${plProjs.map(p => {
           const pa = ap.filter(r=>r.PROYECTO===p);
           const pav=pa.length?Math.round(pa.reduce((s,r)=>s+r.AVANCE,0)/pa.length):0;
-          let pEffPl2=0,pEffSum2=0;
-          pa.forEach(r=>{const stIn2=(r.subtasks||[]).filter(s=>{const sd=s._originalDate||s.date;return sd&&(!from||sd>=from)&&(!to||sd<=to);});if(stIn2.length>0){pEffPl2+=stIn2.length;pEffSum2+=stIn2.filter(s=>s.done).length*100;}else{pEffPl2++;pEffSum2+=(r.AVANCE||0);}});
-          const pcu=pEffPl2?Math.round(pEffSum2/pEffPl2):0;
+          const { cum: pcu } = calcCumplimiento(pa, from, to);
           const prp=pa.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
           const cc=pcu>=70?'#16a34a':pcu>=40?'#2563eb':'#dc2626';
           return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9">
@@ -3134,25 +3140,48 @@ function exportPlanPDF() {
         const s = x.st;
         const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PLANIFICADA');
         const stColor  = s.done ? '#16a34a' : (s.reprogramada ? '#c2410c' : '#64748b');
-        const isReprogST = !!s._originalDate;
+        const isReprogST = !!s._originalDate || s.reprogramada;
+        // Determine Justificada
+        let stIsJ = null;
+        if (s.reprogJustificada === true) stIsJ = true;
+        else if (s.reprogJustificada === false) stIsJ = false;
+        else if (s.reprogramada) {
+          const det = ((s.stComment||'')+(s.reprogDetail||'')).toLowerCase();
+          stIsJ = !det.includes('no justificada');
+        }
+        const stJustLabel = s.reprogramada ? (stIsJ ? '✔ J' : '✖ NJ') : '—';
+        const stJustColor = s.reprogramada ? (stIsJ ? '#16a34a' : '#dc2626') : '#94a3b8';
+        // Avance: done=100, Justificada=100, NJ=0, pending=0
+        const stAvance = s.done ? 100 : (s.reprogramada && stIsJ ? 100 : 0);
+        const stObs = s.stComment || '—';
         return `<tr style="background:#f8fafc"><td style="padding:4px 8px;font-size:9px;color:#94a3b8">↳ ${x.act['CÓDIGO']||''}</td>
           <td style="padding:4px 8px;font-size:9px;color:#334155;max-width:220px;word-wrap:break-word">▪ ${(s.desc||'—')}${isReprogST?' ↻':''}</td>
           <td style="padding:4px 8px;font-size:9px;color:#64748b">${s.resp||'—'}</td>
           <td style="padding:4px 8px;font-size:9px;text-align:center;font-weight:700;color:${stColor}">${stEstado}</td>
-          <td style="padding:4px 8px;font-size:9px;text-align:center;color:#64748b">${s.done?'100':'0'}%</td>
-          <td style="padding:4px 8px;font-size:9px;text-align:center;color:#64748b">${s._originalDate||s.date||'—'}</td>
-          <td style="padding:4px 8px;font-size:9px;color:#64748b">—</td>
+          <td style="padding:4px 8px;font-size:9px;text-align:center;font-weight:700;color:#0ea5e9">${stAvance}%</td>
+          <td style="padding:4px 8px;font-size:9px;text-align:center;color:#64748b">${fmtD(s._originalDate||s.date)||'—'}</td>
+          <td style="padding:4px 8px;font-size:9px;text-align:center;font-weight:700;color:${stJustColor}">${stJustLabel}</td>
+          <td style="padding:4px 8px;font-size:9px;color:#64748b;word-wrap:break-word">${stObs}</td>
         </tr>`;
       }).join('');
 
       const rows = ap.map(r => {
-        const isReprog = !!r._originalFin;
+        const isReprog = !!r._originalFin || r.ESTADO === 'REPROGRAMADA';
+        let actIsJ = null;
+        if (isReprog) {
+          if (r.reprogJustificada === true) actIsJ = true;
+          else if (r.reprogJustificada === false) actIsJ = false;
+          else { const det = (r['DETALLE DE REPROGRAMACION']||'').toLowerCase(); actIsJ = !det.includes('no justificada'); }
+        }
+        const actJustLabel = isReprog ? (actIsJ ? '✔ J' : '✖ NJ') : '—';
+        const actJustColor = isReprog ? (actIsJ ? '#16a34a' : '#dc2626') : '#94a3b8';
         return `<tr${isReprog?' style="background:#fff7ed"':''}><td style="padding:5px 8px;font-size:10px;white-space:nowrap">${r['CÓDIGO']}${isReprog?' ↻':''}</td>
           <td style="padding:5px 8px;font-size:10px;max-width:220px;word-wrap:break-word">${r.ACTIVIDAD||'—'}</td>
           <td style="padding:5px 8px;font-size:10px;color:#64748b">${r.RESPONSABLE||'—'}</td>
           <td style="padding:5px 8px;font-size:10px;text-align:center">${r.ESTADO||'PLANIFICADA'}</td>
           <td style="padding:5px 8px;font-size:10px;text-align:center;font-weight:700;color:#0ea5e9">${r.AVANCE}%</td>
           <td style="padding:5px 8px;font-size:10px;text-align:center;color:#64748b">${fmtD(r._originalFin||r['FECHA FIN'])}</td>
+          <td style="padding:5px 8px;font-size:10px;text-align:center;font-weight:700;color:${actJustColor}">${actJustLabel}</td>
           <td style="padding:5px 8px;font-size:10px;color:#64748b;max-width:160px;word-wrap:break-word;white-space:pre-wrap">${r.OBSERVACIONES||'—'}</td>
         </tr>`;
       }).join('');
@@ -3160,14 +3189,15 @@ function exportPlanPDF() {
       planTable += `<div style="margin-bottom:14px;page-break-inside:avoid">
         <div style="background:#1e40af;color:#fff;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">${p}</div>
         <table style="width:100%;border-collapse:collapse;font-family:sans-serif;table-layout:fixed">
-          <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:90px"><col style="width:45px"><col style="width:70px"><col style="width:180px"></colgroup>
+          <colgroup><col style="width:75px"><col><col style="width:100px"><col style="width:85px"><col style="width:42px"><col style="width:68px"><col style="width:45px"><col style="width:160px"></colgroup>
           <thead><tr style="background:#e2e8f0">
             <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Código</th>
-            <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Actividad</th>
+            <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Actividad / Subtarea</th>
             <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Responsable</th>
             <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">Estado</th>
-            <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">Av.</th>
+            <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">%Av.</th>
             <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">F.Fin</th>
+            <th style="padding:5px 8px;font-size:9px;text-align:center;text-transform:uppercase">Reprog.</th>
             <th style="padding:5px 8px;font-size:9px;text-align:left;text-transform:uppercase">Observaciones</th>
           </tr></thead>
           <tbody>${rows}${stRows}</tbody>
