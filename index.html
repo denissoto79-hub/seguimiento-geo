@@ -1053,11 +1053,7 @@ tr:hover .act-btns { opacity:1 }
               <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('bold')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:10px">B</button>
               <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('italic')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:10px">I</button>
               <button type="button" onclick="document.getElementById('m-obs-editor').focus();document.execCommand('insertUnorderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px">☰</button>
-              <button type="button" onclick="obsInsertTable()" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:10px;font-weight:700">⊞ Tabla</button>
-              <label style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
-                📎 Imagen
-                <input type="file" id="m-obs-img-input" accept="image/*" style="display:none" onchange="obsInsertImage(this)">
-              </label>
+
             </div>
             <div id="m-obs-editor" contenteditable="true"
               style="min-height:80px;max-height:220px;overflow-y:auto;padding:8px 10px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
@@ -2651,13 +2647,11 @@ function exportPDF() {
     const ap = d.filter(r=>r.PLANTA===pl);
     const projs = uniq(ap,'PROYECTO');
     const avP  = ap.length?Math.round(ap.reduce((s,r)=>s+r.AVANCE,0)/ap.length):0;
-    let epStPl=0,epStDn=0; ap.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;epStPl++;if(s.done)epStDn++;}));
-    const cumP = (ap.length+epStPl)?Math.round((ap.filter(r=>r.ESTADO==='REALIZADA').length+epStDn)/(ap.length+epStPl)*100):0;
+    const { cum: cumP } = calcCumplimiento(ap, from, to);
     const projRows = projs.map(p => {
       const a = ap.filter(r=>r.PROYECTO===p);
       const av = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-      let epjStPl=0,epjStDn=0; a.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;epjStPl++;if(s.done)epjStDn++;}));
-      const cu = (a.length+epjStPl)?Math.round((a.filter(r=>r.ESTADO==='REALIZADA').length+epjStDn)/(a.length+epjStPl)*100):0;
+      const { cum: cu } = calcCumplimiento(a, from, to);
       return `<tr><td style="padding:6px 10px;font-size:11px;color:#1e293b;border-bottom:1px solid #e2e8f0;max-width:240px">${p}</td>
         <td style="padding:6px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0">${a.length}</td>
         <td style="padding:6px 10px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0;color:#0ea5e9;font-weight:700">${av}%</td>
@@ -5992,11 +5986,6 @@ function _DISABLED_openActDr_v2(id) {
         <button type="button" title="Negrita" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('bold')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:11px">B</button>
         <button type="button" title="Cursiva" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('italic')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:11px">I</button>
         <button type="button" title="Lista" onclick="document.getElementById('dr-cmt-inp').focus();document.execCommand('insertUnorderedList')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">☰</button>
-        <button type="button" title="Insertar tabla" onclick="cmtInsertTable('${r._id}')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">⊞ Tabla</button>
-        <label title="Adjuntar archivo/imagen" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
-          📎 Adjuntar
-          <input type="file" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="cmtHandleAttach('${r._id}',this)">
-        </label>
         <div style="flex:1"></div>
         <button type="button" onclick="addDrawerComment('${r._id}')" class="btn btn-accent btn-sm">Enviar</button>
       </div>
@@ -6004,7 +5993,6 @@ function _DISABLED_openActDr_v2(id) {
         style="min-height:60px;max-height:180px;overflow-y:auto;padding:10px 12px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
         data-placeholder="Escribe un comentario… Ctrl+Enter para enviar"
         onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addDrawerComment('${r._id}')}"></div>
-      <div id="dr-attach-preview-${r._id}" style="padding:0 8px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="d-sec">📋 Historial de cambios</div>
     <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
@@ -7234,23 +7222,15 @@ function openActDr(id) {
         <button type="button" title="Subrayado" onclick="cmtExecCmd('underline')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;text-decoration:underline;font-size:11px">U</button>
         <div style="width:1px;background:var(--border);margin:0 3px"></div>
         <button type="button" title="Lista" onclick="cmtExecCmd('insertUnorderedList')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">☰</button>
-        <button type="button" title="Insertar tabla" onclick="cmtInsertTable('${r._id}')" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">⊞ Tabla</button>
-        <div style="width:1px;background:var(--border);margin:0 3px"></div>
-        <label title="Adjuntar archivo/imagen" style="padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px">
-          📎 Adjuntar
-          <input type="file" id="dr-cmt-file-${r._id}" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="cmtHandleAttach('${r._id}',this)">
-        </label>
         <div style="flex:1"></div>
         <button type="button" onclick="addDrawerComment('${r._id}')" class="btn btn-accent btn-sm">Enviar</button>
       </div>
       <!-- Editable area -->
       <div id="dr-cmt-inp" contenteditable="true" 
         style="min-height:70px;max-height:200px;overflow-y:auto;padding:10px 12px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
-        data-placeholder="Escribe un comentario… usa @nombre para mencionar. Puedes pegar tablas o insertar una con el botón."
+        data-placeholder="Escribe un comentario… Ctrl+Enter para enviar."
         onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addDrawerComment('${r._id}')}"
         oninput="cmtPlaceholder(this)"></div>
-      <!-- Attach preview -->
-      <div id="dr-attach-preview-${r._id}" style="padding:0 8px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <!-- Pending attachments buffer -->
     <div id="dr-pending-attach-${r._id}" style="display:none"></div>
