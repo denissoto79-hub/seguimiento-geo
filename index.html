@@ -1037,7 +1037,7 @@ tr:hover .act-btns { opacity:1 }
           </select>
         </div>
         <div class="fg"><span class="fl">Fecha Inicio</span><input class="fi" id="m-ini" type="date"></div>
-        <div class="fg"><span class="fl">Fecha Fin</span><input class="fi" id="m-fin" type="date" onchange="autoGenST()"></div>
+        <div class="fg"><span class="fl">Fecha Fin</span><input class="fi" id="m-fin" type="date"></div>
         <div class="fg"><span class="fl">Fecha Completada <span id="m-comp-lbl" style="font-size:9px;color:var(--text3)">(solo admin)</span></span><input class="fi" id="m-comp" readonly placeholder="Se asigna al cerrar"></div>
         <div class="fg"><span class="fl">Estado</span>
           <select class="fi" id="m-est" onchange="onEstChange()">
@@ -2162,7 +2162,16 @@ function renderGantt() {
   const tMs = re - rs, LW = 235, BW = 680;
   const mos = []; let cur = new Date(yr, fromM, 1);
   while (cur <= re) { mos.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
-  const groups = {}; data.forEach(r => { (groups[r.PROYECTO] = groups[r.PROYECTO] || []).push(r); });
+  const groups = {};
+  // Sort data by start date first so activities appear chronologically
+  const sortedData = [...data].sort((a,b) => new Date(a['FECHA INICIO']) - new Date(b['FECHA INICIO']));
+  sortedData.forEach(r => { (groups[r.PROYECTO] = groups[r.PROYECTO] || []).push(r); });
+  // Sort groups by earliest activity start date
+  const groupEntries = Object.entries(groups).sort((a,b) => {
+    const minA = Math.min(...a[1].map(r => new Date(r['FECHA INICIO'])));
+    const minB = Math.min(...b[1].map(r => new Date(r['FECHA INICIO'])));
+    return minA - minB;
+  });
   const tPct = Math.max(0, Math.min(100, (TODAY - rs) / tMs * 100));
   let html = `<div class="gantt-inner" style="min-width:${LW+BW}px">
     <div class="gantt-h-row" style="grid-template-columns:${LW}px 1fr">
@@ -2172,30 +2181,70 @@ function renderGantt() {
         <div class="gantt-today" style="left:${tPct}%"></div>
       </div>
     </div>`;
-  Object.entries(groups).forEach(([proj, acts]) => {
+  groupEntries.forEach(([proj, acts]) => {
+    // Sort activities within group by start date
+    acts.sort((a,b) => new Date(a['FECHA INICIO']) - new Date(b['FECHA INICIO']));
     const col = pcol(proj);
     html += `<div class="gantt-proj-sep" style="grid-template-columns:${LW}px 1fr"><div class="gantt-proj-lbl" style="color:${col}">${proj.substring(0,40)}${proj.length>40?'…':''}</div><div></div></div>`;
     acts.forEach(r => {
       const si = new Date(r['FECHA INICIO']), sf = new Date(r['FECHA FIN']);
       const l = Math.max(0, (si - rs) / tMs * 100), w = Math.max(0.4, Math.min((sf - si) / tMs * 100, 100 - l));
       const bc = S_COL[r.ESTADO] || '#8b949e';
+      const hasST = (r.subtasks||[]).length > 0;
+      const stRows = (r.subtasks||[])
+        .slice().sort((a,b) => (a.date||'') > (b.date||'') ? 1 : -1)
+        .map(s => {
+          const sc = s.done ? '#22c55e' : (s.reprogramada ? '#f97316' : '#64748b');
+          const sd = s._originalDate || s.date;
+          const ld = s.done ? (s.closedAt||s.date) : (s.newDate||s.date);
+          if (!sd) return '';
+          const sl = Math.max(0, (new Date(sd+'T00:00:00') - rs) / tMs * 100);
+          const sw = Math.max(0.3, Math.min((new Date((ld||sd)+'T00:00:00') - new Date(sd+'T00:00:00')) / tMs * 100 + 0.8, 100 - sl));
+          return `<div class="gantt-row-w" id="gst-${r._id}-${s.id}" style="grid-template-columns:${LW}px 1fr;display:none">
+            <div class="gantt-cell" style="padding-left:20px;font-size:10px;color:var(--text2)">↳ ${(s.desc||'').substring(0,28)}${(s.desc||'').length>28?'…':''}</div>
+            <div class="gantt-bar-area">
+              <div class="gantt-today" style="left:${tPct}%"></div>
+              <div class="gantt-bar" style="left:${sl}%;width:${Math.max(sw,0.5)}%;height:10px;background:${sc}20;border-color:${sc};color:${sc};cursor:pointer" onclick="openActDr('${r._id}')">
+                <div class="gantt-bar-inner" style="width:${s.done?100:0}%;background:${sc}"></div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
       html += `<div class="gantt-row-w" style="grid-template-columns:${LW}px 1fr">
-        <div class="gantt-cell"><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span><span style="font-size:11px;color:var(--text2);margin-left:4px">${(r.ACTIVIDAD||'').substring(0,22)}${(r.ACTIVIDAD||'').length>22?'…':''}</span></div>
+        <div class="gantt-cell" style="cursor:${hasST?'pointer':'default'}" ${hasST?`onclick="ganttToggleST('${r._id}',this)" title="Ver subtareas"`:''}><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span>${hasST?`<span style="font-size:9px;color:var(--text2);margin-left:3px">▶</span>`:''}${!hasST?`<span style="font-size:11px;color:var(--text2);margin-left:4px">`:`<span style="font-size:11px;color:var(--text2);margin-left:4px">`}${(r.ACTIVIDAD||'').substring(0,20)}${(r.ACTIVIDAD||'').length>20?'…':''}</span></div>
         <div class="gantt-bar-area">
           <div class="gantt-today" style="left:${tPct}%"></div>
-          <div class="gantt-bar" style="left:${l}%;width:${w}%;background:${bc}20;border-color:${bc};color:${bc}" onclick="openActDr(${r._id})">
+          <div class="gantt-bar" style="left:${l}%;width:${w}%;background:${bc}20;border-color:${bc};color:${bc}" onclick="ganttBarClick(event,'${r._id}')">
             <div class="gantt-bar-inner" style="width:${r.AVANCE}%;background:${bc}"></div>
             ${w > 5 && r.AVANCE > 0 ? `<span class="gantt-bar-txt">${r.AVANCE}%</span>` : ''}
           </div>
         </div>
-      </div>`;
+      </div>${stRows}`;
     });
   });
   html += '</div>';
   document.getElementById('gantt-root').innerHTML = html;
 }
 
-// ── Calendar ───────────────────────────────────────────────────────
+// ── Gantt helpers ──────────────────────────────────────────────────
+function ganttToggleST(actId, labelEl) {
+  // Toggle visibility of subtask rows for this activity
+  const rows = document.querySelectorAll(`[id^="gst-${actId}-"]`);
+  const arrow = labelEl?.querySelector('span[style*="font-size:9px"]');
+  let showing = false;
+  rows.forEach(r => {
+    const isVisible = r.style.display !== 'none';
+    r.style.display = isVisible ? 'none' : 'grid';
+    if (!isVisible) showing = true;
+  });
+  if (arrow) arrow.textContent = showing ? '▼' : '▶';
+}
+function ganttBarClick(event, actId) {
+  event.stopPropagation();
+  openActDr(actId);
+}
+
+
 function calNav(d) {
   if (d === 0) { calM = TODAY.getMonth(); calY = TODAY.getFullYear(); }
   else {
@@ -3630,7 +3679,8 @@ function togST(id) { const s = tmpST.find(x => x.id === id); if (s) s.done = !s.
 function renderSTs() {
   const el = document.getElementById('st-list');
   if (!tmpST.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:18px">Sin subtareas.</div>'; return; }
-  el.innerHTML = tmpST.map((s, idx) => {
+  const sorted = [...tmpST].sort((a,b) => (a.date||'') > (b.date||'') ? 1 : -1);
+  el.innerHTML = sorted.map((s, idx) => {
     const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'ABIERTA');
     const estColor = s.done ? 'var(--green)' : (s.reprogramada ? 'var(--orange)' : 'var(--accent)');
     return `<div style="background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${estColor}">
@@ -3784,6 +3834,12 @@ function _saveSTModal(stId, mode) {
     // Update the drawer subtask display if drawer is open
     const drBody = document.getElementById('dr-body');
     if (drBody && actId) openActDr(actId);
+  }
+  // Callback from drSTAction (drawer subtask action)
+  if (typeof window._afterSTSave === 'function') {
+    const cb = window._afterSTSave;
+    window._afterSTSave = null;
+    cb();
   }
   notify(mode === 'close' ? '✅ Subtarea cerrada' : mode === 'reprog' ? '🔄 Subtarea reprogramada' : '✏ Subtarea actualizada');
 }
@@ -7144,6 +7200,35 @@ function openProjDr(proj) {
   }
 }
 
+
+// ── drSTAction: action buttons in Detalles drawer ────────────────
+function drSTAction(actId, stId, mode) {
+  // Set _CURRENT_ACT_SUBTASKS to the activity's subtasks so openSTModal finds the subtask
+  const r = get().find(a => a._id === actId);
+  if (!r) return;
+  window._CURRENT_ACT_SUBTASKS = r.subtasks || [];
+  // After ST modal saves, refresh the drawer
+  window._afterSTSave = () => { openActDr(actId); };
+  openSTModal(stId, mode);
+}
+
+// ── drSaveName: save subtask name edit from drawer ────────────────
+async function drSaveName(actId, stId, el) {
+  const newName = el.textContent.trim();
+  if (!newName) return;
+  const r = get().find(a => a._id === actId);
+  if (!r) return;
+  const s = (r.subtasks||[]).find(x => x.id === stId);
+  if (!s || s.desc === newName) return;
+  s.desc = newName;
+  // Save to DB
+  try {
+    const { error } = await SB.from(TABLE).update({ subtasks: r.subtasks, updated_at: new Date().toISOString() }).eq('id', r._dbid);
+    if (!error) { notify('✏ Nombre de subtarea actualizado'); renderActs(); renderDash(); }
+    else { notify('Error al guardar', true); }
+  } catch(e) { console.warn('drSaveName error', e); }
+}
+
 // ════════════════════════════════════════════════════════════════
 // IMPROVED openActDr — back button, bigger fonts
 // ════════════════════════════════════════════════════════════════
@@ -7194,22 +7279,28 @@ function openActDr(id) {
       ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
     </div>`:''}
     ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT})</div>
-      ${r.subtasks.map(s=>{
+      ${[...(r.subtasks||[])].sort((a,b)=>(a.date||'') > (b.date||'') ? 1:-1).map(s=>{
         const stEst = s.done?'REALIZADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'var(--green)':(s.reprogramada?'var(--orange)':'var(--accent)');
-        return `<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border-left:3px solid ${stCol}">
+        return `<div style="padding:8px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border-left:3px solid ${stCol}" id="dr-st-${s.id}">
         <div class="d-st" style="border:none;padding:0">
           <div class="d-chk ${s.done?'done':''}" onclick="togDrST('${r._id}','${s.id}')">${s.done?'✓':''}</div>
-          <span style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:12px'};flex:1">${s.desc}</span>
-          <span style="font-size:9px;padding:2px 6px;border-radius:8px;background:${stCol}20;color:${stCol};font-weight:700">${stEst}</span>
+          <span contenteditable="${canEdit&&!s.done?'true':'false'}" id="st-name-${s.id}" onblur="drSaveName('${r._id}',${s.id},this)" style="${s.done?'text-decoration:line-through;color:var(--text2)':'font-size:12px'};flex:1;outline:none;border-bottom:${canEdit&&!s.done?'1px dashed var(--border)':'none'};padding:1px 2px;border-radius:3px;min-width:0">${s.desc}</span>
+          <span style="font-size:9px;padding:2px 6px;border-radius:8px;background:${stCol}20;color:${stCol};font-weight:700;flex-shrink:0">${stEst}</span>
         </div>
         <div style="display:flex;gap:8px;font-size:10px;color:var(--text2);margin-top:4px;padding-left:20px">
-          <span>${s.resp||''}</span>
-          <span>${s.date||''}</span>
+          <span>👤 ${s.resp||''}</span>
+          <span>📅 ${s.date||''}</span>
           ${s.reprogramada&&s.newDate?'<span style="color:var(--orange)">→ '+s.newDate+'</span>':''}
         </div>
         ${s.stComment?'<div style="font-size:11px;color:var(--text);margin-top:4px;padding-left:20px;font-style:italic;white-space:pre-line">💬 '+s.stComment+'</div>':''}
         ${s.reprogramada&&s.reprogDetail?'<div style="font-size:10px;color:var(--orange);margin-top:4px;padding-left:20px">'+(s.reprogJustificada?'✓ Justificada':'✗ No Justificada')+': '+s.reprogDetail+'</div>':''}
+        ${canEdit?`<div style="display:flex;gap:5px;margin-top:6px;padding-left:20px">
+          ${!s.done?`<button onclick="drSTAction('${r._id}',${s.id},'close')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);cursor:pointer">✓ Cerrar</button>
+          <button onclick="drSTAction('${r._id}',${s.id},'edit')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer">✏ Editar</button>
+          <button onclick="drSTAction('${r._id}',${s.id},'reprog')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(249,115,22,.4);background:rgba(249,115,22,.1);color:var(--orange);cursor:pointer">🔄 Reprog.</button>`:
+          (isAdmin?`<button onclick="drSTAction('${r._id}',${s.id},'edit')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer">✏ Admin Editar</button>`:'')}
+        </div>`:''}
       </div>`;
       }).join('')}`:''}
     <div class="d-sec" style="margin-top:14px">💬 Comentarios y Observaciones</div>
