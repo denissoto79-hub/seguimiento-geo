@@ -71,11 +71,12 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
   table { border-collapse:collapse !important; }
   table th, table td { border:1px solid #666 !important; }
 }
-/* ── Inline table editor toolbar ── */
+/* ── Inline table editor toolbar (fixed inside editor container) ── */
 #obs-tbl-toolbar {
-  position:fixed; z-index:9500; background:var(--bg2); border:1px solid var(--accent);
-  border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.4); padding:4px 6px;
-  display:none; flex-wrap:wrap; gap:3px; align-items:center; max-width:600px;
+  display:none; flex-wrap:wrap; gap:3px; align-items:center;
+  padding:4px 8px; background:var(--bg2);
+  border-bottom:2px solid var(--accent);
+  border-radius:0;
 }
 #obs-tbl-toolbar .tb-btn {
   padding:3px 8px; border:1px solid var(--border); border-radius:4px;
@@ -84,16 +85,14 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
 }
 #obs-tbl-toolbar .tb-btn:hover { background:rgba(56,189,248,.18); color:var(--accent); }
 #obs-tbl-toolbar .tb-btn.danger:hover { background:rgba(239,68,68,.15); color:#ef4444; }
-#obs-tbl-toolbar .tb-sep { width:1px; height:18px; background:var(--border); margin:0 2px; }
-#obs-tbl-toolbar .tb-swatch { width:18px; height:18px; border-radius:3px; cursor:pointer; border:1px solid var(--border); flex-shrink:0; }
-#obs-tbl-toolbar .tb-label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; }
+#obs-tbl-toolbar .tb-sep { width:1px; height:18px; background:var(--border); margin:0 2px; flex-shrink:0; }
+#obs-tbl-toolbar .tb-swatch { width:17px; height:17px; border-radius:3px; cursor:pointer; border:1px solid var(--border); flex-shrink:0; }
+#obs-tbl-toolbar .tb-label { font-size:9px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:0 3px; }
 /* Tables inside contenteditable obs editor */
 #m-obs-editor table { border-collapse:collapse; width:100%; margin:6px 0; border:2px solid #555; }
 #m-obs-editor table th { border:1px solid #555; padding:5px 8px; background:#2d3440; color:#e6edf3; font-weight:700; min-width:60px; }
 #m-obs-editor table td { border:1px solid #555; padding:5px 8px; min-width:60px; }
 #m-obs-editor table td:focus, #m-obs-editor table th:focus { outline:2px solid #38bdf8; outline-offset:-2px; background:rgba(56,189,248,.08); }
-#m-obs-editor table tr:hover td, #m-obs-editor table tr:hover th { background:rgba(56,189,248,.04); }
-#m-obs-editor table td.tbl-sel, #m-obs-editor table th.tbl-sel { outline:2px solid #38bdf8; outline-offset:-2px; }
 
 #m-obs-editor img { max-width:120px;max-height:90px;border-radius:4px;margin:2px;object-fit:cover;cursor:zoom-in;vertical-align:middle; }
 /* BI-TONE MODE — dark sidebar, light content */
@@ -1108,20 +1107,43 @@ tr:hover .act-btns { opacity:1 }
           <input class="fi-range" id="m-avance" type="range" min="0" max="100" value="0" oninput="document.getElementById('m-avl').textContent=this.value">
         </div>
         <div class="fg fg-full"><span class="fl">Observaciones</span>
-          <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg3)">
+          <div id="obs-editor-wrap" style="border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg3)">
+            <!-- Format toolbar (always visible) -->
             <div style="display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;background:var(--bg2);border-bottom:1px solid var(--border);align-items:center">
               <button type="button" onclick="obsExecCmd('bold')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:10px" title="Negrita (Ctrl+B)">B</button>
               <button type="button" onclick="obsExecCmd('italic')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:10px" title="Cursiva (Ctrl+I)">I</button>
               <button type="button" onclick="obsExecCmd('insertUnorderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px" title="Lista">☰</button>
-              <div style="width:1px;height:16px;background:var(--border);margin:0 3px"></div>
-              <button type="button" onclick="obsInsertTable()" style="padding:2px 9px;border:1px solid rgba(56,189,248,.4);border-radius:4px;background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer;font-size:10px;font-weight:700" title="Insertar tabla editable">⊞ Tabla</button>
-              <span style="font-size:9px;color:var(--text2);margin-left:4px">Haz clic en una celda para editar · Tab para navegar · Botón ⊞ para nueva tabla</span>
+              <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
+              <button type="button" onclick="obsInsertTable()" style="padding:2px 10px;border:1px solid rgba(56,189,248,.4);border-radius:4px;background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer;font-size:10px;font-weight:700" title="Insertar tabla">⊞ Tabla</button>
             </div>
+            <!-- Table context toolbar (shown when a cell is focused) -->
+            <div id="obs-tbl-toolbar">
+              <span class="tb-label">⊞ Tabla</span>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblFmt('bold')" title="Negrita"><b>B</b></button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblFmt('italic')" title="Cursiva"><i>I</i></button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblFmt('underline')" title="Subrayado"><u>U</u></button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblAlign('left')" title="Izquierda">↤</button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblAlign('center')" title="Centrar">↔</button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblAlign('right')" title="Derecha">↦</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblToggleHdr()" title="Encabezado / Celda">Hdr</button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblWrapText()" title="Ajustar texto">Wrap</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblAddRow()" title="Añadir fila">+Fila</button>
+              <button class="tb-btn" onmousedown="event.preventDefault();obsTblAddCol()" title="Añadir columna">+Col</button>
+              <button class="tb-btn danger" onmousedown="event.preventDefault();obsTblDelRow()" title="Eliminar fila">−Fila</button>
+              <button class="tb-btn danger" onmousedown="event.preventDefault();obsTblDelCol()" title="Eliminar columna">−Col</button>
+              <div class="tb-sep"></div>
+              <div style="display:flex;gap:2px;flex-shrink:0" id="obs-tbl-swatches"></div>
+              <div class="tb-sep"></div>
+              <button class="tb-btn danger" onmousedown="event.preventDefault();obsTblDeleteTable()" title="Eliminar tabla">🗑</button>
+            </div>
+            <!-- Editable area -->
             <div id="m-obs-editor" contenteditable="true"
               style="min-height:80px;max-height:280px;overflow-y:auto;padding:8px 10px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
-              data-placeholder="Notas, contexto…"
-              onkeydown="obsTblKeyNav(event)"
-              onclick="obsTblHandleClick(event)"></div>
+              data-placeholder="Notas, contexto…"></div>
           </div>
           <textarea id="m-obs" style="display:none" placeholder="Notas, contexto…"></textarea>
         </div>
@@ -4487,242 +4509,284 @@ function cmtPlaceholder(el) {
 })();
 
 // ══════════════════════════════════════════════════════════════════
-// INLINE TABLE EDITOR FOR OBS EDITOR — no modal, direct in contenteditable
+// INLINE TABLE EDITOR FOR OBS EDITOR
+// Toolbar lives inside the editor container (never floats over content)
+// Tab / Shift+Tab / Enter / Arrow keys navigate cells
 // ══════════════════════════════════════════════════════════════════
 
-// Inject the floating toolbar DOM once
-(function injectObsTblToolbar() {
-  if (document.getElementById('obs-tbl-toolbar')) return;
-  const tb = document.createElement('div');
-  tb.id = 'obs-tbl-toolbar';
-  const COLORS = ['#ffffff','#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#06b6d4','#fef9c3','#dcfce7','#dbeafe','#1e293b','#f1f5f9'];
-  tb.innerHTML = `
-    <span class="tb-label">Tabla</span>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="obsTblFmt('bold')" title="Negrita"><b>B</b></button>
-    <button class="tb-btn" onclick="obsTblFmt('italic')" title="Cursiva"><i>I</i></button>
-    <button class="tb-btn" onclick="obsTblFmt('underline')" title="Subrayado"><u>U</u></button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="obsTblAlign('left')" title="Alinear izq.">⬛↤</button>
-    <button class="tb-btn" onclick="obsTblAlign('center')" title="Centrar">⬛↔</button>
-    <button class="tb-btn" onclick="obsTblAlign('right')" title="Alinear der.">⬛↦</button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="obsTblToggleHdr()" title="Convertir a encabezado">🔤 Hdr</button>
-    <button class="tb-btn" onclick="obsTblWrapText()" title="Ajustar texto">↵ Wrap</button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="obsTblAddRow()" title="Añadir fila abajo">+ Fila</button>
-    <button class="tb-btn" onclick="obsTblAddCol()" title="Añadir columna">+ Col</button>
-    <button class="tb-btn danger" onclick="obsTblDelRow()" title="Eliminar fila">− Fila</button>
-    <button class="tb-btn danger" onclick="obsTblDelCol()" title="Eliminar columna">− Col</button>
-    <div class="tb-sep"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:2px;max-width:130px">
-      ${COLORS.map(c=>`<div class="tb-swatch" style="background:${c}" onclick="obsTblFillColor('${c}')" title="Relleno: ${c}"></div>`).join('')}
-    </div>
-    <div class="tb-sep"></div>
-    <button class="tb-btn danger" onclick="obsTblDeleteTable()" title="Eliminar tabla">🗑️ Tabla</button>
-    <button class="tb-btn" onclick="obsTblHideToolbar()" title="Cerrar" style="color:var(--text2)">✕</button>
-  `;
-  document.body.appendChild(tb);
-  // Hide toolbar when clicking outside
-  document.addEventListener('mousedown', function(e) {
-    const tb = document.getElementById('obs-tbl-toolbar');
-    if (tb && !tb.contains(e.target)) {
-      const ed = document.getElementById('m-obs-editor');
-      if (ed && !ed.contains(e.target)) obsTblHideToolbar();
+(function initObsTblEditor() {
+  // Inject color swatches
+  const COLORS = ['#ffffff','#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#06b6d4','#fef9c3','#dcfce7','#dbeafe','#1e293b','#64748b'];
+  function setup() {
+    const sw = document.getElementById('obs-tbl-swatches');
+    if (sw && !sw.dataset.init) {
+      sw.dataset.init = '1';
+      sw.innerHTML = COLORS.map(c =>
+        `<div class="tb-swatch" style="background:${c}" onmousedown="event.preventDefault();obsTblFillColor('${c}')" title="${c}"></div>`
+      ).join('');
     }
-  }, true);
+    // Attach capture-phase keydown so Tab is intercepted before browser acts on it
+    const ed = document.getElementById('m-obs-editor');
+    if (ed && !ed.dataset.tblInit) {
+      ed.dataset.tblInit = '1';
+      ed.addEventListener('keydown', _obsTblKeyNav, true);
+      ed.addEventListener('focusin', _obsTblFocusIn);
+      ed.addEventListener('focusout', _obsTblFocusOut);
+      ed.addEventListener('mousedown', _obsTblMouseDown);
+    }
+  }
+  // Run after DOM ready and also when modal opens (openModal re-renders)
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+  // Re-run whenever modal is opened (it might re-create the editor DOM)
+  const _origOpenModal = window.openModal;
+  window.openModal = function(...args) {
+    const r = _origOpenModal?.apply(this, args);
+    requestAnimationFrame(setup);
+    return r;
+  };
 })();
 
-let _obsTblActive = null; // currently focused cell element
+let _obsTblActive = null; // currently focused cell
 
-function obsTblHideToolbar() {
+function _obsTblInCell(el) {
+  return el && el.closest && el.closest('#m-obs-editor td, #m-obs-editor th');
+}
+
+function _obsTblFocusIn(e) {
+  const cell = _obsTblInCell(e.target);
+  if (cell) {
+    _obsTblActive = cell;
+    _obsTblShowToolbar();
+  }
+}
+
+function _obsTblFocusOut(e) {
+  // Delay to allow toolbar button clicks to fire first
+  setTimeout(() => {
+    const tb = document.getElementById('obs-tbl-toolbar');
+    const active = document.activeElement;
+    // Keep toolbar if focus moved to another cell or to toolbar itself
+    if (!_obsTblInCell(active) && tb && !tb.contains(active)) {
+      _obsTblHideToolbar();
+    }
+  }, 120);
+}
+
+function _obsTblMouseDown(e) {
+  const cell = _obsTblInCell(e.target);
+  if (cell) {
+    _obsTblActive = cell;
+    // Don't need to call show here — focusin will fire after mousedown
+  }
+}
+
+function _obsTblShowToolbar() {
+  const tb = document.getElementById('obs-tbl-toolbar');
+  if (tb) tb.style.display = 'flex';
+}
+
+function _obsTblHideToolbar() {
   const tb = document.getElementById('obs-tbl-toolbar');
   if (tb) tb.style.display = 'none';
   _obsTblActive = null;
 }
 
-function _obsTblShowToolbar(cell) {
-  _obsTblActive = cell;
-  const tb = document.getElementById('obs-tbl-toolbar');
-  if (!tb) return;
-  // Position above the cell
-  const rect = cell.getBoundingClientRect();
-  const tbW = 560, tbH = 44;
-  let top = rect.top - tbH - 8;
-  if (top < 4) top = rect.bottom + 4;
-  let left = Math.max(4, Math.min(rect.left, window.innerWidth - tbW - 4));
-  tb.style.cssText = `display:flex;top:${top + window.scrollY}px;left:${left}px;`;
+// Capture-phase keyboard handler — intercepts Tab before browser focus change
+function _obsTblKeyNav(e) {
+  const cell = document.activeElement;
+  if (!_obsTblInCell(cell)) return;
+
+  const table = cell.closest('table');
+  const rows  = Array.from(table.rows);
+  const ri    = cell.parentElement.rowIndex;
+  const ci    = cell.cellIndex;
+  const maxR  = rows.length - 1;
+  const maxC  = rows[ri].cells.length - 1;
+
+  // Tab / Shift+Tab — move right/left, wrap to next/prev row
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    e.stopPropagation();
+    let nr = ri, nc = ci;
+    if (e.shiftKey) {
+      nc--;
+      if (nc < 0) { nr--; nc = nr >= 0 ? rows[nr].cells.length - 1 : 0; }
+    } else {
+      nc++;
+      if (nc > rows[nr].cells.length - 1) { nr++; nc = 0; }
+    }
+    _obsTblFocusCell(rows, nr, nc);
+    return;
+  }
+
+  // Enter — move down one row, same column
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    if (ri < maxR) _obsTblFocusCell(rows, ri + 1, ci);
+    return;
+  }
+
+  // Arrow keys — navigate cells (only when caret is at edge of cell content)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    // Check if caret is at start/end of cell
+    const sel = window.getSelection();
+    const atStart = sel.isCollapsed && sel.anchorOffset === 0;
+    const atEnd   = sel.isCollapsed && sel.anchorOffset >= (sel.anchorNode?.length || 0);
+
+    if (e.key === 'ArrowRight' && atEnd && ci < maxC) {
+      e.preventDefault(); _obsTblFocusCell(rows, ri, ci + 1); return;
+    }
+    if (e.key === 'ArrowLeft' && atStart && ci > 0) {
+      e.preventDefault(); _obsTblFocusCell(rows, ri, ci - 1); return;
+    }
+    if (e.key === 'ArrowDown' && ri < maxR) {
+      e.preventDefault(); _obsTblFocusCell(rows, ri + 1, ci); return;
+    }
+    if (e.key === 'ArrowUp' && ri > 0) {
+      e.preventDefault(); _obsTblFocusCell(rows, ri - 1, ci); return;
+    }
+  }
+
+  // Ctrl+B/I/U shortcuts
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'b' || e.key === 'B') { e.preventDefault(); obsTblFmt('bold'); return; }
+    if (e.key === 'i' || e.key === 'I') { e.preventDefault(); obsTblFmt('italic'); return; }
+    if (e.key === 'u' || e.key === 'U') { e.preventDefault(); obsTblFmt('underline'); return; }
+  }
 }
+
+function _obsTblFocusCell(rows, ri, nc) {
+  if (ri < 0 || ri >= rows.length) return;
+  const targetRow = rows[ri];
+  if (!targetRow || nc < 0 || nc >= targetRow.cells.length) return;
+  const next = targetRow.cells[nc];
+  next.focus();
+  // Place caret at end of cell
+  try {
+    const range = document.createRange(), sel = window.getSelection();
+    range.selectNodeContents(next);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch(e) { /* ignore */ }
+  _obsTblActive = next;
+  _obsTblShowToolbar();
+}
+
+function _obsTblGetCell() {
+  // Prefer the tracked active cell; fall back to current focused element
+  if (_obsTblActive && document.body.contains(_obsTblActive)) return _obsTblActive;
+  return document.activeElement?.closest('#m-obs-editor td, #m-obs-editor th') || null;
+}
+
+// ── Public API ─────────────────────────────────────────────────────
+
+function obsTblHideToolbar() { _obsTblHideToolbar(); }
 
 function obsExecCmd(cmd) {
   const el = document.getElementById('m-obs-editor');
   if (el) { el.focus(); document.execCommand(cmd, false, null); }
 }
 
-function obsTblHandleClick(e) {
-  const cell = e.target.closest('td, th');
-  if (cell && cell.closest('#m-obs-editor')) {
-    _obsTblShowToolbar(cell);
-  } else {
-    obsTblHideToolbar();
-  }
-}
-
-function obsTblKeyNav(e) {
-  const cell = document.activeElement;
-  if (!cell || !cell.closest('#m-obs-editor table')) return;
-  const table = cell.closest('table');
-  const rows = Array.from(table.rows);
-  const ri = cell.parentElement.rowIndex;
-  const ci = cell.cellIndex;
-  const maxR = rows.length - 1;
-  const maxC = rows[ri].cells.length - 1;
-
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    let nr = ri, nc = ci;
-    if (e.shiftKey) { nc--; if(nc<0){nr--;nc=nr>=0?rows[nr].cells.length-1:0;} }
-    else { nc++; if(nc>rows[nr].cells.length-1){nr++;nc=0;} }
-    if (nr >= 0 && nr < rows.length && rows[nr]?.cells[nc]) {
-      const next = rows[nr].cells[nc];
-      next.focus();
-      // Move caret to end
-      const range = document.createRange(), sel = window.getSelection();
-      range.selectNodeContents(next); range.collapse(false);
-      sel.removeAllRanges(); sel.addRange(range);
-      _obsTblShowToolbar(next);
-    }
-    return;
-  }
-  if (e.key === 'Enter' && !e.shiftKey) {
-    // Enter moves to next row same column
-    if (ri < maxR && rows[ri+1]?.cells[ci]) {
-      e.preventDefault();
-      const next = rows[ri+1].cells[ci];
-      next.focus();
-      _obsTblShowToolbar(next);
-    }
-    return;
-  }
-}
-
-function _obsTblGetCell() { return _obsTblActive || document.activeElement?.closest('#m-obs-editor td, #m-obs-editor th'); }
-
 function obsTblFmt(prop) {
   const cell = _obsTblGetCell(); if (!cell) return;
   cell.focus();
-  if (prop === 'bold') document.execCommand('bold', false, null);
-  else if (prop === 'italic') document.execCommand('italic', false, null);
-  else if (prop === 'underline') document.execCommand('underline', false, null);
+  document.execCommand(prop, false, null);
 }
 
 function obsTblAlign(a) {
   const cell = _obsTblGetCell(); if (!cell) return;
   cell.style.textAlign = a;
+  cell.focus();
 }
 
 function obsTblFillColor(color) {
   const cell = _obsTblGetCell(); if (!cell) return;
   cell.style.background = color;
-  // Auto-adjust text color for dark backgrounds
-  const isLight = ['#ffffff','#fef9c3','#dcfce7','#dbeafe','#f1f5f9'].includes(color);
-  if (!isLight) cell.style.color = '#e6edf3';
-  else cell.style.color = '#1e293b';
+  const light = ['#ffffff','#fef9c3','#dcfce7','#dbeafe','#f1f5f9','#64748b'];
+  cell.style.color = light.includes(color) ? '#1e293b' : '#e6edf3';
+  cell.focus();
 }
 
 function obsTblWrapText() {
   const cell = _obsTblGetCell(); if (!cell) return;
-  const isWrapped = cell.style.whiteSpace === 'pre-wrap' || cell.style.whiteSpace === 'normal';
-  cell.style.whiteSpace = isWrapped ? 'nowrap' : 'pre-wrap';
-  cell.style.wordBreak = isWrapped ? '' : 'break-word';
+  const wrapped = cell.style.whiteSpace === 'pre-wrap';
+  cell.style.whiteSpace = wrapped ? '' : 'pre-wrap';
+  cell.style.wordBreak  = wrapped ? '' : 'break-word';
+  cell.focus();
 }
 
 function obsTblToggleHdr() {
   const cell = _obsTblGetCell(); if (!cell) return;
-  const row = cell.parentElement;
-  const newTag = cell.tagName === 'TH' ? 'td' : 'th';
+  const row  = cell.parentElement;
+  const isHdr = cell.tagName === 'TH';
+  const newTag = isHdr ? 'td' : 'th';
   const newCell = document.createElement(newTag);
   newCell.innerHTML = cell.innerHTML;
-  // Copy styles
-  newCell.style.cssText = cell.style.cssText;
-  if (newTag === 'th') {
-    newCell.style.background = '#2d3440';
-    newCell.style.color = '#e6edf3';
-    newCell.style.fontWeight = '700';
-    newCell.style.border = '1px solid #555';
-    newCell.style.padding = '5px 8px';
-  } else {
-    newCell.style.background = '';
-    newCell.style.color = '';
-    newCell.style.fontWeight = '';
-    newCell.style.border = '1px solid #555';
-    newCell.style.padding = '5px 8px';
-  }
+  newCell.style.cssText = isHdr
+    ? 'border:1px solid #555;padding:5px 8px;min-width:60px;'
+    : 'border:1px solid #555;padding:5px 8px;min-width:60px;background:#2d3440;color:#e6edf3;font-weight:700;';
   newCell.contentEditable = 'true';
   row.replaceChild(newCell, cell);
-  newCell.focus();
   _obsTblActive = newCell;
-  _obsTblShowToolbar(newCell);
+  newCell.focus();
 }
 
 function obsTblAddRow() {
   const cell = _obsTblGetCell(); if (!cell) return;
   const table = cell.closest('table');
-  const row = cell.parentElement;
-  const cols = row.cells.length;
+  const row   = cell.parentElement;
+  const cols  = row.cells.length;
   const newRow = table.insertRow(row.rowIndex + 1);
   for (let i = 0; i < cols; i++) {
     const td = newRow.insertCell(i);
     td.contentEditable = 'true';
     td.style.cssText = 'border:1px solid #555;padding:5px 8px;min-width:60px;';
-    td.innerHTML = '';
   }
-  // Focus first cell of new row
-  newRow.cells[0].focus();
-  _obsTblActive = newRow.cells[0];
-  _obsTblShowToolbar(newRow.cells[0]);
+  newRow.cells[cell.cellIndex]?.focus();
+  _obsTblActive = newRow.cells[cell.cellIndex];
 }
 
 function obsTblAddCol() {
   const cell = _obsTblGetCell(); if (!cell) return;
   const table = cell.closest('table');
-  const ci = cell.cellIndex;
+  const ci    = cell.cellIndex;
   Array.from(table.rows).forEach(row => {
-    const newCell = row.cells[ci] ? row.insertCell(ci + 1) : row.insertCell(-1);
-    newCell.contentEditable = 'true';
     const isHdr = row.cells[ci]?.tagName === 'TH';
-    newCell.style.cssText = isHdr
+    const nc = row.insertCell(ci + 1);
+    nc.contentEditable = 'true';
+    nc.style.cssText = isHdr
       ? 'border:1px solid #555;padding:5px 8px;min-width:60px;background:#2d3440;color:#e6edf3;font-weight:700;'
       : 'border:1px solid #555;padding:5px 8px;min-width:60px;';
-    newCell.innerHTML = '';
   });
+  // Focus new cell in same row
+  const newCell = cell.parentElement.cells[ci + 1];
+  if (newCell) { _obsTblActive = newCell; newCell.focus(); }
 }
 
 function obsTblDelRow() {
   const cell = _obsTblGetCell(); if (!cell) return;
   const table = cell.closest('table');
   if (table.rows.length <= 1) { obsTblDeleteTable(); return; }
-  const ri = cell.parentElement.rowIndex;
-  table.deleteRow(ri);
-  obsTblHideToolbar();
+  table.deleteRow(cell.parentElement.rowIndex);
+  _obsTblActive = null;
 }
 
 function obsTblDelCol() {
   const cell = _obsTblGetCell(); if (!cell) return;
   const table = cell.closest('table');
   const ci = cell.cellIndex;
-  if (table.rows[0]?.cells.length <= 1) { obsTblDeleteTable(); return; }
+  if ((table.rows[0]?.cells.length || 0) <= 1) { obsTblDeleteTable(); return; }
   Array.from(table.rows).forEach(row => { if (row.cells[ci]) row.deleteCell(ci); });
-  obsTblHideToolbar();
+  _obsTblActive = null;
 }
 
 function obsTblDeleteTable() {
   const cell = _obsTblGetCell(); if (!cell) return;
   const table = cell.closest('table');
-  if (table && confirm('¿Eliminar esta tabla?')) {
-    table.remove();
-    obsTblHideToolbar();
-  }
+  if (table && confirm('¿Eliminar esta tabla?')) { table.remove(); _obsTblHideToolbar(); }
 }
 
 // obsInsertTable — insert a new blank editable table inline
@@ -4732,25 +4796,30 @@ function obsInsertTable() {
   el.focus();
   const rows = 3, cols = 4;
   const tblStyle = 'border-collapse:collapse;width:100%;margin:6px 0;border:2px solid #555;';
-  const thStyle = 'border:1px solid #555;padding:5px 8px;background:#2d3440;color:#e6edf3;font-weight:700;min-width:60px;';
-  const tdStyle = 'border:1px solid #555;padding:5px 8px;min-width:60px;';
-  let html = `<table style="${tblStyle}" contenteditable="false"><thead><tr>`;
-  for (let c = 0; c < cols; c++) html += `<th style="${thStyle}" contenteditable="true">Columna ${c+1}</th>`;
+  const thStyle  = 'border:1px solid #555;padding:5px 8px;background:#2d3440;color:#e6edf3;font-weight:700;min-width:80px;';
+  const tdStyle  = 'border:1px solid #555;padding:5px 8px;min-width:80px;';
+  let html = `<table style="${tblStyle}"><thead><tr>`;
+  for (let c = 0; c < cols; c++) html += `<th style="${thStyle}" contenteditable="true">Col ${c+1}</th>`;
   html += '</tr></thead><tbody>';
   for (let r = 0; r < rows; r++) {
     html += '<tr>';
-    for (let c = 0; c < cols; c++) html += `<td style="${tdStyle}" contenteditable="true"></td>`;
+    for (let c = 0; c < cols; c++) html += `<td style="${tdStyle}" contenteditable="true">&nbsp;</td>`;
     html += '</tr>';
   }
   html += '</tbody></table><p><br></p>';
   document.execCommand('insertHTML', false, html);
-  notify('✅ Tabla insertada — haz clic en una celda para editar', false);
+  // Focus first cell after insert
+  requestAnimationFrame(() => {
+    const first = el.querySelector('table th, table td');
+    if (first) { first.focus(); _obsTblActive = first; _obsTblShowToolbar(); }
+  });
 }
 
 function cmtInsertTable(actId) {
   const el = document.getElementById('dr-cmt-inp');
   if (el) openTableEditor(el);
 }
+
 
 
 function obsInsertImage(input) {
