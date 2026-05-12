@@ -31,10 +31,47 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
   pointer-events: none;
   font-style: italic;
 }
-[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0; border:2px solid #666 }
-[contenteditable] table th { border:1px solid #666; padding:5px 8px; font-size:11px; font-weight:700; background:#2d3440; color:#e6edf3 }
-[contenteditable] table td { border:1px solid #555; padding:5px 8px; font-size:11px }
-/* obs editor images */
+[contenteditable] table { border-collapse:collapse; width:100%; margin:6px 0; border:2px solid #555 }
+[contenteditable] table th,[contenteditable] table td { border:1px solid #555; padding:5px 8px; font-size:11px; min-width:60px; position:relative; }
+[contenteditable] table th { font-weight:700; background:#2d3440; color:#e6edf3 }
+/* Excel-like table editor */
+.xtbl-wrap { position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9900;display:flex;align-items:center;justify-content:center }
+.xtbl-modal { background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(92vw,820px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden }
+.xtbl-toolbar { display:flex;flex-wrap:wrap;gap:3px;padding:8px 10px;background:var(--bg3);border-bottom:1px solid var(--border) }
+.xtbl-btn { padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);font-size:11px;cursor:pointer;white-space:nowrap;transition:background .15s }
+.xtbl-btn:hover { background:rgba(56,189,248,.15) }
+.xtbl-btn.active { background:rgba(56,189,248,.2);border-color:var(--accent);color:var(--accent) }
+.xtbl-sep { width:1px;background:var(--border);margin:0 3px }
+.xtbl-scroll { overflow:auto;flex:1;padding:10px }
+.xtbl-table { border-collapse:collapse;width:max-content;min-width:100% }
+.xtbl-table th,.xtbl-table td { border:1px solid #555;padding:4px 6px;min-width:80px;font-size:12px;outline:none;position:relative;cursor:cell;white-space:nowrap;max-width:300px }
+.xtbl-table th { background:#2d3440;color:#e6edf3;font-weight:700;text-align:left }
+.xtbl-table td { background:transparent;color:var(--text) }
+.xtbl-table td.sel,.xtbl-table th.sel { outline:2px solid #38bdf8;outline-offset:-2px;background:rgba(56,189,248,.12) }
+.xtbl-table td.copied,.xtbl-table th.copied { outline:2px dashed #f97316;outline-offset:-2px }
+.xtbl-footer { display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--border);justify-content:flex-end }
+.xtbl-color-swatch { width:20px;height:20px;border-radius:3px;cursor:pointer;border:1px solid var(--border) }
+/* ── Table border fix — all view contexts ── */
+.ac-thread table, .d-obs table, #dr-body table, .obs-view table,
+[class*="cmt"] table, .rep-obs table {
+  border-collapse:collapse !important; width:100% !important;
+  border:2px solid #555 !important; margin:6px 0 !important;
+}
+.ac-thread table th, .ac-thread table td,
+.d-obs table th, .d-obs table td,
+#dr-body table th, #dr-body table td,
+.obs-view table th, .obs-view table td,
+[class*="cmt"] table th, [class*="cmt"] table td,
+.rep-obs table th, .rep-obs table td {
+  border:1px solid #555 !important; padding:5px 8px !important; font-size:11px !important;
+}
+.ac-thread table th, .d-obs table th, #dr-body table th { background:#2d3440 !important; color:#e6edf3 !important; font-weight:700 !important; }
+/* Fix for print/PDF tables */
+@media print {
+  table { border-collapse:collapse !important; }
+  table th, table td { border:1px solid #666 !important; }
+}
+/* ── obs editor images ── */
 #m-obs-editor img { max-width:120px;max-height:90px;border-radius:4px;margin:2px;object-fit:cover;cursor:zoom-in;vertical-align:middle; }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
@@ -2549,7 +2586,7 @@ function renderRep() {
           <span style="color:var(--accent);font-size:13px">&#127981;</span>
         </div>
         <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em">${pl}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em">${pl}</div>
           <div style="font-size:10px;color:var(--text2)">${ap.length} actividades &nbsp;&#183;&nbsp; ${projs.length} proyectos</div>
         </div>
       </div>
@@ -2657,7 +2694,7 @@ function renderRep() {
     let rpjStPl=0,rpjStDn=0; a.forEach(r=>(r.subtasks||[]).forEach(s=>{if(!s.date)return;if(from&&s.date<from)return;if(to&&s.date>to)return;rpjStPl++;if(s.done)rpjStDn++;}));
     const cu = (a.length+rpjStPl)?Math.round((a.filter(r=>r.ESTADO==='REALIZADA').length+rpjStDn)/(a.length+rpjStPl)*100):0;
     const col = pcol(p);
-    return `<div class="prog-item"><div class="prog-hdr"><span class="prog-name">${p}</span><span class="prog-vals"><span style="color:${col}">${av}%</span><span>${cu}% cpl.</span></span></div><div class="prog-bar"><div class="prog-fill" style="width:${av}%;background:${col}"></div></div></div>`;
+    return `<div class="prog-item" onclick="openProjDr('${esc(p)}')"><div class="prog-hdr"><span class="prog-name" style="font-size:11px;color:var(--text);font-weight:600">${p}</span><span class="prog-vals"><span style="color:${col};font-size:11px">${av}%</span><span style="font-size:11px">${cu}% cpl.</span></span></div><div class="prog-bar"><div class="prog-fill" style="width:${av}%;background:${col}"></div></div></div>`;
   }).join('');
 }
 function exportPDF() {
@@ -4149,25 +4186,245 @@ function cmtPlaceholder(el) {
 }
 
 // Obs editor helpers
-function obsInsertTable() {
-  const rows = parseInt(prompt('Número de filas:', '3') || '3');
-  const cols  = parseInt(prompt('Número de columnas:', '3') || '3');
-  if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
-  const tblStyle = 'border-collapse:collapse;width:100%;margin:6px 0;border:2px solid #666;';
-  const thStyle  = 'border:1px solid #666;padding:5px 8px;background:#2d3440;color:#e6edf3;font-size:11px;font-weight:700;text-align:left;min-width:60px;';
-  const tdStyle  = 'border:1px solid #555;padding:5px 8px;background:transparent;color:inherit;font-size:11px;min-width:60px;';
-  let tbl = `<table style="${tblStyle}"><thead><tr>`;
-  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c + 1}</th>`;
-  tbl += '</tr></thead><tbody>';
-  for (let ri = 0; ri < rows; ri++) {
-    tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += `<td style="${tdStyle}" contenteditable="true">&nbsp;</td>`;
-    tbl += '</tr>';
+// ══════════════════════════════════════════════════════════════
+// EXCEL-LIKE TABLE EDITOR — shared by obs and comments
+// ══════════════════════════════════════════════════════════════
+(function() {
+  let _xtblState = null; // { rows:[], selR, selC, targetEl, copiedCell, mode }
+
+  function _xtblOpen(targetEl, rows) {
+    // rows: array of arrays of {txt, bg, bold, italic, underline, align, colspan, rowspan}
+    _xtblState = { rows, selR:0, selC:0, targetEl, copiedCell:null, cutCell:false };
+    let wrap = document.getElementById('_xtbl-wrap');
+    if (!wrap) { wrap = document.createElement('div'); wrap.id='_xtbl-wrap'; document.body.appendChild(wrap); }
+    wrap.style.display='flex';
+    _xtblRender(wrap);
+    setTimeout(()=>{ _xtblFocusCell(0,0); }, 80);
   }
-  tbl += '</tbody></table><p><br></p>';
+
+  function _xtblRender(wrap) {
+    const s = _xtblState;
+    const COLORS = ['#ffffff','#000000','#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#f1f5f9','#1e293b','#fef9c3','#dcfce7','#dbeafe','#fce7f3'];
+    const swatches = COLORS.map(c=>`<div class="xtbl-color-swatch" style="background:${c}" onclick="_xtblFill('${c}')" title="${c}"></div>`).join('');
+    wrap.innerHTML = `<div class="xtbl-wrap" id="_xtbl-wrap-inner" onclick="if(event.target.id==='_xtbl-wrap-inner')_xtblClose(false)">
+      <div class="xtbl-modal">
+        <div class="xtbl-toolbar" id="_xtbl-tb">
+          <button class="xtbl-btn" onclick="_xtblFmt('bold')" title="Negrita (Ctrl+B)"><b>B</b></button>
+          <button class="xtbl-btn" onclick="_xtblFmt('italic')" title="Cursiva (Ctrl+I)"><i>I</i></button>
+          <button class="xtbl-btn" onclick="_xtblFmt('underline')" title="Subrayado"><u>U</u></button>
+          <div class="xtbl-sep"></div>
+          <button class="xtbl-btn" onclick="_xtblAlign('left')" title="Alinear izquierda">⬛↤</button>
+          <button class="xtbl-btn" onclick="_xtblAlign('center')" title="Centrar">⬛↔</button>
+          <button class="xtbl-btn" onclick="_xtblAlign('right')" title="Alinear derecha">⬛↦</button>
+          <div class="xtbl-sep"></div>
+          <button class="xtbl-btn" onclick="_xtblWrap()" title="Ajustar texto">↵ Ajustar</button>
+          <button class="xtbl-btn" onclick="_xtblMerge()" title="Combinar/Separar celdas">⊞ Combinar</button>
+          <div class="xtbl-sep"></div>
+          <button class="xtbl-btn" onclick="_xtblAddRow()" title="Añadir fila abajo">+ Fila</button>
+          <button class="xtbl-btn" onclick="_xtblAddCol()" title="Añadir columna derecha">+ Col</button>
+          <button class="xtbl-btn" onclick="_xtblDelRow()" title="Eliminar fila" style="color:#ef4444">− Fila</button>
+          <button class="xtbl-btn" onclick="_xtblDelCol()" title="Eliminar columna" style="color:#ef4444">− Col</button>
+          <div class="xtbl-sep"></div>
+          <button class="xtbl-btn" onclick="_xtblIsHdr()?_xtblSetHdr(false):_xtblSetHdr(true)" title="Encabezado">🔤 Hdr</button>
+          <div class="xtbl-sep"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;max-width:160px">${swatches}</div>
+        </div>
+        <div class="xtbl-scroll"><table class="xtbl-table" id="_xtbl-tbl">${_xtblBuildHTML()}</table></div>
+        <div class="xtbl-footer">
+          <button class="xtbl-btn" onclick="_xtblClose(false)">Cancelar</button>
+          <button class="xtbl-btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="_xtblClose(true)">✔ Insertar tabla</button>
+        </div>
+      </div>
+    </div>`;
+    // Attach keyboard handler
+    wrap.onkeydown = _xtblKey;
+    wrap.tabIndex = 0;
+  }
+
+  function _xtblBuildHTML() {
+    const s = _xtblState;
+    return s.rows.map((row, ri) => `<tr>${row.map((cell, ci) => {
+      const tag = cell.hdr ? 'th' : 'td';
+      const isSel = ri===s.selR && ci===s.selC;
+      const isCopy = s.copiedCell && s.copiedCell[0]===ri && s.copiedCell[1]===ci;
+      const style = `background:${cell.bg||'inherit'};font-weight:${cell.bold?'700':'400'};font-style:${cell.italic?'italic':'normal'};text-decoration:${cell.underline?'underline':'none'};text-align:${cell.align||'left'};white-space:${cell.wrap?'pre-wrap':'nowrap'};min-width:80px;max-width:300px;`;
+      const cls = (isSel?'sel ':isCopy?'copied ':'');
+      const colspan = cell.colspan>1 ? `colspan="${cell.colspan}"` : '';
+      const rowspan = cell.rowspan>1 ? `rowspan="${cell.rowspan}"` : '';
+      return `<${tag} class="${cls}" ${colspan} ${rowspan} style="${style}" contenteditable="true" data-r="${ri}" data-c="${ci}" oninput="_xtblInput(${ri},${ci},this)" onclick="_xtblSel(${ri},${ci})">${cell.txt||''}</${tag}>`;
+    }).join('')}</tr>`).join('');
+  }
+
+  function _xtblRefresh() {
+    const tbl = document.getElementById('_xtbl-tbl');
+    if (tbl) tbl.innerHTML = _xtblBuildHTML();
+  }
+
+  function _xtblFocusCell(r, c) {
+    const s = _xtblState;
+    s.selR = r; s.selC = c;
+    _xtblRefresh();
+    setTimeout(()=>{
+      const cell = document.querySelector(`#_xtbl-tbl [data-r="${r}"][data-c="${c}"]`);
+      if (cell) { cell.focus(); const range = document.createRange(); const sel = window.getSelection(); range.selectNodeContents(cell); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); }
+    }, 20);
+  }
+
+  window._xtblSel = function(r,c) { if(_xtblState) { _xtblState.selR=r; _xtblState.selC=c; _xtblRefresh(); } };
+  window._xtblInput = function(r,c,el) { if(_xtblState) _xtblState.rows[r][c].txt = el.innerHTML; };
+
+  window._xtblFmt = function(prop) {
+    const s = _xtblState; if(!s) return;
+    const cell = s.rows[s.selR]?.[s.selC]; if(!cell) return;
+    cell[prop] = !cell[prop]; _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblAlign = function(a) {
+    const s = _xtblState; if(!s) return;
+    const cell = s.rows[s.selR]?.[s.selC]; if(!cell) return;
+    cell.align = a; _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblWrap = function() {
+    const s = _xtblState; if(!s) return;
+    const cell = s.rows[s.selR]?.[s.selC]; if(!cell) return;
+    cell.wrap = !cell.wrap; _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblFill = function(color) {
+    const s = _xtblState; if(!s) return;
+    const cell = s.rows[s.selR]?.[s.selC]; if(!cell) return;
+    cell.bg = color; _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblIsHdr = function() {
+    const s = _xtblState; if(!s) return false;
+    return s.rows[s.selR]?.[s.selC]?.hdr || false;
+  };
+  window._xtblSetHdr = function(v) {
+    const s = _xtblState; if(!s) return;
+    if(s.rows[s.selR]?.[s.selC]) s.rows[s.selR][s.selC].hdr = v;
+    _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblMerge = function() {
+    const s = _xtblState; if(!s) return;
+    const cell = s.rows[s.selR]?.[s.selC]; if(!cell) return;
+    if((cell.colspan||1)>1||(cell.rowspan||1)>1) { cell.colspan=1; cell.rowspan=1; }
+    else { cell.colspan = Math.min(2, (s.rows[s.selR]?.length||1) - s.selC); }
+    _xtblRefresh(); setTimeout(()=>_xtblFocusCell(s.selR,s.selC),20);
+  };
+  window._xtblAddRow = function() {
+    const s = _xtblState; if(!s) return;
+    const cols = s.rows[0]?.length || 3;
+    const newRow = Array.from({length:cols},()=>({txt:'',bg:'',bold:false,italic:false,underline:false,align:'left',wrap:false,hdr:false}));
+    s.rows.splice(s.selR+1, 0, newRow);
+    _xtblRefresh();
+  };
+  window._xtblAddCol = function() {
+    const s = _xtblState; if(!s) return;
+    s.rows.forEach(row => row.splice(s.selC+1,0,{txt:'',bg:'',bold:false,italic:false,underline:false,align:'left',wrap:false,hdr:false}));
+    _xtblRefresh();
+  };
+  window._xtblDelRow = function() {
+    const s = _xtblState; if(!s||s.rows.length<=1) return;
+    s.rows.splice(s.selR,1);
+    s.selR = Math.min(s.selR, s.rows.length-1);
+    _xtblRefresh();
+  };
+  window._xtblDelCol = function() {
+    const s = _xtblState; if(!s||(s.rows[0]?.length||1)<=1) return;
+    s.rows.forEach(row => row.splice(s.selC,1));
+    s.selC = Math.min(s.selC, (s.rows[0]?.length||1)-1);
+    _xtblRefresh();
+  };
+
+  function _xtblKey(e) {
+    const s = _xtblState; if(!s) return;
+    const rows = s.rows, r=s.selR, c=s.selC, maxR=rows.length-1, maxC=(rows[0]?.length||1)-1;
+    if (e.key==='Tab') { e.preventDefault(); _xtblFocusCell(r, c<maxC?c+1:(r<maxR?0:0)); if(c===maxC&&r<maxR) _xtblFocusCell(r+1,0); return; }
+    if (e.key==='ArrowRight'&&c<maxC) { e.preventDefault(); _xtblFocusCell(r,c+1); return; }
+    if (e.key==='ArrowLeft'&&c>0) { e.preventDefault(); _xtblFocusCell(r,c-1); return; }
+    if (e.key==='ArrowDown'&&r<maxR) { e.preventDefault(); _xtblFocusCell(r+1,c); return; }
+    if (e.key==='ArrowUp'&&r>0) { e.preventDefault(); _xtblFocusCell(r-1,c); return; }
+    if (e.ctrlKey||e.metaKey) {
+      if (e.key==='b'||e.key==='B') { e.preventDefault(); _xtblFmt('bold'); return; }
+      if (e.key==='i'||e.key==='I') { e.preventDefault(); _xtblFmt('italic'); return; }
+      if (e.key==='u'||e.key==='U') { e.preventDefault(); _xtblFmt('underline'); return; }
+      if (e.key==='c'||e.key==='C') { s.copiedCell=[r,c]; s.cutCell=false; _xtblRefresh(); return; }
+      if (e.key==='x'||e.key==='X') { s.copiedCell=[r,c]; s.cutCell=true; _xtblRefresh(); return; }
+      if ((e.key==='v'||e.key==='V') && s.copiedCell) {
+        e.preventDefault();
+        const [sr,sc] = s.copiedCell;
+        const src = rows[sr]?.[sc];
+        if (src && rows[r]?.[c]) {
+          rows[r][c] = { ...src };
+          if (s.cutCell) { rows[sr][sc] = {txt:'',bg:'',bold:false,italic:false,underline:false,align:'left',wrap:false,hdr:false}; s.copiedCell=null; }
+        }
+        _xtblRefresh(); setTimeout(()=>_xtblFocusCell(r,c),20); return;
+      }
+    }
+    if (e.key==='Delete'||e.key==='Backspace') {
+      const cell = document.querySelector(`#_xtbl-tbl [data-r="${r}"][data-c="${c}"]`);
+      if (cell && document.activeElement!==cell) { e.preventDefault(); if(rows[r]?.[c]) rows[r][c].txt=''; _xtblRefresh(); }
+    }
+    if (e.key==='Escape') { _xtblClose(false); }
+  }
+
+  function _xtblToHTML() {
+    const s = _xtblState;
+    const tblStyle='border-collapse:collapse;width:100%;margin:6px 0;border:2px solid #555;';
+    let html = `<table style="${tblStyle}">`;
+    s.rows.forEach(row => {
+      html += '<tr>';
+      row.forEach(cell => {
+        const tag = cell.hdr ? 'th' : 'td';
+        const bg = cell.bg ? `background:${cell.bg};` : (cell.hdr?'background:#2d3440;color:#e6edf3;':'');
+        const fw = cell.bold ? 'font-weight:700;' : (cell.hdr?'font-weight:700;':'');
+        const fi = cell.italic ? 'font-style:italic;' : '';
+        const td = cell.underline ? 'text-decoration:underline;' : '';
+        const ta = `text-align:${cell.align||'left'};`;
+        const ws = cell.wrap ? 'white-space:pre-wrap;word-break:break-word;' : '';
+        const colspan = cell.colspan>1 ? ` colspan="${cell.colspan}"` : '';
+        const rowspan = cell.rowspan>1 ? ` rowspan="${cell.rowspan}"` : '';
+        const style = `border:1px solid #555;padding:5px 8px;font-size:11px;min-width:60px;${bg}${fw}${fi}${td}${ta}${ws}`;
+        html += `<${tag}${colspan}${rowspan} style="${style}">${cell.txt||''}</${tag}>`;
+      });
+      html += '</tr>';
+    });
+    html += '</table><p><br></p>';
+    return html;
+  }
+
+  function _xtblDefaultRows(r, c) {
+    return Array.from({length:r}, (_, ri) => Array.from({length:c}, (__, ci) => ({
+      txt: ri===0 ? `Col ${ci+1}` : '', bg:'', bold:false, italic:false, underline:false,
+      align:'left', wrap:false, hdr:ri===0
+    })));
+  }
+
+  window._xtblClose = function(insert) {
+    if (insert && _xtblState) {
+      const html = _xtblToHTML();
+      const el = _xtblState.targetEl;
+      if (el) { el.focus(); document.execCommand('insertHTML', false, html); }
+    }
+    const wrap = document.getElementById('_xtbl-wrap');
+    if (wrap) wrap.style.display = 'none';
+    _xtblState = null;
+  };
+
+  // Public API
+  window.openTableEditor = function(targetEl, existingRows) {
+    const rows = existingRows || _xtblDefaultRows(4, 4);
+    _xtblOpen(targetEl, rows);
+  };
+})();
+
+function obsInsertTable() {
   const el = document.getElementById('m-obs-editor');
-  if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
+  if (el) openTableEditor(el);
 }
+function cmtInsertTable(actId) {
+  const el = document.getElementById('dr-cmt-inp');
+  if (el) openTableEditor(el);
+}
+
 function obsInsertImage(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -4193,26 +4450,6 @@ function setObsValue(val) {
 function cmtExecCmd(cmd) {
   const el = document.getElementById('dr-cmt-inp');
   if (el) { el.focus(); document.execCommand(cmd, false, null); }
-}
-function cmtInsertTable(actId) {
-  const rows = parseInt(prompt('Número de filas:', '3') || '3');
-  const cols  = parseInt(prompt('Número de columnas:', '3') || '3');
-  if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
-  // Explicit solid hex colors — CSS vars don't work inside execCommand HTML
-  const tblStyle = 'border-collapse:collapse;width:100%;margin:8px 0;border:2px solid #666;';
-  const thStyle  = 'border:1px solid #666;padding:6px 10px;background:#2d3440;color:#e6edf3;font-size:11px;font-weight:700;text-align:left;min-width:70px;';
-  const tdStyle  = 'border:1px solid #555;padding:6px 10px;background:transparent;color:inherit;font-size:11px;min-width:70px;';
-  let tbl = `<table style="${tblStyle}"><thead><tr>`;
-  for (let c = 0; c < cols; c++) tbl += `<th style="${thStyle}" contenteditable="true">Col ${c + 1}</th>`;
-  tbl += '</tr></thead><tbody>';
-  for (let ri = 0; ri < rows; ri++) {
-    tbl += '<tr>';
-    for (let c = 0; c < cols; c++) tbl += `<td style="${tdStyle}" contenteditable="true">&nbsp;</td>`;
-    tbl += '</tr>';
-  }
-  tbl += '</tbody></table><p><br></p>';
-  const el = document.getElementById('dr-cmt-inp');
-  if (el) { el.focus(); document.execCommand('insertHTML', false, tbl); }
 }
 // Store pending attachments per activity
 if (!window._pendingAttachments) window._pendingAttachments = {};
@@ -5800,34 +6037,61 @@ async function duplicateProject(proj) {
   const newName = prompt('Nombre del proyecto duplicado:', proj + ' (copia)');
   if (!newName || !newName.trim()) return;
   notify('⏳ Duplicando ' + acts.length + ' actividades...', false);
-  // Insert only activities (no comments, history, subtasks)
-  const batch = acts.map(a => ({
-    modulo:      ACTIVE,
-    codigo:      a['CÓDIGO'] ? a['CÓDIGO'] + '-D' : '',
-    anio:        a['AÑO'] || new Date().getFullYear(),
-    actividad:   a['ACTIVIDAD'],
-    planta:      a['PLANTA'],
-    proyecto:    newName.trim(),
-    responsable: a['RESPONSABLE'],
-    fecha_inicio: a['FECHA INICIO'] || null,
-    fecha_fin:    a['FECHA FIN']    || null,
-    fecha_completada: null,
-    estado:      'PLANIFICADA',
-    avance:      0,
-    observaciones: a['OBSERVACIONES'] || '',
-    cant_reprog:  0,
-    detalle_reprog: '',
-    nueva_fecha_cierre: null,
-    subtasks: [], attachments: [],
-    created_by: CURRENT_USER?.id
-  }));
+  const now = new Date().toISOString();
+  // Deep-copy activities including subtasks (reset IDs to avoid collisions)
+  const batch = acts.map(a => {
+    // Deep-clone subtasks with new ids so they don't collide
+    const clonedSubtasks = (a.subtasks||[]).map(s => ({
+      ...s,
+      id: Date.now() + Math.floor(Math.random()*1e9),
+      done: false,
+      reprogramada: false,
+      stComment: '',
+      reprogDetail: '',
+      newDate: null,
+      _originalDate: null,
+      closedAt: null
+    }));
+    return {
+      modulo:      ACTIVE,
+      codigo:      a['CÓDIGO'] ? a['CÓDIGO'] + '-D' : '',
+      anio:        a['AÑO'] || new Date().getFullYear(),
+      actividad:   a['ACTIVIDAD'],
+      planta:      a['PLANTA'],
+      proyecto:    newName.trim(),
+      responsable: a['RESPONSABLE'],
+      fecha_inicio: a['FECHA INICIO'] || null,
+      fecha_fin:    a['FECHA FIN']    || null,
+      fecha_completada: null,
+      estado:      'PLANIFICADA',
+      avance:      0,
+      observaciones: a['OBSERVACIONES'] || '',
+      cant_reprog:  0,
+      detalle_reprog: '',
+      nueva_fecha_cierre: null,
+      subtasks:    clonedSubtasks,
+      attachments: [],
+      comments:    [],
+      created_by:  CURRENT_USER?.id,
+      updated_at:  now
+    };
+  });
   const CHUNK = 50;
+  let hadError = false;
   for (let i = 0; i < batch.length; i += CHUNK) {
     const { error } = await _sb.from('actividades').insert(batch.slice(i, i+CHUNK));
-    if (error) { notify('⚠ Error: ' + error.message, true); return; }
+    if (error) { notify('⚠ Error: ' + error.message, true); hadError = true; break; }
   }
-  await loadModFromDB(ACTIVE);
-  notify('✅ Proyecto duplicado: "' + newName.trim() + '" con ' + acts.length + ' actividades');
+  if (!hadError) {
+    // Reload from DB so all clients see the new data
+    await loadModFromDB(ACTIVE);
+    // Trigger realtime broadcast if available
+    try {
+      await _sb.channel('global').send({ type:'broadcast', event:'reload', payload:{ module: ACTIVE, by: CURRENT_USER?.name||'Admin' } });
+    } catch(e) { /* realtime optional */ }
+    notify('✅ Proyecto duplicado: "' + newName.trim() + '" con ' + acts.length + ' actividades y sus subtareas');
+    renderProjs(); renderDash(); renderActs(); renderGantt();
+  }
 }
 
 async function deleteProject(proj) {
@@ -6685,11 +6949,11 @@ function generateProjSummaryPDF(proj) {
       const stStat = s.done ? '✓ Completada' : s.reprogramada ? '↻ Reprogramada' : '○ Pendiente';
       const stCol  = s.done ? '#16a34a' : s.reprogramada ? '#ea580c' : '#64748b';
       return `<tr>
-        <td style="padding:5px 10px;font-size:10px;color:#374151;border-bottom:1px solid #f1f5f9;padding-left:28px">${s.desc||'—'}</td>
-        <td style="padding:5px 10px;font-size:10px;color:${stCol};font-weight:600;border-bottom:1px solid #f1f5f9;white-space:nowrap">${stStat}</td>
-        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border-bottom:1px solid #f1f5f9;white-space:nowrap">${s.resp||'—'}</td>
-        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border-bottom:1px solid #f1f5f9;white-space:nowrap">${s.date||'—'}${s.reprogramada&&s.newDate?` → ${s.newDate}`:''}</td>
-        <td style="padding:5px 10px;font-size:10px;color:#374151;border-bottom:1px solid #f1f5f9">${s.stComment||s.reprogDetail||'—'}</td>
+        <td style="padding:5px 10px;font-size:10px;color:#374151;border:1px solid #e2e8f0;padding-left:28px">${s.desc||'—'}</td>
+        <td style="padding:5px 10px;font-size:10px;color:${stCol};font-weight:600;border:1px solid #e2e8f0;white-space:nowrap">${stStat}</td>
+        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border:1px solid #e2e8f0;white-space:nowrap">${s.resp||'—'}</td>
+        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border:1px solid #e2e8f0;white-space:nowrap">${s.date||'—'}${s.reprogramada&&s.newDate?` → ${s.newDate}`:''}</td>
+        <td style="padding:5px 10px;font-size:10px;color:#374151;border:1px solid #e2e8f0;white-space:pre-wrap;word-break:break-word">${(s.stComment||s.reprogDetail||'—').replace(/\n/g,'<br>')}</td>
       </tr>`;
     }).join('');
 
@@ -6709,7 +6973,7 @@ function generateProjSummaryPDF(proj) {
       <strong>Reprogramación:</strong> ${r['DETALLE DE REPROGRAMACION']}${r['NUEVA FECHA DE CIERRE']?` → Nueva fecha: <strong>${r['NUEVA FECHA DE CIERRE']}</strong>`:''}
     </div>` : '';
 
-    const obsHtml = r.OBSERVACIONES ? `<div style="margin-top:5px;font-size:10px;color:#374151;white-space:pre-wrap;line-height:1.5">${r.OBSERVACIONES}</div>` : '';
+    const obsHtml = r.OBSERVACIONES ? `<div style="margin-top:5px;font-size:10px;color:#374151;white-space:pre-wrap;line-height:1.5;word-break:break-word">${r.OBSERVACIONES}</div>` : '';
 
     const stColor = r.ESTADO==='REALIZADA'?'#16a34a':r.ESTADO==='EN CURSO'?'#0891b2':r.ESTADO==='REPROGRAMADA'?'#ea580c':'#64748b';
     const stBg    = r.ESTADO==='REALIZADA'?'#dcfce7':r.ESTADO==='EN CURSO'?'#dbeafe':r.ESTADO==='REPROGRAMADA'?'#ffedd5':'#f1f5f9';
@@ -6746,13 +7010,13 @@ function generateProjSummaryPDF(proj) {
         ${(r.subtasks||[]).length > 0 ? `
           <div style="margin-top:8px">
             <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Subtareas (${(r.subtasks||[]).filter(s=>s.done).length}/${(r.subtasks||[]).length} completadas)</div>
-            <table style="width:100%;border-collapse:collapse">
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0">
               <thead><tr style="background:#f1f5f9">
-                <th style="padding:4px 10px 4px 28px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase">Subtarea</th>
-                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;white-space:nowrap">Estado</th>
-                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase">Responsable</th>
-                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase">Fecha</th>
-                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase">Comentario / Detalle</th>
+                <th style="padding:4px 10px 4px 28px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;border:1px solid #e2e8f0">Subtarea</th>
+                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;white-space:nowrap;border:1px solid #e2e8f0">Estado</th>
+                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;border:1px solid #e2e8f0">Responsable</th>
+                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;border:1px solid #e2e8f0">Fecha</th>
+                <th style="padding:4px 10px;font-size:9px;color:#64748b;text-align:left;font-weight:600;text-transform:uppercase;border:1px solid #e2e8f0">Comentario / Detalle</th>
               </tr></thead>
               <tbody>${stList}</tbody>
             </table>
@@ -6795,15 +7059,21 @@ function generateProjSummaryPDF(proj) {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, 'Helvetica Neue', sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 28px; }
     @page { margin: 20mm 16mm; }
-    @media print { body { padding: 0; } .no-print { display: none !important; } }
+    @media print { body { padding: 0; } .no-print { display: none !important; } table { border-collapse:collapse !important; } table th,table td { border:1px solid #666 !important; } }
     h1 { font-size: 22px; font-weight: 700; color: #1e3a5f; }
     .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 16px 0; }
     .kpi-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; text-align: center; }
     .kpi-val { font-size: 22px; font-weight: 700; font-family: sans-serif; }
     .kpi-lbl { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-top: 3px; }
     .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #1e3a5f; border-bottom: 2px solid #1e40af; padding-bottom: 5px; margin: 18px 0 12px; }
-    table { border-collapse: collapse; }
-    th { text-align: left; }
+    table { border-collapse: collapse; width:100%; }
+    th,td { border:1px solid #e2e8f0; padding:5px 8px; }
+    th { text-align: left; background:#f1f5f9; }
+    /* Respect line breaks in comment/detail cells */
+    td { white-space: pre-wrap; word-break: break-word; }
+    /* Obs HTML tables: full borders */
+    .obs-html table { border-collapse:collapse !important; border:2px solid #666 !important; }
+    .obs-html table th,.obs-html table td { border:1px solid #666 !important; padding:5px 8px !important; }
   </style>
   </head><body>
 
