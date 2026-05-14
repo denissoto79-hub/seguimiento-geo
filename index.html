@@ -6166,9 +6166,40 @@ function subscribeRealtime() {
     .on('postgres_changes', { event:'*', schema:'public', table:'actividades' }, async payload => {
       const mod = payload.new?.modulo || payload.old?.modulo;
       if (mod !== ACTIVE) return;
-      // Reload current module data
+
+      // Skip realtime reload if the activity modal is open — prevents race condition
+      // where reload overwrites tmpST/editingId while user is editing
+      const modalOpen = document.getElementById('mo-act')?.classList.contains('open');
+      if (modalOpen) return;
+
+      // For UPDATE events: do a surgical in-memory patch instead of full reload
+      // This prevents the store from being rebuilt while other operations are in flight
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        const updated = payload.new;
+        const acts = MS[ACTIVE]?.acts || [];
+        const idx = acts.findIndex(a => a._dbid === updated.id);
+        if (idx >= 0) {
+          // Only update fields that changed — preserve in-memory state for open drawers
+          const a = acts[idx];
+          a['ESTADO']   = updated.estado;
+          a['AVANCE']   = Number(updated.avance) || 0;
+          a['FECHA FIN'] = updated.fecha_fin;
+          a['FECHA COMPLETADA'] = updated.fecha_completada;
+          a['OBSERVACIONES'] = updated.observaciones;
+          a['CANTIDAD DE REPROGRAMACIONES'] = updated.cant_reprog;
+          a['DETALLE DE REPROGRAMACION'] = updated.detalle_reprog;
+          a['NUEVA FECHA DE CIERRE'] = updated.nueva_fecha_cierre;
+          a.subtasks    = updated.subtasks    || a.subtasks;
+          a.attachments = updated.attachments || a.attachments;
+          // Re-render without full reload
+          renderActs(); renderDash(); renderProjs(); renderGantt();
+          return;
+        }
+      }
+
+      // For INSERT/DELETE or unknown records: do full reload
       await loadModFromDB(ACTIVE);
-      notify('🔄 Datos actualizados por otro usuario');
+      notify('🔄 Datos actualizados');
     })
     .subscribe();
 
@@ -6481,8 +6512,38 @@ async function saveAct() {
   }
 
   closeMo();
-  await loadModFromDB(ACTIVE);
-  notify(editingId !== null ? '✏️ Actividad actualizada' : '✅ Actividad creada');
+
+  // Update in-memory store surgically — no full reload needed
+  // (full reload would race with the realtime subscription)
+  const acts = MS[ACTIVE]?.acts || [];
+  if (existing) {
+    const idx = acts.findIndex(a => a._dbid === saved.id);
+    if (idx >= 0) {
+      acts[idx] = { ...acts[idx], ...obj,
+        _id: saved.id, _dbid: saved.id,
+        'CÓDIGO': saved.codigo, subtasks: saved.subtasks || obj.subtasks,
+        attachments: saved.attachments || obj.attachments,
+      };
+    }
+  } else {
+    // New activity — append to store
+    acts.push({
+      _id: saved.id, _dbid: saved.id,
+      'CÓDIGO': saved.codigo, 'AÑO': saved.anio,
+      'ACTIVIDAD': saved.actividad, 'PLANTA': saved.planta,
+      'PROYECTO': saved.proyecto, 'RESPONSABLE': saved.responsable,
+      'FECHA INICIO': saved.fecha_inicio, 'FECHA FIN': saved.fecha_fin,
+      'FECHA COMPLETADA': saved.fecha_completada,
+      'ESTADO': saved.estado, 'AVANCE': Number(saved.avance)||0,
+      'OBSERVACIONES': saved.observaciones,
+      'CANTIDAD DE REPROGRAMACIONES': saved.cant_reprog,
+      'DETALLE DE REPROGRAMACION': saved.detalle_reprog,
+      'NUEVA FECHA DE CIERRE': saved.nueva_fecha_cierre,
+      MODULE: ACTIVE, subtasks: saved.subtasks||[], attachments: saved.attachments||[], comments:[], _history:[]
+    });
+  }
+  renderActs(); renderDash(); renderProjs(); renderGantt();
+  notify(existing ? '✏️ Actividad actualizada' : '✅ Actividad creada');
 }
 
 // markDone — persist to Supabase
