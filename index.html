@@ -3672,6 +3672,7 @@ function autoGenST() {
   notify('📌 ' + tmpST.length + ' subtareas mensuales generadas');
 }
 function openModal(id = null) {
+  window._CURRENT_ACT_ID = null; // clear drawer context
   editingId = id;
   const r = id !== null ? get().find(a => a._id === id) : {};
   tmpST = [...(r.subtasks||[])]; tmpCmt = [...(r.comments||[])]; tmpAtt = [...(r.attachments||[])];
@@ -3910,81 +3911,100 @@ function openSTModal(stId, mode) {
 }
 
 async function _saveSTModal(stId, mode) {
-  // Find subtask in tmpST (activity modal) or _CURRENT_ACT_SUBTASKS (drawer)
-  const inModal = typeof tmpST !== 'undefined' && tmpST.find(x => x.id === stId);
-  const s = inModal || window._CURRENT_ACT_SUBTASKS?.find?.(x => x.id === stId);
-  if (!s) return;
+  // ── 1. Locate the subtask object ────────────────────────────────
+  // Priority: drawer context (_CURRENT_ACT_SUBTASKS), then modal context (tmpST)
+  const fromDrawer = !!window._CURRENT_ACT_ID;
+  const subtaskArr = fromDrawer
+    ? (window._CURRENT_ACT_SUBTASKS || [])
+    : (typeof tmpST !== 'undefined' ? tmpST : []);
+  const s = subtaskArr.find(x => x.id === stId);
+  if (!s) { console.warn('_saveSTModal: subtask not found', stId); return; }
+
+  // ── 2. Read comment field ────────────────────────────────────────
   const cmtEl = document.getElementById('_st-comment');
-  const comment = cmtEl ? (cmtEl.tagName === 'TEXTAREA' ? cmtEl.value : cmtEl.innerText || cmtEl.textContent).trim() : '';
-  const commentHtml = cmtEl ? (cmtEl.tagName === 'TEXTAREA' ? cmtEl.value : cmtEl.innerHTML) : '';
-  const today = new Date().toISOString().split('T')[0];
+  const commentText = cmtEl
+    ? (cmtEl.tagName === 'TEXTAREA' ? cmtEl.value.trim() : (cmtEl.innerText || cmtEl.textContent).trim())
+    : '';
+  const commentHtml = cmtEl
+    ? (cmtEl.tagName === 'TEXTAREA' ? cmtEl.value : cmtEl.innerHTML.trim())
+    : '';
+  const today  = new Date().toISOString().split('T')[0];
   const dateStr = `[${today}] `;
 
+  // ── 3. Apply changes to subtask object ──────────────────────────
   if (mode === 'close') {
-    s.done = true;
-    s.closedAt = today;
-    s.stComment = comment ? dateStr + commentHtml : (s.stComment || '');
+    s.done      = true;
+    s.closedAt  = today;
+    s.stComment = commentText ? dateStr + commentHtml : (s.stComment || '');
+
   } else if (mode === 'reprog') {
-    const newDate = document.getElementById('_st-new-date')?.value;
-    const tipoRadio = document.querySelector('input[name="_st-reprog-tipo"]:checked');
+    const newDate      = document.getElementById('_st-new-date')?.value;
+    const tipoRadio    = document.querySelector('input[name="_st-reprog-tipo"]:checked');
     const isJustificada = tipoRadio ? tipoRadio.value === 'justificada' : true;
-    s.reprogramada = true;
+    s.reprogramada      = true;
     s.reprogJustificada = isJustificada;
     if (!s._originalDate) s._originalDate = s.date;
     if (newDate) { s.newDate = newDate; s.date = newDate; }
-    const tipoLabel = isJustificada ? '[Justificada]' : '[No Justificada]';
-    const commentBody = comment ? `${tipoLabel} ${commentHtml}` : tipoLabel;
-    s.stComment = s.stComment
-      ? s.stComment + '\n' + dateStr + commentBody
-      : dateStr + commentBody;
+    const tipoLabel   = isJustificada ? '[Justificada]' : '[No Justificada]';
+    const commentBody = commentText ? `${tipoLabel} ${commentHtml}` : tipoLabel;
+    s.stComment  = s.stComment ? s.stComment + '\n' + dateStr + commentBody : dateStr + commentBody;
     s.reprogDetail = commentBody;
-  } else {
+
+  } else { // edit
     const resp = document.getElementById('_st-resp')?.value;
     const date = document.getElementById('_st-date')?.value;
     if (resp) s.resp = resp;
     if (date) s.date = date;
-    s.stComment = comment ? dateStr + commentHtml : s.stComment;
+    s.stComment = commentText ? dateStr + commentHtml : s.stComment;
   }
 
-  // ── Persist subtasks to DB immediately ──────────────────────────
-  // When called from drawer: _CURRENT_ACT_ID holds the activity _id
-  // When called from modal: editingId is the activity _id
-  const actId = window._CURRENT_ACT_ID || (typeof editingId !== 'undefined' ? editingId : null);
+  // ── 4. Persist ONLY subtasks field to DB ─────────────────────────
+  // Safe: only updates the subtasks JSON column, never touches other fields
+  const actId = fromDrawer ? window._CURRENT_ACT_ID
+              : (typeof editingId !== 'undefined' ? editingId : null);
+
   if (actId !== null && actId !== undefined) {
+    // Get the live activity record to read its _dbid and full subtasks array
     const actRecord = get().find(a => a._id === actId);
-    if (actRecord?._dbid) {
-      // Merge the updated subtask back into the activity's subtasks array
-      const updatedSubtasks = (actRecord.subtasks || []).map(x =>
+    if (actRecord && actRecord._dbid) {
+      // Make sure the mutated subtask is reflected in actRecord.subtasks
+      // (when fromDrawer, _CURRENT_ACT_SUBTASKS IS actRecord.subtasks by reference — but be safe)
+      const finalSubtasks = (actRecord.subtasks || []).map(x =>
         x.id === stId ? { ...x, ...s } : x
       );
-      // Also update in-memory so UI stays consistent
-      actRecord.subtasks = updatedSubtasks;
-      // Persist to Supabase
-      const { error } = await _sb.from('actividades')
-        .update({ subtasks: updatedSubtasks, updated_at: new Date().toISOString() })
+      actRecord.subtasks = finalSubtasks; // update in-memory store
+
+      // Single targeted update — ONLY subtasks + updated_at
+      const { error } = await _sb
+        .from('actividades')
+        .update({ subtasks: finalSubtasks, updated_at: new Date().toISOString() })
         .eq('id', actRecord._dbid);
+
       if (error) {
         notify('⚠ Error guardando subtarea: ' + error.message, true);
+        console.error('_saveSTModal DB error:', error);
+        return; // stop — don't close modal on error
       }
+    } else {
+      console.warn('_saveSTModal: actRecord or _dbid not found for actId', actId);
     }
-  } else if (inModal) {
-    // Inside the create/edit modal — tmpST will be saved when user clicks "Guardar"
-    // Nothing extra needed, tmpST is already updated above
   }
+  // If actId is null we're inside the New Activity modal — tmpST is already mutated,
+  // it will be saved when user clicks "Guardar" on the main activity modal.
 
+  // ── 5. Close modal and refresh UI ───────────────────────────────
   document.getElementById('_st-modal').style.display = 'none';
-  // Re-render whichever context is active
   if (typeof renderSTs === 'function') renderSTs();
   if (actId !== null && actId !== undefined) {
-    const drBody = document.getElementById('dr-body');
-    if (drBody) openActDr(actId);
+    openActDr(actId);
   }
-  // Callback from drSTAction (drawer subtask action)
   if (typeof window._afterSTSave === 'function') {
     const cb = window._afterSTSave;
     window._afterSTSave = null;
     cb();
   }
+  // Clear context
+  window._CURRENT_ACT_ID = null;
   notify(mode === 'close' ? '✅ Subtarea cerrada' : mode === 'reprog' ? '🔄 Subtarea reprogramada' : '✏ Subtarea actualizada');
 }
 
@@ -7918,11 +7938,10 @@ function openProjDr(proj) {
 
 // ── drSTAction: action buttons in Detalles drawer ────────────────
 function drSTAction(actId, stId, mode) {
-  // Set _CURRENT_ACT_SUBTASKS to the activity's subtasks so openSTModal finds the subtask
   const r = get().find(a => a._id === actId);
   if (!r) return;
+  window._CURRENT_ACT_ID       = actId;       // ← FIX: set so _saveSTModal knows which activity
   window._CURRENT_ACT_SUBTASKS = r.subtasks || [];
-  // After ST modal saves, refresh the drawer
   window._afterSTSave = () => { openActDr(actId); };
   openSTModal(stId, mode);
 }
