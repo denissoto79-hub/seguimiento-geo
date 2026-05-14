@@ -3674,9 +3674,17 @@ function autoGenST() {
 function openModal(id = null) {
   window._CURRENT_ACT_ID = null; // clear drawer context
   editingId = id;
-  const r = id !== null ? get().find(a => a._id === id) : {};
-  tmpST = [...(r.subtasks||[])]; tmpCmt = [...(r.comments||[])]; tmpAtt = [...(r.attachments||[])];
-  window._CURRENT_ACT_SUBTASKS = tmpST; // expose for openSTModal
+  const r = (id !== null ? get().find(a => a._id === id) : null) || {};
+  // Guard: if editing but record not found, abort and show error
+  if (id !== null && !r._dbid) {
+    const retry = get().find(a => a._id === id);
+    if (!retry) { notify('⚠ No se encontró la actividad. Recarga la página e intenta de nuevo.', true); return; }
+    Object.assign(r, retry);
+  }
+  tmpST  = JSON.parse(JSON.stringify(r.subtasks  || [])); // deep clone — never share reference
+  tmpCmt = JSON.parse(JSON.stringify(r.comments  || []));
+  tmpAtt = JSON.parse(JSON.stringify(r.attachments|| []));
+  window._CURRENT_ACT_SUBTASKS = tmpST;
   // Auto-generate monthly subtasks if new activity (no id) and date range > 1 month
   if (id === null || !r._dbid) {
     // Will be triggered when dates are set — see autoGenST()
@@ -5852,36 +5860,60 @@ async function loadHistoryForMod(key) {
 }
 
 async function saveActToDB(obj, existingDbId) {
+  // SAFETY: if existingDbId is provided, ALWAYS update — never insert
+  if (existingDbId && typeof existingDbId !== 'number' && typeof existingDbId !== 'string') {
+    console.error('saveActToDB: invalid existingDbId', existingDbId);
+    notify('⚠ Error interno: ID de actividad inválido. No se guardó.', true);
+    return null;
+  }
+
   const row = {
     modulo:      ACTIVE,
-    codigo:      obj['CÓDIGO'],
-    anio:        obj['AÑO'],
-    actividad:   obj['ACTIVIDAD'],
-    planta:      obj['PLANTA'],
-    proyecto:    obj['PROYECTO'],
-    responsable: obj['RESPONSABLE'],
-    fecha_inicio: obj['FECHA INICIO'] || null,
-    fecha_fin:    obj['FECHA FIN']    || null,
-    fecha_completada: obj['FECHA COMPLETADA'] || null,
-    estado:      obj['ESTADO'],
-    avance:      obj['AVANCE'],
-    observaciones: obj['OBSERVACIONES'],
-    cant_reprog:  obj['CANTIDAD DE REPROGRAMACIONES'],
-    detalle_reprog: obj['DETALLE DE REPROGRAMACION'],
-    nueva_fecha_cierre: obj['NUEVA FECHA DE CIERRE'] || null,
+    codigo:      obj['CÓDIGO']      || '',
+    anio:        obj['AÑO']         || new Date().getFullYear(),
+    actividad:   obj['ACTIVIDAD']   || '',
+    planta:      obj['PLANTA']      || '',
+    proyecto:    obj['PROYECTO']    || '',
+    responsable: obj['RESPONSABLE'] || '',
+    fecha_inicio:       obj['FECHA INICIO']    || null,
+    fecha_fin:          obj['FECHA FIN']       || null,
+    fecha_completada:   obj['FECHA COMPLETADA']|| null,
+    estado:      obj['ESTADO']      || 'PLANIFICADA',
+    avance:      obj['AVANCE']      ?? 0,
+    observaciones:      obj['OBSERVACIONES']   || '',
+    cant_reprog:        obj['CANTIDAD DE REPROGRAMACIONES'] ?? 0,
+    detalle_reprog:     obj['DETALLE DE REPROGRAMACION']   || '',
+    nueva_fecha_cierre: obj['NUEVA FECHA DE CIERRE']       || null,
     subtasks:    obj.subtasks    || [],
     attachments: obj.attachments || [],
     updated_at:  new Date().toISOString(),
-    created_by:  CURRENT_USER?.id,
+    created_by:  CURRENT_USER?.id || null,
   };
 
   if (existingDbId) {
-    const { data, error } = await _sb.from('actividades').update(row).eq('id', existingDbId).select().single();
-    if (error) { notify('⚠ Error guardando: ' + error.message, true); return null; }
+    // UPDATE — targeted, safe
+    const { data, error } = await _sb.from('actividades')
+      .update(row).eq('id', existingDbId).select().single();
+    if (error) {
+      console.error('saveActToDB UPDATE error:', error, 'dbId:', existingDbId);
+      notify('⚠ Error guardando: ' + error.message, true);
+      return null;
+    }
     return data;
   } else {
+    // INSERT — only for genuinely new activities (editingId === null)
+    if (editingId !== null && editingId !== undefined) {
+      // Should never reach here — means _dbid was lost
+      console.error('saveActToDB: editingId set but no existingDbId! Aborting to prevent duplicate.', editingId);
+      notify('⚠ Error: no se puede guardar sin ID de actividad. Recarga la página.', true);
+      return null;
+    }
     const { data, error } = await _sb.from('actividades').insert(row).select().single();
-    if (error) { notify('⚠ Error creando: ' + error.message, true); return null; }
+    if (error) {
+      console.error('saveActToDB INSERT error:', error);
+      notify('⚠ Error creando: ' + error.message, true);
+      return null;
+    }
     return data;
   }
 }
@@ -6362,6 +6394,19 @@ async function saveAct() {
   else { comp = null; } // Clear fecha completada if not REALIZADA
 
   const existing = editingId !== null ? get().find(a => a._id === editingId) : null;
+
+  // SAFETY: editing mode but record not found — abort to prevent accidental INSERT or data loss
+  if (editingId !== null && (!existing || !existing._dbid)) {
+    notify('⚠ Error: actividad no encontrada en memoria. Recarga la página e intenta de nuevo.', true);
+    console.error('saveAct: editingId set but record missing _dbid', { editingId, existing });
+    return;
+  }
+  // SAFETY: if tmpST is empty but activity has subtasks, restore from DB record
+  if (existing && (existing.subtasks||[]).length > 0 && tmpST.length === 0) {
+    console.warn('saveAct: tmpST empty but existing has subtasks — restoring to prevent subtask loss');
+    tmpST = JSON.parse(JSON.stringify(existing.subtasks));
+  }
+
   let detRep = existing?.['DETALLE DE REPROGRAMACION'] || '';
   let cntRep = existing?.['CANTIDAD DE REPROGRAMACIONES'] || 0;
   let nfc    = document.getElementById('m-nfcierre').value || null;
