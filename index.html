@@ -8422,6 +8422,36 @@ function showDeletedModules() {
     </div>`).join('');
 }
 
+// ── _addModToSidebar: safely add a module to memory + sidebar ────
+async function _addModToSidebar(key, nombre, color) {
+  // Initialize memory structures if needed
+  if (!MOD_LBL[key]) MOD_LBL[key] = nombre;
+  if (!MS[key])      MS[key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
+  if (!RAW[key])     RAW[key] = [];
+  if (!COLORS_ALL[key]) COLORS_ALL[key] = {};
+  // MOD_K is the built-in array — add key if not present
+  if (!MOD_K.includes(key)) MOD_K.push(key);
+  // Add sidebar button if not already there
+  if (!document.getElementById('mod-' + key)) {
+    const extraMods = document.getElementById('extra-mods');
+    if (extraMods) {
+      const btn = document.createElement('button');
+      btn.className = 'mod-btn';
+      btn.id = 'mod-' + key;
+      btn.innerHTML = `<span class="mod-dot" style="background:${color||'#38bdf8'}"></span><span class="mod-txt">${nombre}</span>`;
+      btn.onclick = function() { switchMod(key, this); };
+      extraMods.appendChild(btn);
+    }
+  }
+  // Ensure admin users can see this module
+  USERS.filter(u => u.role === 'admin').forEach(u => {
+    if (!u.modules.includes(key)) u.modules.push(key);
+  });
+  if (CURRENT_USER?.role === 'admin' && !CURRENT_USER.modules.includes(key)) {
+    CURRENT_USER.modules.push(key);
+  }
+}
+
 async function restoreMod(key) {
   const m = DELETED_MODS.find(x=>x.key===key); if (!m) return;
 
@@ -8429,12 +8459,11 @@ async function restoreMod(key) {
   if (m._actRestore) {
     const { dbid, origMod } = m._actRestore;
     const { error } = await _sb.from('actividades')
-      .update({ modulo: origMod, updated_at: new Date().toISOString() })
-      .eq('id', dbid);
+      .update({ modulo: origMod, updated_at: new Date().toISOString() }).eq('id', dbid);
     if (error) { notify('⚠ Error restaurando: ' + error.message, true); return; }
     DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
-    await loadModFromDB(ACTIVE);
-    renderModMgmt(); notify('✅ Actividad restaurada');
+    await loadModFromDB(origMod === ACTIVE ? ACTIVE : origMod);
+    renderModMgmt(); notify('✅ Actividad restaurada al módulo "' + origMod + '"');
     return;
   }
 
@@ -8442,8 +8471,7 @@ async function restoreMod(key) {
   if (m._projRestore) {
     const { ids, origProj } = m._projRestore;
     const { error } = await _sb.from('actividades')
-      .update({ proyecto: origProj, updated_at: new Date().toISOString() })
-      .in('id', ids);
+      .update({ proyecto: origProj, updated_at: new Date().toISOString() }).in('id', ids);
     if (error) { notify('⚠ Error restaurando: ' + error.message, true); return; }
     DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
     await loadModFromDB(ACTIVE);
@@ -8451,17 +8479,20 @@ async function restoreMod(key) {
     return;
   }
 
-  // Module restore
-  await _sb.from('actividades').update({modulo:key}).eq('modulo','_deleted_'+key).then(()=>{});
-  await _sb.from('modulos').update({activo:true}).eq('key',key).then(()=>{});
-  MOD_LBL[key] = m.name; MS[key] = { acts:null, sF:'CÓDIGO', sA:true, pg:1 };
+  // Module restore (deleted via deleteMod)
+  const { data: modRow } = await _sb.from('modulos').select('key,nombre,color').eq('key', key).single();
+  await _sb.from('actividades').update({ modulo: key, updated_at: new Date().toISOString() })
+    .like('modulo', '_deleted_' + key);
+  await _sb.from('modulos').update({ activo: true }).eq('key', key);
+
+  const modName  = modRow?.nombre || m.name || key;
+  const modColor = modRow?.color  || '#38bdf8';
+  await _addModToSidebar(key, modName, modColor);
+  await loadModFromDB(key);
+
   DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
-  const extraMods = document.getElementById('extra-mods');
-  const btn = document.createElement('button'); btn.className='mod-btn'; btn.id='mod-'+key;
-  btn.innerHTML = `<span class="mod-dot" style="background:#38bdf8"></span><span class="mod-txt">${m.name}</span>`;
-  btn.onclick = function() { switchMod(key, this); };
-  extraMods.appendChild(btn);
-  renderModMgmt(); notify('✅ Módulo "' + m.name + '" restaurado');
+  renderModMgmt();
+  notify('✅ Módulo "' + modName + '" restaurado');
 }
 
 async function showDeletedProjects() {
@@ -8620,8 +8651,14 @@ async function _papl(key) {
     const { error } = await _sb.from('actividades')
       .update({ modulo: mod, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) { notify('⚠ ' + error.message, true); return; }
-    notify('✅ Actividad restaurada al módulo "' + mod + '"');
-    await loadModFromDB(ACTIVE);
+
+    // Ensure the target module is in sidebar (might not be if it was also deleted)
+    const { data: modRow } = await _sb.from('modulos').select('key,nombre,color').eq('key', mod).single();
+    if (modRow) await _addModToSidebar(mod, modRow.nombre, modRow.color || '#38bdf8');
+
+    await loadModFromDB(mod);
+    if (mod !== ACTIVE) await loadModFromDB(ACTIVE); // refresh current view too
+    notify('✅ Actividad restaurada al módulo "' + (modRow?.nombre || mod) + '"');
     showDeletedProjects();
 
   } else if (type === 'actDelete') {
@@ -8635,12 +8672,27 @@ async function _papl(key) {
   } else if (type === 'modBulkRestore') {
     const { mod, acts } = entry;
     if (!confirm('¿Restaurar ' + acts.length + ' actividades al módulo "' + mod + '"?')) return;
-    const ids = acts.map(a=>a.id);
+    const ids = acts.map(a => a.id);
+
+    // 1. Restore actividades in DB
     const { error } = await _sb.from('actividades')
       .update({ modulo: mod, updated_at: new Date().toISOString() }).in('id', ids);
     if (error) { notify('⚠ ' + error.message, true); return; }
-    notify('✅ ' + acts.length + ' actividades restauradas al módulo "' + mod + '"');
-    await loadModFromDB(ACTIVE);
+
+    // 2. Reactivate modulo record and get its name/color
+    const { data: modRow } = await _sb.from('modulos')
+      .select('key, nombre, color').eq('key', mod).single();
+    await _sb.from('modulos').update({ activo: true }).eq('key', mod);
+
+    // 3. Add to sidebar and memory if not already there
+    const modName  = modRow?.nombre || mod;
+    const modColor = modRow?.color  || '#38bdf8';
+    await _addModToSidebar(mod, modName, modColor);
+
+    // 4. Load its data
+    await loadModFromDB(mod);
+
+    notify('✅ Módulo "' + modName + '" restaurado con ' + acts.length + ' actividades');
     showDeletedProjects();
 
   } else if (type === 'modBulkDelete') {
@@ -8675,14 +8727,29 @@ async function _papl(key) {
 }
 
 async function recoverMod(origModKey) {
-  if (!confirm('¿Restaurar todas las actividades del módulo "'+origModKey+'"?')) return;
+  if (!confirm('¿Restaurar todas las actividades del módulo "' + origModKey + '"?')) return;
+
+  // 1. Restore actividades
   const { error } = await _sb.from('actividades')
     .update({ modulo: origModKey, updated_at: new Date().toISOString() })
-    .like('modulo', '_deleted_'+origModKey);
-  if (error) { notify('⚠ Error: '+error.message,true); return; }
+    .like('modulo', '_deleted_' + origModKey);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+
+  // 2. Reactivate and get module info
+  const { data: modRow } = await _sb.from('modulos')
+    .select('key, nombre, color').eq('key', origModKey).single();
   await _sb.from('modulos').update({ activo: true }).eq('key', origModKey);
-  notify('✅ Módulo "'+origModKey+'" restaurado');
-  if (ACTIVE===origModKey) await loadModFromDB(ACTIVE);
+
+  const modName  = modRow?.nombre || origModKey;
+  const modColor = modRow?.color  || '#38bdf8';
+
+  // 3. Add to sidebar and memory
+  await _addModToSidebar(origModKey, modName, modColor);
+
+  // 4. Load its data
+  await loadModFromDB(origModKey);
+
+  notify('✅ Módulo "' + modName + '" restaurado');
   showDeletedProjects();
 }
 
