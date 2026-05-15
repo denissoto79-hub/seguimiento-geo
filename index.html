@@ -3436,12 +3436,13 @@ function renderCfg() {
       <div class="users-grid">
         ${ru.map(u => `<div class="u-card">
           <div class="u-top"><div class="u-av" style="background:${u.color}">${u.initials}</div>
-            <div><div class="u-name">${u.name}</div><div class="u-email">${u.email}</div></div>
+            <div style="flex:1;min-width:0"><div class="u-name">${u.name}</div><div class="u-email">${u.email||'—'}</div></div>
+            ${CURRENT_USER?.role==='admin'?`<button onclick="openEditUser('${u.id}')" title="Editar usuario" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--accent);font-size:10px;cursor:pointer;flex-shrink:0">✏</button>`:''}
           </div>
           <span class="rb ${RB[role]}">${RL[role]}</span>
           <div style="font-size:9px;color:var(--text2);margin:4px 0;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Módulos</div>
           <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">
-            ${MOD_K.map(m => `<span class="p-chip ${(u.modules||[]).includes(m)?'p-on':'p-off'}" style="font-size:8px">${MOD_LBL[m].split(' ')[0]}</span>`).join('')}
+            ${Object.keys(MOD_LBL).map(m => `<span class="p-chip ${(u.modules||[]).includes(m)?'p-on':'p-off'}" style="font-size:8px">${MOD_LBL[m].substring(0,14)}</span>`).join('')}
           </div>
           <div style="font-size:9px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Secciones</div>
           <div class="perms-wrap">
@@ -3485,19 +3486,173 @@ function closeUserMo() { document.getElementById('mo-user').classList.remove('op
 function renderNUPerms() {
   const role = document.getElementById('nu-role')?.value || 'viewer';
   const def  = { admin:{Dashboard:true,Actividades:true,Timeline:true,Calendario:true,Reportes:true,'Configuración':true}, collaborator:{Dashboard:true,Actividades:true,Timeline:true,Calendario:true,Reportes:false,'Configuración':false}, viewer:{Dashboard:true,Actividades:false,Timeline:true,Calendario:true,Reportes:false,'Configuración':false} }[role] || {};
-  document.getElementById('nu-mods').innerHTML  = MOD_K.map(m => `<label class="nu-mod-item"><input type="checkbox" id="nu-m-${m}" ${role==='admin'?'checked':''} style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`).join('');
+  document.getElementById('nu-mods').innerHTML  = Object.keys(MOD_LBL).map(m => `<label class="nu-mod-item"><input type="checkbox" id="nu-m-${m}" ${role==='admin'?'checked':''} style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`).join('');
   document.getElementById('nu-perms').innerHTML = PERM_K.map(p => `<label class="nu-perm-item"><input type="checkbox" id="nu-p-${p}" ${def[p]?'checked':''} style="accent-color:var(--accent)">${p}</label>`).join('');
 }
-function saveUser() {
-  const name = document.getElementById('nu-name')?.value.trim(), email = document.getElementById('nu-email')?.value.trim(), role = document.getElementById('nu-role')?.value || 'viewer';
+async function saveUser() {
+  const name  = document.getElementById('nu-name')?.value.trim();
+  const email = document.getElementById('nu-email')?.value.trim();
+  const role  = document.getElementById('nu-role')?.value || 'viewer';
   if (!name || !email) { notify('⚠ Nombre y email requeridos', true); return; }
-  const mods = MOD_K.filter(m => document.getElementById('nu-m-'+m)?.checked);
+
+  const mods  = Object.keys(MOD_LBL).filter(m => document.getElementById('nu-m-'+m)?.checked);
   const perms = {}; PERM_K.forEach(p => { perms[p] = document.getElementById('nu-p-'+p)?.checked || false; });
-  const cls = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4'];
+  const cls   = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4'];
+  const color = cls[USERS.length % cls.length];
   const inits = name.split(' ').map(w => w[0]?.toUpperCase()||'').slice(0,2).join('');
-  USERS.push({ id:Date.now(), name, email, role, initials:inits, color:cls[USERS.length%cls.length], modules:mods, perms });
-  closeUserMo(); renderCfg(); notify('✅ Usuario ' + name + ' creado');
-  document.getElementById('nu-name').value = ''; document.getElementById('nu-email').value = '';
+
+  const btn = document.querySelector('#mo-user .btn-accent');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creando…'; }
+
+  try {
+    // 1. Invite via Supabase Auth (sends email with magic link)
+    const { data: invited, error: invErr } = await _sb.auth.admin
+      ? await _sb.auth.admin.inviteUserByEmail(email)
+      : { data: null, error: { message: 'admin API no disponible en cliente' } };
+
+    // Supabase JS v2 client doesn't expose admin.inviteUserByEmail from browser
+    // Use the service-role inviteUserByEmail via REST instead
+    let authUserId = null;
+
+    if (invErr || !invited?.user) {
+      // Fallback: create profile without auth — user must be invited manually from Supabase dashboard
+      // But we still create the profile so it's ready when they log in
+      notify('⚠ Invitación Auth no disponible desde app (usa Supabase Dashboard → Authentication → Invite). Creando perfil…', false);
+    } else {
+      authUserId = invited.user.id;
+    }
+
+    // 2. Insert profile (with placeholder UUID if auth invite not available)
+    const profileId = authUserId || ('pending_' + Date.now());
+    const { error: profErr } = await _sb.from('profiles').insert({
+      id:           profileId,
+      email:        email,
+      name:         name,
+      role:         role,
+      modules:      mods,
+      perms:        perms,
+      avatar_color: color,
+    });
+
+    if (profErr) {
+      // May already exist — try update instead
+      if (profErr.code === '23505') {
+        const { error: updErr } = await _sb.from('profiles')
+          .update({ name, role, modules: mods, perms, avatar_color: color })
+          .eq('email', email);
+        if (updErr) { notify('⚠ Error: ' + updErr.message, true); return; }
+      } else {
+        notify('⚠ Error creando perfil: ' + profErr.message, true); return;
+      }
+    }
+
+    // 3. Update local USERS array
+    const existing = USERS.find(u => u.email === email);
+    if (existing) {
+      Object.assign(existing, { name, role, modules: mods, perms, color, initials: inits });
+    } else {
+      USERS.push({ id: profileId, name, email, role, initials: inits, color, modules: mods, perms });
+    }
+
+    // Reload SB_PROFILES
+    const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
+    if (allP) {
+      SB_PROFILES = allP;
+      USERS = allP.map(p => ({
+        id: p.id, name: p.name, email: p.email, role: p.role,
+        initials: p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+        color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
+      }));
+    }
+
+    closeUserMo(); renderCfg();
+    notify('✅ Usuario "' + name + '" creado. ' + (authUserId ? 'Se envió email de invitación.' : 'Ve a Supabase → Authentication → Invite para enviar el email de acceso.'));
+    document.getElementById('nu-name').value = '';
+    document.getElementById('nu-email').value = '';
+
+  } catch(e) {
+    notify('⚠ Error inesperado: ' + e.message, true);
+    console.error('saveUser error:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear Usuario'; }
+  }
+}
+
+// ── Edit existing user modules/perms from Configuración ─────────────
+async function openEditUser(userId) {
+  const u = USERS.find(x => x.id === userId || x.email === userId);
+  if (!u) return;
+  // Build a quick modal
+  const allMods = Object.keys(MOD_LBL);
+  const permsKeys = ['Dashboard','Actividades','Timeline','Calendario','Reportes','Configuración'];
+  const modsHtml = allMods.map(m =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+      <input type="checkbox" id="eu-m-${m}" ${(u.modules||[]).includes(m)?'checked':''} style="accent-color:var(--accent)">
+      ${MOD_LBL[m]}
+    </label>`
+  ).join('');
+  const permsHtml = permsKeys.map(p =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+      <input type="checkbox" id="eu-p-${p}" ${(u.perms||{})[p]?'checked':''} style="accent-color:var(--accent)">
+      ${p}
+    </label>`
+  ).join('');
+
+  const div = document.createElement('div');
+  div.id = '_eu-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9800;display:flex;align-items:center;justify-content:center';
+  div.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(480px,94vw);padding:24px;max-height:88vh;overflow-y:auto">
+    <div style="font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:18px;color:var(--text);margin-bottom:16px">✏ Editar Usuario: ${u.name}</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Email: ${u.email||'—'}</div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Rol</div>
+      <select id="eu-role" class="fi" style="width:100%">
+        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        <option value="collaborator" ${u.role==='collaborator'?'selected':''}>Colaborador</option>
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer (solo lectura)</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Módulos visibles</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${modsHtml}</div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Permisos de sección</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${permsHtml}</div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="document.getElementById('_eu-modal').remove()" class="btn btn-ghost btn-sm">Cancelar</button>
+      <button onclick="_saveEditUser('${u.id}')" class="btn btn-accent btn-sm">💾 Guardar cambios</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+async function _saveEditUser(userId) {
+  const allMods = Object.keys(MOD_LBL);
+  const permsKeys = ['Dashboard','Actividades','Timeline','Calendario','Reportes','Configuración'];
+  const role  = document.getElementById('eu-role')?.value || 'collaborator';
+  const mods  = allMods.filter(m => document.getElementById('eu-m-'+m)?.checked);
+  const perms = {};
+  permsKeys.forEach(p => { perms[p] = document.getElementById('eu-p-'+p)?.checked || false; });
+
+  const { error } = await _sb.from('profiles')
+    .update({ role, modules: mods, perms })
+    .eq('id', userId);
+
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+
+  // Update local
+  const u = USERS.find(x => x.id === userId);
+  if (u) { u.role = role; u.modules = mods; u.perms = perms; }
+
+  document.getElementById('_eu-modal')?.remove();
+  renderCfg();
+  notify('✅ Permisos de usuario actualizados');
 }
 
 // ── New Project ─────────────────────────────────────────────────────
