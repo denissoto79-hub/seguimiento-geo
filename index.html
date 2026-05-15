@@ -8210,6 +8210,8 @@ function openActDr(id) {
 // MODULE MANAGEMENT — edit/delete (admin only)
 // ════════════════════════════════════════════════════════════════
 const DELETED_MODS = [];
+// _PAPELERA: keyed store for safe button callbacks (avoids passing data in HTML attributes)
+const _PAPELERA = {};
 const DELETED_PROJS = [];
 
 function renderModMgmt() {
@@ -8309,63 +8311,114 @@ async function restoreMod(key) {
 
 async function showDeletedProjects() {
   const el = document.getElementById('recovery-content'); if (!el) return;
-  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px">🔄 Buscando datos eliminados…</div>';
+  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px;display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>Buscando datos eliminados…</div>';
+
+  // Clear old registry
+  Object.keys(_PAPELERA).forEach(k => delete _PAPELERA[k]);
+
   try {
-    const { data: deletedByMod } = await _sb.from('actividades')
+    // 1. Activities deleted individually (modulo renamed)
+    const { data: byModData } = await _sb.from('actividades')
       .select('id,modulo,codigo,actividad,proyecto,planta,estado,updated_at,subtasks')
       .like('modulo','_deleted_%').order('updated_at',{ascending:false});
-    const { data: deletedByProj } = await _sb.from('actividades')
+
+    // 2. Projects deleted (proyecto renamed)
+    const { data: byProjData } = await _sb.from('actividades')
       .select('id,modulo,codigo,actividad,proyecto,planta,estado,updated_at,subtasks')
       .like('proyecto','_deleted_proj_%').order('updated_at',{ascending:false});
+
+    // 3. Recent history
     const { data: recentChanges } = await _sb.from('historial_cambios')
       .select('actividad_id,campo,valor_anterior,valor_nuevo,created_at')
-      .gt('created_at',new Date(Date.now()-7*24*60*60*1000).toISOString())
+      .gt('created_at', new Date(Date.now()-7*24*60*60*1000).toISOString())
       .order('created_at',{ascending:false}).limit(30);
+
     let html = '';
 
-    // Activities deleted individually
-    if (deletedByMod && deletedByMod.length > 0) {
+    // ── Individual deleted activities ──────────────────────────────
+    if (byModData && byModData.length > 0) {
       const byMod = {};
-      deletedByMod.forEach(a => {
+      byModData.forEach(a => {
         const origMod = a.modulo.replace(/^_deleted_/,'');
-        (byMod[origMod]=byMod[origMod]||[]).push(a);
+        (byMod[origMod] = byMod[origMod]||[]).push(a);
       });
-      html += `<div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠ Actividades en Papelera (${deletedByMod.length})</div>`;
-      Object.entries(byMod).forEach(([mod,acts])=>{
+
+      html += `<div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        ⚠ Actividades en Papelera (${byModData.length})
+      </div>`;
+
+      Object.entries(byMod).forEach(([mod, acts]) => {
+        // Register bulk restore + bulk delete for this group
+        const bulkRestoreKey = 'bkr_' + mod;
+        const bulkDeleteKey  = 'bkd_' + mod;
+        _PAPELERA[bulkRestoreKey] = { type:'modBulkRestore', mod, acts };
+        _PAPELERA[bulkDeleteKey]  = { type:'modBulkDelete',  mod, acts };
+
         html += `<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:8px;padding:10px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:11px;font-weight:700;color:var(--orange)">Módulo: ${mod} (${acts.length} actividades)</span>
-            <button onmousedown="recoverMod('${mod}')" style="padding:3px 12px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar todas</button>
-          </div>
-          ${acts.map(a=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-            <div style="flex:1;font-size:10px;color:var(--text2)">• <span style="color:var(--text)">${a.proyecto||'—'}</span> / <span style="color:var(--accent)">${a.codigo||''}</span> ${a.actividad||'—'} — <span style="color:var(--text2)">${a.estado||'—'}</span>${(a.subtasks||[]).length>0?` <span style="color:var(--accent);font-size:9px">(${a.subtasks.length} sub.)</span>`:''} <span style="font-size:9px;color:var(--text2)">${(a.updated_at||'').substring(0,10)}</span></div>
-            <button onmousedown="recoverAct('${a.id}','${mod}')" style="padding:2px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:var(--green);font-size:9px;cursor:pointer;flex-shrink:0">↩</button>
-          </div>`).join('')}
-        </div>`;
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:var(--orange)">Módulo: ${mod} · ${acts.length} actividades</span>
+            <div style="display:flex;gap:6px">
+              <button onmousedown="_papl('${bulkRestoreKey}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar todas</button>
+              <button onmousedown="_papl('${bulkDeleteKey}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#ef4444;font-size:10px;font-weight:700;cursor:pointer">🗑 Borrar definitivo</button>
+            </div>
+          </div>`;
+
+        acts.forEach(a => {
+          const rk = 'ar_' + a.id;
+          const dk = 'ad_' + a.id;
+          _PAPELERA[rk] = { type:'actRestore', id:a.id, mod };
+          _PAPELERA[dk] = { type:'actDelete',  id:a.id };
+          html += `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <div style="flex:1;font-size:10px;color:var(--text2)">
+              • <span style="color:var(--text);font-weight:600">${a.proyecto||'—'}</span>
+              / <span style="color:var(--accent)">${a.codigo||''}</span>
+              ${a.actividad||'—'}
+              — <span style="color:var(--text2)">${a.estado||'—'}</span>
+              ${(a.subtasks||[]).length>0?`<span style="color:var(--accent);font-size:9px"> (${a.subtasks.length} sub.)</span>`:''}
+              <span style="font-size:9px;color:var(--text2)"> ${(a.updated_at||'').substring(0,10)}</span>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button onmousedown="_papl('${rk}')" title="Restaurar esta actividad" style="padding:2px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:var(--green);font-size:10px;cursor:pointer">↩</button>
+              <button onmousedown="_papl('${dk}')" title="Borrar permanentemente" style="padding:2px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;font-size:10px;cursor:pointer">🗑</button>
+            </div>
+          </div>`;
+        });
+        html += `</div>`;
       });
     } else {
       html += `<div style="font-size:11px;color:var(--green);background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:10px;margin-bottom:10px">✅ No hay actividades individuales en papelera</div>`;
     }
 
-    // Projects deleted
-    if (deletedByProj && deletedByProj.length > 0) {
+    // ── Deleted projects ──────────────────────────────────────────
+    if (byProjData && byProjData.length > 0) {
       const byProj = {};
-      deletedByProj.forEach(a=>{
+      byProjData.forEach(a => {
         const match = a.proyecto.match(/^_deleted_proj_\d+_(.+)$/);
-        const origProj = match?match[1]:a.proyecto;
-        const key = a.proyecto;
-        if(!byProj[key]) byProj[key]={origProj,acts:[],mod:a.modulo};
-        byProj[key].acts.push(a);
+        const origProj = match ? match[1] : a.proyecto;
+        const k = a.proyecto; // full deleted key as group key
+        if (!byProj[k]) byProj[k] = { origProj, acts:[], mod:a.modulo };
+        byProj[k].acts.push(a);
       });
+
       html += `<div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">📁 Proyectos en Papelera</div>`;
-      Object.entries(byProj).forEach(([deletedKey,{origProj,acts,mod}])=>{
-        const ids = JSON.stringify(acts.map(a=>a.id));
-        const safeKey  = deletedKey.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        const safeProj = origProj.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+      Object.entries(byProj).forEach(([deletedKey, {origProj, acts, mod}]) => {
+        const ids = acts.map(a=>a.id);
+        const rk = 'pr_' + encodeURIComponent(deletedKey).substring(0,30);
+        const dk = 'pd_' + encodeURIComponent(deletedKey).substring(0,30);
+        _PAPELERA[rk] = { type:'projRestore', deletedKey, origProj, ids, mod };
+        _PAPELERA[dk] = { type:'projDelete',  deletedKey, origProj, ids };
+
         html += `<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:8px;padding:10px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div><span style="font-size:12px;font-weight:700;color:var(--text)">${origProj}</span><span style="font-size:10px;color:var(--text2);margin-left:8px">${acts.length} acts · Módulo: ${mod}</span></div>
-            <button onmousedown="recoverProject('${safeKey}','${safeProj}',${ids})" style="padding:3px 12px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+            <div>
+              <span style="font-size:12px;font-weight:700;color:var(--text)">${origProj}</span>
+              <span style="font-size:10px;color:var(--text2);margin-left:8px">${acts.length} acts · ${mod}</span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button onmousedown="_papl('${rk}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar</button>
+              <button onmousedown="_papl('${dk}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#ef4444;font-size:10px;font-weight:700;cursor:pointer">🗑 Borrar definitivo</button>
+            </div>
           </div>
           ${acts.slice(0,5).map(a=>`<div style="font-size:10px;color:var(--text2);padding:2px 0">• <span style="color:var(--accent)">${a.codigo||''}</span> ${a.actividad||'—'} — ${a.estado||'—'}${(a.subtasks||[]).length>0?` <span style="color:var(--accent)">(${a.subtasks.length} sub.)</span>`:''}</div>`).join('')}
           ${acts.length>5?`<div style="font-size:10px;color:var(--text2)">… y ${acts.length-5} más</div>`:''}
@@ -8373,43 +8426,97 @@ async function showDeletedProjects() {
       });
     }
 
-    // In-session
-    if (DELETED_MODS.length>0){
-      html+=`<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">Eliminados en esta sesión</div>`;
-      html+=DELETED_MODS.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg3);border-radius:7px;margin-bottom:5px"><span style="flex:1;font-size:12px">${m.name} — ${m.deletedAt}</span><button onmousedown="restoreMod('${m.key}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:10px;cursor:pointer">↩ Restaurar</button></div>`).join('');
+    // ── In-session DELETED_MODS ───────────────────────────────────
+    if (DELETED_MODS.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">Eliminados en esta sesión</div>`;
+      html += DELETED_MODS.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg3);border-radius:7px;margin-bottom:5px">
+        <span style="flex:1;font-size:12px">${m.name} — ${m.deletedAt}</span>
+        <button onmousedown="restoreMod('${m.key}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:10px;cursor:pointer">↩ Restaurar</button>
+      </div>`).join('');
     }
 
-    // Recent changes
-    if (recentChanges && recentChanges.length>0){
-      html+=`<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">Últimos cambios (7 días)</div>
+    // ── Recent changes ────────────────────────────────────────────
+    if (recentChanges && recentChanges.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">Últimos cambios (7 días)</div>
         <div style="background:var(--bg3);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto">
-        ${recentChanges.map(c=>`<div style="font-size:10px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${(c.created_at||'').substring(0,16).replace('T',' ')}</span> — <span style="color:var(--accent)">${c.campo}</span> — <span style="color:var(--orange)">${(c.valor_anterior||'—').substring(0,25)}</span> → <span style="color:var(--green)">${(c.valor_nuevo||'—').substring(0,25)}</span></div>`).join('')}
+        ${recentChanges.map(c=>`<div style="font-size:10px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--text)">${(c.created_at||'').substring(0,16).replace('T',' ')}</span>
+          — <span style="color:var(--accent)">${c.campo}</span>
+          — <span style="color:var(--orange)">${(c.valor_anterior||'—').substring(0,25)}</span>
+          → <span style="color:var(--green)">${(c.valor_nuevo||'—').substring(0,25)}</span>
+        </div>`).join('')}
         </div>`;
     }
 
     el.innerHTML = html || '<div style="font-size:12px;color:var(--text2);padding:10px">Sin registros eliminados.</div>';
   } catch(e) {
     el.innerHTML = `<div style="font-size:11px;color:#ef4444;padding:10px">Error: ${e.message}</div>`;
+    console.error('showDeletedProjects error:', e);
   }
 }
 
-async function recoverAct(dbid, origMod) {
-  const { error } = await _sb.from('actividades')
-    .update({ modulo: origMod, updated_at: new Date().toISOString() }).eq('id', dbid);
-  if (error) { notify('⚠ Error: '+error.message,true); return; }
-  notify('✅ Actividad restaurada al módulo "'+origMod+'"');
-  if (ACTIVE===origMod) await loadModFromDB(ACTIVE);
-  showDeletedProjects();
-}
+// ── Central dispatcher for papelera buttons ───────────────────────
+async function _papl(key) {
+  const entry = _PAPELERA[key]; if (!entry) return;
+  const { type } = entry;
 
-async function recoverProject(deletedProjName, origProjName, ids) {
-  if (!Array.isArray(ids)) ids = JSON.parse(ids);
-  const { error } = await _sb.from('actividades')
-    .update({ proyecto: origProjName, updated_at: new Date().toISOString() }).in('id', ids);
-  if (error) { notify('⚠ Error: '+error.message,true); return; }
-  notify('✅ Proyecto "'+origProjName+'" restaurado ('+ids.length+' actividades)');
-  await loadModFromDB(ACTIVE);
-  showDeletedProjects();
+  if (type === 'actRestore') {
+    const { id, mod } = entry;
+    const { error } = await _sb.from('actividades')
+      .update({ modulo: mod, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('✅ Actividad restaurada al módulo "' + mod + '"');
+    await loadModFromDB(ACTIVE);
+    showDeletedProjects();
+
+  } else if (type === 'actDelete') {
+    const { id } = entry;
+    if (!confirm('¿Borrar PERMANENTEMENTE esta actividad? No se puede deshacer.')) return;
+    const { error } = await _sb.from('actividades').delete().eq('id', id);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('🗑 Actividad eliminada definitivamente');
+    showDeletedProjects();
+
+  } else if (type === 'modBulkRestore') {
+    const { mod, acts } = entry;
+    if (!confirm('¿Restaurar ' + acts.length + ' actividades al módulo "' + mod + '"?')) return;
+    const ids = acts.map(a=>a.id);
+    const { error } = await _sb.from('actividades')
+      .update({ modulo: mod, updated_at: new Date().toISOString() }).in('id', ids);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('✅ ' + acts.length + ' actividades restauradas al módulo "' + mod + '"');
+    await loadModFromDB(ACTIVE);
+    showDeletedProjects();
+
+  } else if (type === 'modBulkDelete') {
+    const { mod, acts } = entry;
+    if (!confirm('¿Borrar PERMANENTEMENTE ' + acts.length + ' actividades del módulo "' + mod + '"?\nEsta acción NO se puede deshacer.')) return;
+    const ids = acts.map(a=>a.id);
+    const { error } = await _sb.from('actividades').delete().in('id', ids);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('🗑 ' + acts.length + ' actividades eliminadas definitivamente');
+    showDeletedProjects();
+
+  } else if (type === 'projRestore') {
+    const { origProj, ids, mod } = entry;
+    if (!confirm('¿Restaurar el proyecto "' + origProj + '" (' + ids.length + ' actividades)?')) return;
+    const { error } = await _sb.from('actividades')
+      .update({ proyecto: origProj, updated_at: new Date().toISOString() }).in('id', ids);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('✅ Proyecto "' + origProj + '" restaurado (' + ids.length + ' actividades)');
+    // Reload the module that contains these activities
+    await loadModFromDB(mod === ACTIVE ? ACTIVE : mod);
+    if (mod !== ACTIVE) await loadModFromDB(ACTIVE);
+    showDeletedProjects();
+
+  } else if (type === 'projDelete') {
+    const { origProj, ids } = entry;
+    if (!confirm('¿Borrar PERMANENTEMENTE el proyecto "' + origProj + '" con ' + ids.length + ' actividades?\nEsta acción NO se puede deshacer.')) return;
+    const { error } = await _sb.from('actividades').delete().in('id', ids);
+    if (error) { notify('⚠ ' + error.message, true); return; }
+    notify('🗑 Proyecto "' + origProj + '" eliminado definitivamente (' + ids.length + ' actividades)');
+    showDeletedProjects();
+  }
 }
 
 async function recoverMod(origModKey) {
