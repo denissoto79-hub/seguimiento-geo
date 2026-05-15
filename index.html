@@ -6566,9 +6566,16 @@ async function markDone(id) {
 async function delAct(id) {
   if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar actividades', true); return; }
   const r = get().find(a => a._id === id); if (!r) return;
-  if (!confirm('¿Eliminar esta actividad? Esta acción no se puede deshacer.')) return;
-  const ok = await deleteActFromDB(r._dbid);
-  if (ok) { await loadModFromDB(ACTIVE); notify('🗑️ Actividad eliminada'); }
+  if (!confirm('¿Eliminar esta actividad? Se moverá a la papelera y podrás recuperarla.')) return;
+  // Soft-delete: mark modulo as _deleted_
+  const { error } = await _sb.from('actividades')
+    .update({ modulo: '_deleted_' + ACTIVE, updated_at: new Date().toISOString() })
+    .eq('id', r._dbid);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  // Track in session
+  DELETED_MODS.push({ key: '_act_' + r._dbid, name: '📄 ' + (r['CÓDIGO']||'') + ' ' + (r.ACTIVIDAD||'').substring(0,30), acts: [r], deletedAt: tsNow(), _actRestore: { dbid: r._dbid, origMod: ACTIVE } });
+  await loadModFromDB(ACTIVE);
+  notify('🗑️ Actividad movida a papelera — recuperable desde Configuración');
 }
 
 // deleteProject — admin only
@@ -6638,11 +6645,22 @@ async function duplicateProject(proj) {
 async function deleteProject(proj) {
   if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
-  if (!confirm(`¿Eliminar el proyecto "${proj}" y sus ${acts.length} actividades? Esta acción no se puede deshacer.`)) return;
+  if (!confirm(`¿Eliminar el proyecto "${proj}" con ${acts.length} actividades?\n\nSe moverá a la papelera y podrás recuperarlo desde Configuración → Recuperación.`)) return;
+
+  // SOFT DELETE: rename proyecto field to mark as deleted (preserves all data)
   const ids = acts.map(a => a._dbid).filter(Boolean);
-  if (ids.length) { const { error } = await _sb.from('actividades').delete().in('id', ids); if (error) { notify('⚠ Error: '+error.message,true); return; } }
-  await loadModFromDB(ACTIVE); closeDr();
-  notify('🗑️ Proyecto "' + proj.substring(0,25) + '…" eliminado');
+  if (ids.length) {
+    const deletedProj = '_deleted_proj_' + Date.now() + '_' + proj;
+    const { error } = await _sb.from('actividades')
+      .update({ proyecto: deletedProj, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) { notify('⚠ Error: ' + error.message, true); return; }
+    // Track in session for quick recovery
+    DELETED_MODS.push({ key: '_proj_' + proj, name: '📁 Proyecto: ' + proj, acts: [...acts], deletedAt: tsNow(), _projRestore: { ids, origProj: proj } });
+  }
+  await loadModFromDB(ACTIVE);
+  closeDr();
+  notify('🗑️ Proyecto "' + proj.substring(0,25) + '" movido a papelera — recuperable desde Configuración');
 }
 
 // addDrawerComment — use CURRENT_USER name, save to DB
@@ -8244,11 +8262,38 @@ function showDeletedModules() {
 
 async function restoreMod(key) {
   const m = DELETED_MODS.find(x=>x.key===key); if (!m) return;
+
+  // Single activity restore
+  if (m._actRestore) {
+    const { dbid, origMod } = m._actRestore;
+    const { error } = await _sb.from('actividades')
+      .update({ modulo: origMod, updated_at: new Date().toISOString() })
+      .eq('id', dbid);
+    if (error) { notify('⚠ Error restaurando: ' + error.message, true); return; }
+    DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
+    await loadModFromDB(ACTIVE);
+    renderModMgmt(); notify('✅ Actividad restaurada');
+    return;
+  }
+
+  // Project restore
+  if (m._projRestore) {
+    const { ids, origProj } = m._projRestore;
+    const { error } = await _sb.from('actividades')
+      .update({ proyecto: origProj, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) { notify('⚠ Error restaurando: ' + error.message, true); return; }
+    DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
+    await loadModFromDB(ACTIVE);
+    renderModMgmt(); notify('✅ Proyecto "' + origProj + '" restaurado');
+    return;
+  }
+
+  // Module restore
   await _sb.from('actividades').update({modulo:key}).eq('modulo','_deleted_'+key).then(()=>{});
   await _sb.from('modulos').update({activo:true}).eq('key',key).then(()=>{});
   MOD_LBL[key] = m.name; MS[key] = { acts:null, sF:'CÓDIGO', sA:true, pg:1 };
   DELETED_MODS.splice(DELETED_MODS.indexOf(m), 1);
-  // Re-add sidebar button
   const extraMods = document.getElementById('extra-mods');
   const btn = document.createElement('button'); btn.className='mod-btn'; btn.id='mod-'+key;
   btn.innerHTML = `<span class="mod-dot" style="background:#38bdf8"></span><span class="mod-txt">${m.name}</span>`;
@@ -8257,9 +8302,91 @@ async function restoreMod(key) {
   renderModMgmt(); notify('✅ Módulo "' + m.name + '" restaurado');
 }
 
-function showDeletedProjects() {
+async function showDeletedProjects() {
   const el = document.getElementById('recovery-content'); if (!el) return;
-  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px">La recuperación de proyectos requiere contactar al administrador de Supabase para restaurar los registros eliminados.</div>';
+  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px">🔄 Buscando datos eliminados…</div>';
+
+  try {
+    // 1. Soft-deleted activities (modulo starts with _deleted_)
+    const { data: deletedActs } = await _sb.from('actividades')
+      .select('id, modulo, codigo, actividad, proyecto, planta, estado, updated_at, subtasks')
+      .like('modulo', '_deleted_%')
+      .order('updated_at', { ascending: false });
+
+    // 2. Recent changes in last 7 days
+    const { data: recentChanges } = await _sb.from('historial_cambios')
+      .select('actividad_id, campo, valor_anterior, valor_nuevo, created_at')
+      .gt('created_at', new Date(Date.now() - 7*24*60*60*1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    let html = '';
+
+    // ── Soft-deleted activities ──────────────────────────────────
+    if (deletedActs && deletedActs.length > 0) {
+      // Group by original module
+      const byMod = {};
+      deletedActs.forEach(a => {
+        const origMod = a.modulo.replace('_deleted_', '');
+        (byMod[origMod] = byMod[origMod] || []).push(a);
+      });
+      html += `<div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠ Actividades en Papelera (${deletedActs.length})</div>`;
+      Object.entries(byMod).forEach(([mod, acts]) => {
+        html += `<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:8px;padding:10px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;font-weight:700;color:var(--orange)">Módulo: ${mod} (${acts.length} actividades)</span>
+            <button onmousedown="recoverMod('${mod}')" style="padding:3px 12px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar todo</button>
+          </div>
+          ${acts.slice(0,5).map(a => `<div style="font-size:10px;color:var(--text2);padding:2px 0">
+            • <span style="color:var(--text)">${a.proyecto || '—'}</span> / ${a.actividad||'—'} — ${a.estado||'—'} — ${(a.updated_at||'').substring(0,10)}
+            ${(a.subtasks||[]).length > 0 ? `<span style="color:var(--accent)">(${a.subtasks.length} subtareas)</span>` : ''}
+          </div>`).join('')}
+          ${acts.length > 5 ? `<div style="font-size:10px;color:var(--text2);margin-top:2px">… y ${acts.length-5} más</div>` : ''}
+        </div>`;
+      });
+    } else {
+      html += `<div style="font-size:11px;color:var(--green);background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:10px;margin-bottom:10px">✅ No hay actividades en papelera</div>`;
+    }
+
+    // ── In-session deleted modules ───────────────────────────────
+    if (DELETED_MODS.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:12px">Módulos eliminados en esta sesión</div>`;
+      html += DELETED_MODS.map(m => `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg3);border-radius:7px;margin-bottom:5px">
+        <span style="flex:1;font-size:12px">${m.name} (${m.acts.length} acts) — ${m.deletedAt}</span>
+        <button onclick="restoreMod('${m.key}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);font-size:10px;cursor:pointer">↩ Restaurar</button>
+      </div>`).join('');
+    }
+
+    // ── Recent changes ───────────────────────────────────────────
+    if (recentChanges && recentChanges.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px">Últimos cambios registrados (7 días)</div>`;
+      html += `<div style="background:var(--bg3);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto">`;
+      html += recentChanges.map(c => `<div style="font-size:10px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text)">${(c.created_at||'').substring(0,16).replace('T',' ')}</span>
+        — Campo: <span style="color:var(--accent)">${c.campo}</span>
+        — Antes: <span style="color:var(--orange)">${(c.valor_anterior||'—').substring(0,20)}</span>
+        → Ahora: <span style="color:var(--green)">${(c.valor_nuevo||'—').substring(0,20)}</span>
+        <span style="color:var(--text2)">[ID:${c.actividad_id}]</span>
+      </div>`).join('');
+      html += `</div>`;
+    }
+
+    el.innerHTML = html || '<div style="font-size:12px;color:var(--text2);padding:10px">Sin registros encontrados.</div>';
+  } catch(e) {
+    el.innerHTML = `<div style="font-size:11px;color:#ef4444;padding:10px">Error consultando: ${e.message}</div>`;
+  }
+}
+
+async function recoverMod(origModKey) {
+  if (!confirm(`¿Restaurar todas las actividades del módulo "${origModKey}"?`)) return;
+  const { error } = await _sb.from('actividades')
+    .update({ modulo: origModKey })
+    .like('modulo', '_deleted_' + origModKey);
+  if (error) { notify('⚠ Error restaurando: ' + error.message, true); return; }
+  await _sb.from('modulos').update({ activo: true }).eq('key', origModKey);
+  notify('✅ Actividades restauradas al módulo "' + origModKey + '"');
+  showDeletedProjects();
+  if (MS[origModKey] !== undefined) await loadModFromDB(origModKey);
 }
 
 // ════════════════════════════════════════════════════════════════
