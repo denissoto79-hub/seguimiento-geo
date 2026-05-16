@@ -6096,116 +6096,143 @@ async function doLogin() {
   err.style.display = 'none';
   if (!email || !pass) { err.textContent='Completa email y contraseña.'; err.style.display='block'; return; }
   btn.textContent='Verificando...'; btn.disabled=true; btn.style.opacity='0.7';
-  const { data, error } = await _sb.auth.signInWithPassword({ email, password: pass });
-  if (error) {
-    let msg = 'Email o contraseña incorrectos.';
-    if (error.message.includes('Too many')) msg = 'Demasiados intentos. Espera unos minutos.';
-    err.textContent = msg; err.style.display = 'block';
-    btn.textContent='Ingresar al Sistema'; btn.disabled=false; btn.style.opacity='1'; return;
+  try {
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      let msg = 'Email o contraseña incorrectos.';
+      if (error.message.includes('Too many')) msg = 'Demasiados intentos. Espera unos minutos.';
+      err.textContent = msg; err.style.display = 'block';
+      return;
+    }
+    await initSession(data.user);
+  } catch(e) {
+    console.error('doLogin error:', e);
+    err.textContent = 'Error de conexión: ' + e.message;
+    err.style.display = 'block';
+  } finally {
+    // Always restore button unless login succeeded (login-screen hidden)
+    const loginScreen = document.getElementById('login-screen');
+    if (!loginScreen || loginScreen.style.display !== 'none') {
+      btn.textContent='Ingresar al Sistema'; btn.disabled=false; btn.style.opacity='1';
+    }
   }
-  await initSession(data.user);
 }
 
 async function initSession(authUser) {
-  // Load profile from Supabase
-  const { data: profile } = await _sb.from('profiles').select('*').eq('id', authUser.id).single();
-  if (!profile) {
-    const err = document.getElementById('login-err');
-    if (err) { err.textContent='Usuario sin perfil asignado. Contacta al administrador.'; err.style.display='block'; }
-    await _sb.auth.signOut();
-    const btn = document.getElementById('lg-btn');
-    if (btn) { btn.textContent='Ingresar al Sistema'; btn.disabled=false; btn.style.opacity='1'; }
-    return;
-  }
+  const lgBtn = document.getElementById('lg-btn');
+  const lgErr = document.getElementById('login-err');
 
-  CURRENT_USER = {
-    id:       authUser.id,
-    email:    authUser.email,
-    name:     profile.name,
-    role:     profile.role,
-    modules:  profile.modules || [],
-    perms:    profile.perms   || {},
-    color:    profile.avatar_color || '#38bdf8',
-    initials: profile.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
-  };
-
-  // Load ALL profiles for mention autocomplete + responsable dropdowns (with email + perms)
-  // Try with email column first; fallback without it if column doesn't exist yet
-  let allProfiles = null;
   try {
-    const { data, error } = await _sb.from('profiles').select('id, name, role, avatar_color, email, modules, perms');
-    if (!error) allProfiles = data;
-    else {
-      // email column might not exist yet — fallback
-      const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
-      allProfiles = data2;
+    // 1. Load this user's profile
+    const { data: profile, error: profErr } = await _sb.from('profiles').select('*').eq('id', authUser.id).single();
+    if (profErr) console.warn('Profile fetch error:', profErr.message);
+
+    if (!profile) {
+      if (lgErr) { lgErr.textContent='Usuario sin perfil asignado. Contacta al administrador.'; lgErr.style.display='block'; }
+      await _sb.auth.signOut();
+      return;
     }
-  } catch(e) {
-    const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
-    allProfiles = data2;
-  }
-  SB_PROFILES = allProfiles || [];
-  USERS = SB_PROFILES.map(p => ({
-    id: p.id, name: p.name, role: p.role || 'viewer', email: p.email || '',
-    initials: (p.name || '?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
-    color: p.avatar_color || '#38bdf8',
-    modules: p.modules || [], perms: p.perms || {}
-  }));
 
-  applyUserToUI();
-  applyStoredTheme();
-  document.getElementById('login-screen').style.display = 'none';
+    CURRENT_USER = {
+      id:       authUser.id,
+      email:    authUser.email,
+      name:     profile.name,
+      role:     profile.role,
+      modules:  profile.modules || [],
+      perms:    profile.perms   || {},
+      color:    profile.avatar_color || '#38bdf8',
+      initials: (profile.name || 'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
+    };
 
-  // Load custom modules from Supabase FIRST — before applyPermissions so buttons exist in DOM
-  const { data: sbModulos } = await _sb.from('modulos').select('*').eq('activo', true).order('created_at');
-  if (sbModulos && sbModulos.length) {
-    const builtinKeys = ['automatizacion','investigaciones','cambios'];
-    sbModulos.forEach(mod => {
-      if (builtinKeys.includes(mod.key)) return;
-      if (!MOD_LBL[mod.key]) {
-        MOD_LBL[mod.key] = mod.nombre;
-        RAW[mod.key] = [];
-        MS[mod.key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
-        if (!COLORS_ALL[mod.key]) COLORS_ALL[mod.key] = {};
-        if (!document.getElementById('mod-' + mod.key)) {
-          const extraMods = document.getElementById('extra-mods');
-          const btn = document.createElement('button');
-          btn.className = 'mod-btn'; btn.id = 'mod-' + mod.key;
-          btn.innerHTML = `<span class="mod-dot" style="background:${mod.color||'#38bdf8'}"></span><span class="mod-txt">${mod.nombre}</span>`;
-          btn.onclick = function() { switchMod(mod.key, this); };
-          if (extraMods) extraMods.appendChild(btn);
-          // Developer/admin always get access to new modules
-          if (['developer','admin'].includes(CURRENT_USER.role) && !CURRENT_USER.modules.includes(mod.key)) {
-            CURRENT_USER.modules.push(mod.key);
-          }
-        }
+    // 2. Load all profiles — try with email column, fallback without
+    let allProfiles = null;
+    try {
+      const { data, error } = await _sb.from('profiles').select('id, name, role, avatar_color, email, modules, perms');
+      if (!error) allProfiles = data;
+      else {
+        const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
+        allProfiles = data2;
       }
-    });
-  }
+    } catch(e) {
+      try {
+        const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
+        allProfiles = data2;
+      } catch(e2) { console.warn('Could not load profiles:', e2.message); }
+    }
+    SB_PROFILES = allProfiles || [];
+    USERS = SB_PROFILES.map(p => ({
+      id: p.id, name: p.name || '', role: p.role || 'viewer', email: p.email || '',
+      initials: (p.name || '?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+      color: p.avatar_color || '#38bdf8',
+      modules: p.modules || [], perms: p.perms || {}
+    }));
 
-  // Apply permissions AFTER all module buttons are in the DOM
-  applyPermissions();
+    // 3. Update UI and hide login
+    applyUserToUI();
+    applyStoredTheme();
+    document.getElementById('login-screen').style.display = 'none';
 
-  const allModKeys = Object.keys(MOD_LBL);
-  const accessibleMods = ['developer','admin'].includes(CURRENT_USER.role)
-    ? allModKeys
-    : allModKeys.filter(k => CURRENT_USER.modules.includes(k));
-  const initMod = accessibleMods[0] || CURRENT_USER.modules[0] || 'automatizacion';
-  ACTIVE = initMod;
-  try {
-    await loadModFromDB(initMod);
-  } catch (err) {
-    console.error('Error loading initial module:', err);
-    if (!MS[initMod]) MS[initMod] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
-    if (MS[initMod].acts === null) MS[initMod].acts = [];
+    // 4. Load custom modules FIRST so buttons exist before applyPermissions
+    try {
+      const { data: sbModulos } = await _sb.from('modulos').select('*').eq('activo', true).order('created_at');
+      if (sbModulos && sbModulos.length) {
+        const builtinKeys = ['automatizacion','investigaciones','cambios'];
+        sbModulos.forEach(mod => {
+          if (builtinKeys.includes(mod.key)) return;
+          if (!MOD_LBL[mod.key]) {
+            MOD_LBL[mod.key] = mod.nombre;
+            RAW[mod.key] = [];
+            MS[mod.key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
+            if (!COLORS_ALL[mod.key]) COLORS_ALL[mod.key] = {};
+            if (!document.getElementById('mod-' + mod.key)) {
+              const extraMods = document.getElementById('extra-mods');
+              const btn = document.createElement('button');
+              btn.className = 'mod-btn'; btn.id = 'mod-' + mod.key;
+              btn.innerHTML = `<span class="mod-dot" style="background:${mod.color||'#38bdf8'}"></span><span class="mod-txt">${mod.nombre}</span>`;
+              btn.onclick = function() { switchMod(mod.key, this); };
+              if (extraMods) extraMods.appendChild(btn);
+              if (['developer','admin'].includes(CURRENT_USER.role) && !CURRENT_USER.modules.includes(mod.key)) {
+                CURRENT_USER.modules.push(mod.key);
+              }
+            }
+          }
+        });
+      }
+    } catch(e) { console.warn('Custom modules load error:', e.message); }
+
+    // 5. Apply permissions after all buttons are in DOM
+    applyPermissions();
+
+    // 6. Pick first accessible module and load data
+    const allModKeys = Object.keys(MOD_LBL);
+    const accessibleMods = ['developer','admin'].includes(CURRENT_USER.role)
+      ? allModKeys
+      : allModKeys.filter(k => CURRENT_USER.modules.includes(k));
+    const initMod = accessibleMods[0] || CURRENT_USER.modules[0] || 'automatizacion';
+    ACTIVE = initMod;
+
+    try {
+      await loadModFromDB(initMod);
+    } catch (e) {
+      console.error('Error loading initial module:', e);
+      if (!MS[initMod]) MS[initMod] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
+      if (MS[initMod].acts === null) MS[initMod].acts = [];
+    }
+
+    try { subscribeRealtime(); } catch(e) { console.warn('Realtime subscribe error:', e); }
+    try { await loadUserNotifs(); } catch(e) { console.warn('Notifs load error:', e); }
+    try { loadIOHistory(); } catch(e) {}
+    setTimeout(checkDueNotifs, 1500);
+
+    notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
+    _navigateToInicio();
+
+  } catch(e) {
+    console.error('initSession fatal error:', e);
+    if (lgErr) { lgErr.textContent = 'Error al iniciar sesión: ' + e.message; lgErr.style.display = 'block'; }
+    // Try to recover — sign out cleanly
+    try { await _sb.auth.signOut(); } catch(_) {}
   }
-  subscribeRealtime();
-  try { await loadUserNotifs(); } catch(e) { console.error('Notifs load error:', e); }
-  loadIOHistory();
-  setTimeout(checkDueNotifs, 1500);
-  notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-  // Navigate to Inicio — always runs even if data load failed
-  _navigateToInicio();
 }
 
 function _navigateToInicio() {
