@@ -2526,7 +2526,7 @@ function renderActs() {
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
         <button class="abtn" onclick="duplicateAct('${r._id}')" title="Duplicar" style="background:rgba(168,85,247,.12);color:var(--purple)">⧉</button>
         ${r.ESTADO!=='REALIZADA'?`<button class="abtn abtn-d" onclick="markDone('${r._id}')">✓</button>`:''}
-        <button class="abtn abtn-x" onclick="delAct('${r._id}')">✕</button>
+        ${(()=>{ const _cd = ['developer','admin'].includes(CURRENT_USER?.role)||(CURRENT_USER?.perms?.can_delete===true); return _cd?`<button class="abtn abtn-x" onclick="delAct('${r._id}')">✕</button>`:''; })()}
       </div></td>
     </tr>`;
   }).join('');
@@ -3995,46 +3995,61 @@ async function _saveEditUser(userId) {
     perms.can_delete = document.getElementById('eu-can-delete')?.checked || false;
   }
 
-  // Save to Supabase
-  const { error } = await _sb.from('profiles')
+  // Save to Supabase — use .select() to detect if RLS blocked the update (0 rows returned)
+  const { data: updatedRows, error } = await _sb.from('profiles')
     .update({ role, modules: mods, perms })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('id, role, modules, perms');
 
-  if (error) { notify('⚠ Error al guardar: ' + error.message, true); return; }
+  if (error) {
+    notify('⚠ Error al guardar: ' + error.message, true);
+    return;
+  }
 
-  // Update local USERS array immediately
+  // If RLS blocked the update, updatedRows will be empty array
+  if (!updatedRows || updatedRows.length === 0) {
+    notify('⚠ No se pudo guardar. El SQL de RLS no permite actualizar otros perfiles. Ejecuta el SQL de RLS del archivo developer_role_migration_v2.sql', true);
+    return;
+  }
+
+  // Update local USERS array immediately with confirmed data
   const u = USERS.find(x => x.id === userId);
   if (u) { u.role = role; u.modules = mods; u.perms = perms; }
 
-  // Reload all profiles from Supabase to ensure consistency
-  try {
-    const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
-    if (allP) {
-      SB_PROFILES = allP;
-      USERS = allP.map(p => ({
-        id: p.id, name: p.name || '', email: p.email || '', role: p.role || 'viewer',
-        initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
-        color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
-      }));
-    }
-  } catch(e) {
-    // Fallback: try without email column
+  // Reload all profiles from Supabase
+  async function _reloadUsers() {
     try {
-      const { data: allP2 } = await _sb.from('profiles').select('id,name,role,avatar_color,modules,perms');
-      if (allP2) {
-        SB_PROFILES = allP2;
-        USERS = allP2.map(p => ({
-          id: p.id, name: p.name || '', email: '', role: p.role || 'viewer',
+      const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
+      if (allP) {
+        SB_PROFILES = allP;
+        USERS = allP.map(p => ({
+          id: p.id, name: p.name || '', email: p.email || '', role: p.role || 'viewer',
           initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
           color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
         }));
+        return true;
       }
-    } catch(e2) { console.warn('Could not reload profiles:', e2); }
+    } catch(e) {
+      try {
+        const { data: allP2 } = await _sb.from('profiles').select('id,name,role,avatar_color,modules,perms');
+        if (allP2) {
+          SB_PROFILES = allP2;
+          USERS = allP2.map(p => ({
+            id: p.id, name: p.name || '', email: '', role: p.role || 'viewer',
+            initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+            color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
+          }));
+          return true;
+        }
+      } catch(e2) { console.warn('Could not reload profiles:', e2); }
+    }
+    return false;
   }
 
+  await _reloadUsers();
   document.getElementById('_eu-modal')?.remove();
   renderCfg();
-  notify('✅ Cambios guardados y sincronizados con Supabase');
+  notify('✅ Cambios guardados correctamente en Supabase');
 }
 
 // ── New Project ─────────────────────────────────────────────────────
@@ -5711,6 +5726,7 @@ function renderDrawerComments(actId) {
   const el = document.getElementById('dr-cmts-thread'); if (!el) return;
   const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   if (!r.comments || !r.comments.length) {
     el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:12px">Sin comentarios aún.</div>';
     // Still setup mentions on the editor
@@ -5735,13 +5751,13 @@ function renderDrawerComments(actId) {
         return `<div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text2);cursor:pointer;margin-right:4px" onclick="openImgLightbox(window['_attCache_${c.id}_${(att.name||'').replace(/\W/g,'_')}'],'${(att.name||'')}')">📄 ${att.name}</div>`;
       }
     }).join('');
-    const editBtn = isAdmin
-      ? `<button onclick="editComment('${actId}','${c.id}')"
+    const editBtn = (isAdmin || canDelete)
+      ? `${isAdmin?`<button onclick="editComment('${actId}','${c.id}')"
           style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 4px;transition:color .15s"
-          onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'" title="Editar">✏</button>
-         <button onclick="deleteComment('${actId}','${c.id}')"
+          onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'" title="Editar">✏</button>`:''}
+         ${canDelete?`<button onclick="deleteComment('${actId}','${c.id}')"
           style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 4px;transition:color .15s"
-          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" title="Eliminar">🗑</button>`
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" title="Eliminar">🗑</button>`:''}`
       : '';
     // Cache non-image attachments too
     getCmtAttachments(c).forEach(att => {
