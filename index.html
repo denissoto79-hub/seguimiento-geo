@@ -3995,19 +3995,46 @@ async function _saveEditUser(userId) {
     perms.can_delete = document.getElementById('eu-can-delete')?.checked || false;
   }
 
+  // Save to Supabase
   const { error } = await _sb.from('profiles')
     .update({ role, modules: mods, perms })
     .eq('id', userId);
 
-  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  if (error) { notify('⚠ Error al guardar: ' + error.message, true); return; }
 
-  // Update local
+  // Update local USERS array immediately
   const u = USERS.find(x => x.id === userId);
   if (u) { u.role = role; u.modules = mods; u.perms = perms; }
 
+  // Reload all profiles from Supabase to ensure consistency
+  try {
+    const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
+    if (allP) {
+      SB_PROFILES = allP;
+      USERS = allP.map(p => ({
+        id: p.id, name: p.name || '', email: p.email || '', role: p.role || 'viewer',
+        initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+        color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
+      }));
+    }
+  } catch(e) {
+    // Fallback: try without email column
+    try {
+      const { data: allP2 } = await _sb.from('profiles').select('id,name,role,avatar_color,modules,perms');
+      if (allP2) {
+        SB_PROFILES = allP2;
+        USERS = allP2.map(p => ({
+          id: p.id, name: p.name || '', email: '', role: p.role || 'viewer',
+          initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+          color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
+        }));
+      }
+    } catch(e2) { console.warn('Could not reload profiles:', e2); }
+  }
+
   document.getElementById('_eu-modal')?.remove();
   renderCfg();
-  notify('✅ Permisos de usuario actualizados y sincronizados con Supabase');
+  notify('✅ Cambios guardados y sincronizados con Supabase');
 }
 
 // ── New Project ─────────────────────────────────────────────────────
@@ -6031,7 +6058,8 @@ function _DISABLED_openProjDr_v1(proj) {
   const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
-  const isAdmin = USERS.some(u => ['developer','admin'].includes(u.role));
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -6072,7 +6100,7 @@ function _DISABLED_openProjDr_v1(proj) {
         </tbody>
       </table>
     </div>
-    ${isAdmin ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
+    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
   openDr();
 }
 
@@ -7426,6 +7454,7 @@ function _DISABLED_openActDr_v2(id) {
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -7478,7 +7507,7 @@ function _DISABLED_openActDr_v2(id) {
     ${canEdit && r.ESTADO !== 'REALIZADA' ? `<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>` : ''}
     <div style="display:flex;gap:7px;margin-top:10px">
       ${canEdit ? `<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>` : ''}
-      ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>` : ''}
+      ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>` : ''}
     </div>`;
 
   openDr();
@@ -7508,6 +7537,7 @@ function _DISABLED_openProjDr_v2(proj) {
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -7547,7 +7577,7 @@ function _DISABLED_openProjDr_v2(proj) {
         </tbody>
       </table>
     </div>
-    ${isAdmin ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
+    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
   openDr();
 }
 
@@ -7830,6 +7860,7 @@ function setProjView(v) {
 const _origRenderProjs = renderProjs;
 function renderProjs() {
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   const srch  = (document.getElementById('p-srch')?.value   || '').toLowerCase();
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
@@ -8504,6 +8535,7 @@ function openProjDr(proj) {
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
   // Stable order: respect saved custom order, fallback to code sort
   const actsOrdered = getOrderedActs(proj);
@@ -8618,7 +8650,7 @@ function openProjDr(proj) {
       ${canEdit?`<button onclick="openModalFromProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.2)'" onmouseout="this.style.background='rgba(56,189,248,.1)'">+ Nueva Actividad</button>`:''}
       <button onclick="openProjMetrics('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.3);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 2px 0 rgba(168,85,247,.2)">📊 Métricas</button>
       ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
-      ${isAdmin?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
+      ${canDelete?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
     </div>`;
   openDr();
   if (isAdmin) {
@@ -8669,6 +8701,7 @@ function openActDr(id) {
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
+  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -8757,7 +8790,7 @@ function openActDr(id) {
     ${canEdit&&r.ESTADO!=='REALIZADA'?`<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>`:''}
     <div style="display:flex;gap:7px;margin-top:10px">
       ${canEdit?`<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>`:''}
-      ${isAdmin?`<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>`:''}
+      ${canDelete?`<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>`:''}
     </div>`;
 
   openDr();
