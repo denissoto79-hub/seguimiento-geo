@@ -419,6 +419,7 @@ tr:hover .act-btns { opacity:1 }
 .cfg-sec   { margin-bottom:24px }
 .cfg-title { font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px; padding-bottom:7px; border-bottom:1px solid var(--border) }
 .rg-title  { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:5px 9px; border-radius:6px; margin-bottom:8px; display:inline-block }
+.rg-developer{ background:rgba(168,85,247,.12); color:var(--purple) }
 .rg-admin  { background:rgba(56,189,248,.12); color:var(--accent) }
 .rg-collab { background:rgba(34,197,94,.1);   color:var(--green) }
 .rg-viewer { background:rgba(139,148,158,.1); color:var(--text2) }
@@ -429,6 +430,7 @@ tr:hover .act-btns { opacity:1 }
 .u-name { font-weight:600; font-size:12px }
 .u-email{ font-size:10px; color:var(--text2); margin-top:1px }
 .rb       { display:inline-flex; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700; margin-bottom:7px }
+.rb-developer{ background:rgba(168,85,247,.18); color:var(--purple) }
 .rb-admin  { background:rgba(56,189,248,.15); color:var(--accent) }
 .rb-collab { background:rgba(34,197,94,.12); color:var(--green) }
 .rb-viewer { background:rgba(139,148,158,.12);color:var(--text2) }
@@ -584,6 +586,88 @@ tr:hover .act-btns { opacity:1 }
 ::-webkit-scrollbar-track { background:var(--bg) }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px }
 ::-webkit-scrollbar-thumb:hover { background:var(--text2) }
+
+/* ── CONFIG SUB-NAVIGATION ── */
+.cfg-subnav { display:flex; gap:4px; margin-bottom:20px; border-bottom:2px solid var(--border); padding-bottom:0 }
+.cfg-subnav-btn { padding:9px 20px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .18s; display:inline-flex; align-items:center; gap:6px; border-radius:6px 6px 0 0 }
+.cfg-subnav-btn:hover { color:var(--text); background:rgba(255,255,255,.04) }
+.cfg-subnav-btn.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(56,189,248,.06) }
+
+/* ── BACKUP MODULE ── */
+.bk-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px }
+.bk-tab { padding:8px 16px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .2s }
+.bk-tab:hover { color:var(--text) }
+.bk-tab.active { color:var(--accent); border-bottom-color:var(--accent) }
+.bk-panel { display:none }
+.bk-panel.active { display:block }
+.bk-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px }
+.bk-card-title { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin-bottom:10px; display:flex; align-items:center; gap:7px }
+.bk-stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:14px }
+.bk-stat { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:10px 12px; text-align:center }
+.bk-stat-val { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; color:var(--accent) }
+.bk-stat-lbl { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; margin-top:2px }
+.bk-mod-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--bg3); border-radius:7px; margin-bottom:6px }
+.bk-mod-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
+.bk-mod-name { flex:1; font-size:12px; font-weight:600 }
+.bk-mod-cnt { font-size:11px; color:var(--text2) }
+.bk-mod-check { width:16px; height:16px; accent-color:var(--accent) }
+.bk-drop-zone { border:2px dashed var(--border); border-radius:10px; padding:30px; text-align:center; cursor:pointer; transition:all .2s; position:relative }
+.bk-drop-zone:hover,.bk-drop-zone.drag-over { border-color:var(--accent); background:rgba(56,189,248,.05) }
+.bk-drop-zone input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100% }
+.bk-drop-icon { font-size:32px; margin-bottom:8px }
+.bk-drop-text { font-size:13px; color:var(--text2) }
+.bk-drop-hint { font-size:10px; color:var(--text3); margin-top:4px }
+/* Compare table */
+.bk-diff-table { width:100%; border-collapse:collapse; font-size:11px }
+.bk-diff-table th { background:var(--bg3); padding:7px 10px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--text2); border-bottom:1px solid var(--border) }
+.bk-diff-table td { padding:7px 10px; border-bottom:1px solid var(--border); vertical-align:middle }
+.bk-diff-table tr:last-child td { border-bottom:none }
+.bk-diff-new  { color:var(--green); font-weight:600 }
+.bk-diff-del  { color:var(--red) }
+.bk-diff-mod  { color:var(--orange) }
+.bk-diff-ok   { color:var(--text2) }
+.bk-diff-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700 }
+.bk-diff-badge.new { background:rgba(34,197,94,.12); color:var(--green) }
+.bk-diff-badge.del { background:rgba(239,68,68,.12); color:var(--red) }
+.bk-diff-badge.mod { background:rgba(249,115,22,.12); color:var(--orange) }
+.bk-diff-badge.ok  { background:rgba(139,148,158,.1); color:var(--text2) }
+/* Schedule */
+.bk-sch-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; margin-bottom:8px }
+.bk-sch-icon { font-size:22px; flex-shrink:0 }
+.bk-sch-name { font-size:13px; font-weight:600; flex:1 }
+.bk-sch-desc { font-size:11px; color:var(--text2) }
+.bk-sch-badge { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700 }
+.bk-sch-badge.connected { background:rgba(34,197,94,.15); color:var(--green) }
+.bk-sch-badge.available { background:rgba(56,189,248,.12); color:var(--accent) }
+.bk-sch-badge.unavailable { background:rgba(139,148,158,.1); color:var(--text2) }
+.bk-sch-btn { padding:5px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:11px; cursor:pointer; transition:background .15s }
+.bk-sch-btn:hover { background:var(--bg3) }
+.bk-sch-btn.primary { background:rgba(56,189,248,.15); color:var(--accent); border-color:rgba(56,189,248,.3) }
+.bk-sch-btn.primary:hover { background:rgba(56,189,248,.25) }
+.bk-sch-config { display:none; margin-top:10px; padding:12px; background:var(--bg2); border-radius:8px; border:1px solid var(--border) }
+.bk-sch-config.open { display:block }
+.bk-history-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border) }
+.bk-history-row:last-child { border-bottom:none }
+.bk-history-icon { font-size:16px; flex-shrink:0 }
+.bk-history-info { flex:1; min-width:0 }
+.bk-history-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.bk-history-meta { font-size:10px; color:var(--text2) }
+.bk-history-size { font-size:11px; color:var(--text2) }
+/* Import result */
+.bk-import-result { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:14px }
+.bk-import-hdr { padding:12px 16px; background:var(--bg3); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between }
+.bk-import-title { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.05em }
+.bk-import-actions { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--border); justify-content:flex-end }
+.bk-progress { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:8px }
+.bk-progress-bar { height:100%; background:var(--accent); border-radius:2px; transition:width .4s ease }
+/* Modal overlay for backup compare */
+.bk-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9800;display:none;align-items:center;justify-content:center }
+.bk-overlay.open { display:flex }
+.bk-modal { background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(96vw,820px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden }
+.bk-modal-hdr { padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3) }
+.bk-modal-title { font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.06em }
+.bk-modal-body { flex:1;overflow-y:auto;padding:18px 20px }
+.bk-modal-footer { padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--bg3) }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -987,6 +1071,22 @@ tr:hover .act-btns { opacity:1 }
 
     <!-- CONFIG -->
     <div class="page" id="page-config">
+
+      <!-- ── Config Sub-navigation ─────────────────────────────────── -->
+      <div class="cfg-subnav">
+        <button class="cfg-subnav-btn active" id="cfg-nav-general" onclick="cfgShowPage('general',this)">
+          ⚙ General
+        </button>
+        <button class="cfg-subnav-btn" id="cfg-nav-backup" onclick="cfgShowPage('backup',this)" style="display:none">
+          🗄 Backup
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           SUB-PAGE: GENERAL
+      ═════════════════════════════════════════════════════════════ -->
+      <div id="cfg-page-general">
+
       <div class="cfg-sec">
         <div class="cfg-title">&#128101; Usuarios y Permisos</div>
         <div style="margin-bottom:12px"><button class="btn btn-accent btn-sm" onclick="openNewUser()">+ Nuevo Usuario</button></div>
@@ -1052,7 +1152,198 @@ tr:hover .act-btns { opacity:1 }
           </div>
         </div>
       </div>
-    </div>
+
+      </div><!-- /cfg-page-general -->
+
+      <!-- ══════════════════════════════════════════════════════════
+           SUB-PAGE: BACKUP
+      ═════════════════════════════════════════════════════════════ -->
+      <div id="cfg-page-backup" style="display:none">
+        <div class="cfg-sec" id="backup-section">
+          <div class="cfg-title">🗄 Backup Completo del Sistema</div>
+
+          <!-- Sub-tabs -->
+          <div class="bk-tabs">
+            <button class="bk-tab active" onclick="bkTab('exportar',this)">📦 Exportar Backup</button>
+            <button class="bk-tab" onclick="bkTab('importar',this)">📥 Importar / Restaurar</button>
+            <button class="bk-tab" onclick="bkTab('programado',this)">⏰ Backup Programado</button>
+            <button class="bk-tab" onclick="bkTab('historial',this)">📋 Historial</button>
+          </div>
+
+        <!-- ── PANEL: EXPORTAR ── -->
+        <div class="bk-panel active" id="bk-panel-exportar">
+          <div class="bk-card">
+            <div class="bk-card-title">📊 Resumen del sistema actual</div>
+            <div class="bk-stat-grid" id="bk-stats-grid">
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-mods">—</div><div class="bk-stat-lbl">Módulos</div></div>
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-acts">—</div><div class="bk-stat-lbl">Actividades</div></div>
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-projs">—</div><div class="bk-stat-lbl">Proyectos</div></div>
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-users">—</div><div class="bk-stat-lbl">Usuarios</div></div>
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-plants">—</div><div class="bk-stat-lbl">Plantas</div></div>
+              <div class="bk-stat"><div class="bk-stat-val" id="bk-stat-size">—</div><div class="bk-stat-lbl">Tamaño est.</div></div>
+            </div>
+          </div>
+
+          <div class="bk-card">
+            <div class="bk-card-title">🗂 Seleccionar módulos a incluir</div>
+            <div id="bk-mod-selector" style="margin-bottom:14px"></div>
+            <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+                <input type="checkbox" id="bk-inc-users" checked style="accent-color:var(--accent)"> Usuarios y permisos
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+                <input type="checkbox" id="bk-inc-colors" checked style="accent-color:var(--accent)"> Colores de proyectos
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+                <input type="checkbox" id="bk-inc-cf" checked style="accent-color:var(--accent)"> Campos personalizados
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+                <input type="checkbox" id="bk-inc-dp" checked style="accent-color:var(--accent)"> Estado de proyectos (activo/pausado)
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-accent btn-sm" onclick="bkExport()">⬇ Descargar Backup (.sgbackup)</button>
+              <div style="font-size:10px;color:var(--text2)">Formato JSON estructurado · Compatible con importación</div>
+            </div>
+            <div class="bk-progress" id="bk-export-progress" style="display:none"><div class="bk-progress-bar" id="bk-export-bar" style="width:0%"></div></div>
+          </div>
+
+          <div class="bk-card">
+            <div class="bk-card-title">ℹ Sobre el formato .sgbackup</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.7">
+              El archivo <code style="background:var(--bg3);padding:1px 5px;border-radius:3px;font-size:11px">.sgbackup</code> es un <strong>JSON estructurado</strong> que contiene todos los datos del sistema en un solo archivo portable.<br>
+              Incluye metadatos de versión para garantizar compatibilidad en futuras importaciones. No reemplaza el backup de Supabase, sino que complementa con el estado visible de la app.
+            </div>
+            <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+              <div style="background:var(--bg3);padding:8px 10px;border-radius:6px"><span style="color:var(--green);font-weight:700">✓</span> Portable entre entornos<br><span style="color:var(--green);font-weight:700">✓</span> Legible por humanos</div>
+              <div style="background:var(--bg3);padding:8px 10px;border-radius:6px"><span style="color:var(--green);font-weight:700">✓</span> Versionado con timestamp<br><span style="color:var(--green);font-weight:700">✓</span> Validación al importar</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PANEL: IMPORTAR ── -->
+        <div class="bk-panel" id="bk-panel-importar">
+          <div class="bk-card">
+            <div class="bk-card-title">📥 Cargar archivo de backup</div>
+            <div class="bk-drop-zone" id="bk-drop-zone" ondragover="bkDragOver(event)" ondragleave="bkDragLeave(event)" ondrop="bkDrop(event)">
+              <input type="file" accept=".sgbackup,.json" onchange="bkLoadFile(event)">
+              <div class="bk-drop-icon">🗄</div>
+              <div class="bk-drop-text">Arrastra aquí tu archivo .sgbackup</div>
+              <div class="bk-drop-hint">o haz clic para seleccionarlo · Formatos: .sgbackup · .json</div>
+            </div>
+            <div id="bk-import-info" style="display:none;margin-top:12px"></div>
+          </div>
+
+          <div id="bk-import-result" style="display:none"></div>
+        </div>
+
+        <!-- ── PANEL: PROGRAMADO ── -->
+        <div class="bk-panel" id="bk-panel-programado">
+          <div class="bk-card">
+            <div class="bk-card-title">📡 Conexiones de almacenamiento</div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Conecta un destino para realizar backups automáticos sin intervención manual.</div>
+
+            <!-- Google Drive -->
+            <div class="bk-sch-row">
+              <div class="bk-sch-icon">🟢</div>
+              <div style="flex:1;min-width:0">
+                <div class="bk-sch-name">Google Drive</div>
+                <div class="bk-sch-desc">Guarda en carpeta <em>SeguimientoGeo/backups</em> en tu Drive</div>
+              </div>
+              <span class="bk-sch-badge available">Disponible</span>
+              <button class="bk-sch-btn primary" onclick="bkConnectGDrive()">Conectar</button>
+            </div>
+
+            <!-- OneDrive -->
+            <div class="bk-sch-row">
+              <div class="bk-sch-icon">🔵</div>
+              <div style="flex:1;min-width:0">
+                <div class="bk-sch-name">Microsoft OneDrive</div>
+                <div class="bk-sch-desc">Guarda en carpeta <em>SeguimientoGeo/backups</em> en tu OneDrive</div>
+              </div>
+              <span class="bk-sch-badge available">Disponible</span>
+              <button class="bk-sch-btn primary" onclick="bkConnectOneDrive()">Conectar</button>
+            </div>
+
+            <!-- Carpeta local -->
+            <div class="bk-sch-row">
+              <div class="bk-sch-icon">💾</div>
+              <div style="flex:1;min-width:0">
+                <div class="bk-sch-name">Carpeta Local</div>
+                <div class="bk-sch-desc">Descarga automática a la carpeta de Descargas del navegador</div>
+              </div>
+              <span class="bk-sch-badge connected" id="bk-local-badge">Activo</span>
+              <button class="bk-sch-btn" onclick="bkToggleLocalConfig()">Configurar</button>
+            </div>
+            <div class="bk-sch-config" id="bk-local-config">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:10px">La descarga automática se guardará en tu carpeta de Descargas con el nombre <code>sg_backup_YYYY-MM-DD.sgbackup</code></div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <div style="font-size:12px;font-weight:600">Frecuencia:</div>
+                <select id="bk-local-freq" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px">
+                  <option value="manual">Manual (solo al hacer clic)</option>
+                  <option value="daily">Diario (al abrir la app)</option>
+                  <option value="weekly">Semanal (lunes)</option>
+                </select>
+                <button class="btn btn-accent btn-sm" onclick="bkSaveLocalSchedule()">Guardar configuración</button>
+              </div>
+              <div id="bk-local-last" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+            </div>
+          </div>
+
+          <div class="bk-card">
+            <div class="bk-card-title">⚙ Configuración de backup programado</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+              <div>
+                <div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:600">Frecuencia de backup</div>
+                <select id="bk-sch-freq" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px">
+                  <option value="manual">Solo manual</option>
+                  <option value="daily" selected>Diario</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensual</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:600">Retención de backups</div>
+                <select id="bk-sch-keep" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px">
+                  <option value="5">Últimos 5</option>
+                  <option value="10" selected>Últimos 10</option>
+                  <option value="30">Últimos 30</option>
+                  <option value="0">Todos (sin límite)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-accent btn-sm" onclick="bkSaveSchedule()">💾 Guardar configuración</button>
+              <button class="btn btn-sm" onclick="bkExport(true)">▶ Ejecutar backup ahora</button>
+            </div>
+            <div id="bk-sch-status" style="font-size:11px;color:var(--text2);margin-top:10px"></div>
+          </div>
+
+          <div class="bk-card">
+            <div class="bk-card-title">ℹ Sobre Google Drive y OneDrive</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.7">
+              La integración con Google Drive y OneDrive requiere autenticación OAuth en el navegador. Al hacer clic en <em>Conectar</em> se abrirá una ventana emergente para que autorices el acceso a tu cuenta. Los backups se guardarán en una carpeta específica de la app sin acceso a otros archivos.<br><br>
+              <strong>Nota:</strong> La conexión se mantiene mientras la sesión esté activa. Si la ventana se bloquea, habilita pop-ups para este sitio.
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PANEL: HISTORIAL ── -->
+        <div class="bk-panel" id="bk-panel-historial">
+          <div class="bk-card">
+            <div class="bk-card-title">📋 Historial de backups</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:11px;color:var(--text2)">Registro de todos los backups creados o restaurados en esta sesión y sesiones anteriores.</div>
+              <button onclick="bkClearHistory()" style="font-size:10px;color:var(--red);background:transparent;border:none;cursor:pointer">🗑 Limpiar</button>
+            </div>
+            <div id="bk-history-list" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <div style="font-size:12px;color:var(--text2);padding:20px;text-align:center">Sin backups registrados</div>
+            </div>
+          </div>
+        </div><!-- /bk-panel-historial -->
+      </div><!-- /backup-section cfg-sec -->
+      </div><!-- /cfg-page-backup -->
+    </div><!-- /page-config -->
 
       <!-- MIS TAREAS -->
     <div class="page" id="page-mis-tareas">
@@ -1255,12 +1546,13 @@ tr:hover .act-btns { opacity:1 }
     <div class="fg2">
       <div class="fg fg-full"><span class="fl">Nombre completo *</span><input class="fi" id="nu-name" placeholder="Nombre completo"></div>
       <div class="fg fg-full"><span class="fl">Email *</span><input class="fi" id="nu-email" type="email" placeholder="usuario@empresa.com"></div>
-      <div class="fg"><span class="fl">Contrase&#241;a</span><input class="fi" id="nu-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
+      <div class="fg"><span class="fl">Contrase&#241;a *</span><input class="fi" id="nu-pass" type="password" placeholder="M&#237;nimo 6 caracteres"></div>
       <div class="fg"><span class="fl">Rol</span>
         <select class="fi" id="nu-role" onchange="renderNUPerms()">
+          <option value="developer">Desarrollador</option>
           <option value="admin">Administrador</option>
           <option value="collaborator">Colaborador</option>
-          <option value="viewer">Visualizador</option>
+          <option value="viewer" selected>Visualizador</option>
         </select>
       </div>
     </div>
@@ -1269,6 +1561,13 @@ tr:hover .act-btns { opacity:1 }
       <div id="nu-mods" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
       <span class="fl" style="margin-bottom:7px;display:block">Permisos de secci&#243;n</span>
       <div class="nu-perm-grid" id="nu-perms"></div>
+    </div>
+    <div style="margin:10px 0;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+      <span class="fl" style="margin-bottom:7px;display:block">&#128465; Permisos de Eliminaci&#243;n</span>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+        <input type="checkbox" id="nu-can-delete" style="accent-color:var(--red);width:14px;height:14px">
+        <span>Permitir eliminar proyectos, actividades, subtareas y comentarios</span>
+      </label>
     </div>
     <div class="mo-footer">
       <button class="btn btn-sm" onclick="closeUserMo()">Cancelar</button>
@@ -1612,6 +1911,11 @@ function toggleSB() {
   tb.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
 }
 function goPage(id, el) {
+  // Block config access for non-developer roles
+  if (id === 'config' && CURRENT_USER && CURRENT_USER.role !== 'developer') {
+    notify('⚠ El módulo de Configuración es exclusivo del Desarrollador', true);
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const pageEl = document.getElementById('page-' + id);
@@ -1637,7 +1941,7 @@ function renderMisTareas() {
   const el = document.getElementById('mis-tareas-content'); if (!el) return;
   const user = CURRENT_USER; if (!user) return;
   const all = get();
-  const isAdmin = user.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(user.role);
   // Show all tasks for admin, own tasks for others
   const myActs = isAdmin ? all : all.filter(r =>
     (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
@@ -2407,7 +2711,7 @@ function _old_renderProjs_UNUSED() {
   const res   = document.getElementById('p-resp')?.value    || '';
   const est   = document.getElementById('p-est')?.value     || '';
 
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   let projs = uniq(get(), 'PROYECTO');
   if (srch)  projs = projs.filter(p => p.toLowerCase().includes(srch));
   if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.PLANTA||'').trim().toUpperCase()===pla.trim().toUpperCase()));
@@ -3425,11 +3729,12 @@ function exportXLSX() {
 
 // ── Config ─────────────────────────────────────────────────────────
 function renderCfg() {
-  const RL = { admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
-  const RC = { admin:'rg-admin', collaborator:'rg-collab', viewer:'rg-viewer' };
-  const RB = { admin:'rb-admin', collaborator:'rb-collab', viewer:'rb-viewer' };
+  const RL = { developer:'Desarrollador', admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
+  const RC = { developer:'rg-developer', admin:'rg-admin', collaborator:'rg-collab', viewer:'rg-viewer' };
+  const RB = { developer:'rb-developer', admin:'rb-admin', collaborator:'rb-collab', viewer:'rb-viewer' };
+  const isSuperUser = ['developer','admin'].includes(CURRENT_USER?.role);
   let html = '';
-  ['admin','collaborator','viewer'].forEach(role => {
+  ['developer','admin','collaborator','viewer'].forEach(role => {
     const ru = USERS.filter(u => u.role === role); if (!ru.length) return;
     html += `<div style="margin-bottom:12px">
       <div class="rg-title ${RC[role]}">${RL[role]} (${ru.length})</div>
@@ -3437,47 +3742,54 @@ function renderCfg() {
         ${ru.map(u => `<div class="u-card">
           <div class="u-top"><div class="u-av" style="background:${u.color}">${u.initials}</div>
             <div style="flex:1;min-width:0"><div class="u-name">${u.name}</div><div class="u-email">${u.email||'—'}</div></div>
-            ${CURRENT_USER?.role==='admin'?`<button onclick="openEditUser('${u.id}')" title="Editar usuario" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--accent);font-size:10px;cursor:pointer;flex-shrink:0">✏</button>`:''}
+            ${isSuperUser?`<button onclick="openEditUser('${u.id}')" title="Editar usuario" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--accent);font-size:10px;cursor:pointer;flex-shrink:0">✏</button>`:''}
           </div>
           <span class="rb ${RB[role]}">${RL[role]}</span>
           <div style="font-size:9px;color:var(--text2);margin:4px 0;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Módulos</div>
           <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">
-            ${Object.keys(MOD_LBL).map(m => `<span class="p-chip ${(u.modules||[]).includes(m)?'p-on':'p-off'}" style="font-size:8px">${MOD_LBL[m].substring(0,14)}</span>`).join('')}
+            ${role==='developer'?`<span class="p-chip p-on" style="font-size:8px">Todos ✓</span>`:Object.keys(MOD_LBL).map(m => `<span class="p-chip ${(u.modules||[]).includes(m)?'p-on':'p-off'}" style="font-size:8px">${MOD_LBL[m].substring(0,14)}</span>`).join('')}
           </div>
           <div style="font-size:9px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Secciones</div>
           <div class="perms-wrap">
-            ${PERM_K.map(p => `<span class="p-chip ${(u.perms||{})[p]?'p-on':'p-off'}">${p}</span>`).join('')}
+            ${role==='developer'?`<span class="p-chip p-on">Acceso Total ✓</span>`:PERM_K.map(p => `<span class="p-chip ${(u.perms||{})[p]?'p-on':'p-off'}">${p}</span>`).join('')}
           </div>
+          ${(u.perms||{}).can_delete!==undefined?`<div style="margin-top:5px"><span class="p-chip ${u.perms.can_delete?'p-on':'p-off'}" style="font-size:8px">🗑 Puede eliminar</span></div>`:''}
         </div>`).join('')}
       </div>
     </div>`;
   });
   document.getElementById('users-by-role').innerHTML = html;
-  const plantas = uniq(get(), 'PLANTA');
-  document.getElementById('plants-tbody').innerHTML = plantas.map(p => {
-    const a = get().filter(r => r.PLANTA === p);
-    const avg = a.length ? Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length) : 0;
-    return `<tr><td><strong>${p}</strong></td><td>${a.length}</td><td>${uniq(a,'PROYECTO').length}</td>
-      <td><div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${avg}%;background:var(--accent)"></div></div><span class="av-pct">${avg}%</span></div></td></tr>`;
-  }).join('');
-  // Admin-only module management
-  if (CURRENT_USER?.role === 'admin') {
+  try {
+    const plantas = uniq(get(), 'PLANTA');
+    document.getElementById('plants-tbody').innerHTML = plantas.map(p => {
+      const a = get().filter(r => r.PLANTA === p);
+      const avg = a.length ? Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length) : 0;
+      return `<tr><td><strong>${p}</strong></td><td>${a.length}</td><td>${uniq(a,'PROYECTO').length}</td>
+        <td><div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${avg}%;background:var(--accent)"></div></div><span class="av-pct">${avg}%</span></div></td></tr>`;
+    }).join('');
+  } catch(e) { console.warn('renderCfg plants error:', e); }
+  // Developer/Admin module management
+  if (isSuperUser) {
     setTimeout(renderModMgmt, 50);
     const rs = document.getElementById('recovery-section');
     if (rs) rs.style.display = 'block';
     const mm = document.getElementById('mod-mgmt-section');
     if (mm) mm.style.display = 'block';
-    // Show IO history
     const ioh = document.getElementById('io-history-section');
     if (ioh) ioh.style.display = 'block';
     loadIOHistory();
     setTimeout(renderIOHistory, 100);
+    const bkNav = document.getElementById('cfg-nav-backup');
+    if (bkNav) bkNav.style.display = 'inline-flex';
   } else {
     const mm = document.getElementById('mod-mgmt-section');
     if (mm) mm.style.display = 'none';
     const ioh = document.getElementById('io-history-section');
     if (ioh) ioh.style.display = 'none';
+    const bkNav = document.getElementById('cfg-nav-backup');
+    if (bkNav) bkNav.style.display = 'none';
   }
+  cfgShowPage(window._activeCfgPage || 'general');
 }
 
 // ── New User ────────────────────────────────────────────────────────
@@ -3485,90 +3797,111 @@ function openNewUser() { renderNUPerms(); document.getElementById('mo-user').cla
 function closeUserMo() { document.getElementById('mo-user').classList.remove('open'); }
 function renderNUPerms() {
   const role = document.getElementById('nu-role')?.value || 'viewer';
-  const def  = { admin:{Dashboard:true,Actividades:true,Timeline:true,Calendario:true,Reportes:true,'Configuración':true}, collaborator:{Dashboard:true,Actividades:true,Timeline:true,Calendario:true,Reportes:false,'Configuración':false}, viewer:{Dashboard:true,Actividades:false,Timeline:true,Calendario:true,Reportes:false,'Configuración':false} }[role] || {};
-  document.getElementById('nu-mods').innerHTML  = Object.keys(MOD_LBL).map(m => `<label class="nu-mod-item"><input type="checkbox" id="nu-m-${m}" ${role==='admin'?'checked':''} style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`).join('');
-  document.getElementById('nu-perms').innerHTML = PERM_K.map(p => `<label class="nu-perm-item"><input type="checkbox" id="nu-p-${p}" ${def[p]?'checked':''} style="accent-color:var(--accent)">${p}</label>`).join('');
+  const isDev = role === 'developer';
+  const def  = {
+    developer:{Dashboard:true,Proyectos:true,Actividades:true,Timeline:true,Calendario:true,Reportes:true,'Configuración':true},
+    admin:{Dashboard:true,Proyectos:true,Actividades:true,Timeline:true,Calendario:true,Reportes:true,'Configuración':false},
+    collaborator:{Dashboard:true,Actividades:true,Timeline:true,Calendario:true,Reportes:false,'Configuración':false},
+    viewer:{Dashboard:true,Actividades:false,Timeline:true,Calendario:true,Reportes:false,'Configuración':false}
+  }[role] || {};
+  document.getElementById('nu-mods').innerHTML  = isDev
+    ? `<span class="p-chip p-on">Todos los módulos (acceso completo)</span>`
+    : Object.keys(MOD_LBL).map(m => `<label class="nu-mod-item"><input type="checkbox" id="nu-m-${m}" ${['developer','admin'].includes(role)?'checked':''} style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`).join('');
+  document.getElementById('nu-perms').innerHTML = isDev
+    ? `<span class="p-chip p-on">Todos los permisos (acceso completo)</span>`
+    : PERM_K.map(p => `<label class="nu-perm-item"><input type="checkbox" id="nu-p-${p}" ${def[p]?'checked':''} style="accent-color:var(--accent)">${p}</label>`).join('');
+  const cdEl = document.getElementById('nu-can-delete');
+  if (cdEl) cdEl.checked = isDev;
 }
 async function saveUser() {
   const name  = document.getElementById('nu-name')?.value.trim();
   const email = document.getElementById('nu-email')?.value.trim();
   const role  = document.getElementById('nu-role')?.value || 'viewer';
+  const pass  = document.getElementById('nu-pass')?.value?.trim();
   if (!name || !email) { notify('⚠ Nombre y email requeridos', true); return; }
+  if (!pass || pass.length < 6) { notify('⚠ La contraseña debe tener al menos 6 caracteres', true); return; }
 
-  const mods  = Object.keys(MOD_LBL).filter(m => document.getElementById('nu-m-'+m)?.checked);
-  const perms = {}; PERM_K.forEach(p => { perms[p] = document.getElementById('nu-p-'+p)?.checked || false; });
-  const cls   = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4'];
+  const isDev = role === 'developer';
+  const mods  = isDev ? Object.keys(MOD_LBL) : Object.keys(MOD_LBL).filter(m => document.getElementById('nu-m-'+m)?.checked);
+  const perms = {};
+  if (isDev) {
+    PERM_K.forEach(p => { perms[p] = true; });
+    perms.can_delete = true;
+  } else {
+    PERM_K.forEach(p => { perms[p] = document.getElementById('nu-p-'+p)?.checked || false; });
+    perms.can_delete = document.getElementById('nu-can-delete')?.checked || false;
+  }
+  const cls   = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899'];
   const color = cls[USERS.length % cls.length];
-  const inits = name.split(' ').map(w => w[0]?.toUpperCase()||'').slice(0,2).join('');
 
   const btn = document.querySelector('#mo-user .btn-accent');
   if (btn) { btn.disabled = true; btn.textContent = 'Creando…'; }
 
   try {
-    // 1. Invite via Supabase Auth (sends email with magic link)
-    const { data: invited, error: invErr } = await _sb.auth.admin
-      ? await _sb.auth.admin.inviteUserByEmail(email)
-      : { data: null, error: { message: 'admin API no disponible en cliente' } };
-
-    // Supabase JS v2 client doesn't expose admin.inviteUserByEmail from browser
-    // Use the service-role inviteUserByEmail via REST instead
     let authUserId = null;
 
-    if (invErr || !invited?.user) {
-      // Fallback: create profile without auth — user must be invited manually from Supabase dashboard
-      // But we still create the profile so it's ready when they log in
-      notify('⚠ Invitación Auth no disponible desde app (usa Supabase Dashboard → Authentication → Invite). Creando perfil…', false);
-    } else {
-      authUserId = invited.user.id;
-    }
-
-    // 2. Insert profile (with placeholder UUID if auth invite not available)
-    const profileId = authUserId || ('pending_' + Date.now());
-    const { error: profErr } = await _sb.from('profiles').insert({
-      id:           profileId,
-      email:        email,
-      name:         name,
-      role:         role,
-      modules:      mods,
-      perms:        perms,
-      avatar_color: color,
+    // 1. Intentar crear usuario en Supabase Auth via signUp
+    const { data: signUpData, error: signUpErr } = await _sb.auth.signUp({
+      email, password: pass,
+      options: { data: { name } }
     });
 
-    if (profErr) {
-      // May already exist — try update instead
-      if (profErr.code === '23505') {
-        const { error: updErr } = await _sb.from('profiles')
-          .update({ name, role, modules: mods, perms, avatar_color: color })
-          .eq('email', email);
-        if (updErr) { notify('⚠ Error: ' + updErr.message, true); return; }
+    if (!signUpErr && signUpData?.user?.id) {
+      authUserId = signUpData.user.id;
+      console.log('Auth user created:', authUserId);
+    } else if (signUpErr) {
+      console.warn('signUp error:', signUpErr.message);
+      // User might already exist in Auth — check profiles by email
+      const { data: existingProf } = await _sb.from('profiles').select('id,email').eq('email', email).maybeSingle();
+      if (existingProf?.id) {
+        authUserId = existingProf.id;
+        notify('ℹ Usuario ya existe en Auth. Actualizando perfil…', false);
       } else {
-        notify('⚠ Error creando perfil: ' + profErr.message, true); return;
+        // Can not create auth user from client — create profile with temp id
+        // Developer must invite from Supabase Dashboard later
+        authUserId = null;
+        notify('⚠ No se pudo crear en Auth (' + signUpErr.message + '). Guardando perfil para enlazar al invitar desde Supabase Dashboard.', false);
       }
     }
 
-    // 3. Update local USERS array
-    const existing = USERS.find(u => u.email === email);
-    if (existing) {
-      Object.assign(existing, { name, role, modules: mods, perms, color, initials: inits });
-    } else {
-      USERS.push({ id: profileId, name, email, role, initials: inits, color, modules: mods, perms });
+    // 2. Insert/update profile in Supabase
+    const profileId = authUserId || crypto.randomUUID();
+    const profileData = { id: profileId, email, name, role, modules: mods, perms, avatar_color: color };
+
+    // Try upsert by id first
+    const { error: profErr } = await _sb.from('profiles').upsert(profileData, { onConflict: 'id' });
+    if (profErr) {
+      // If email column exists and has unique index, try by email
+      const { error: profErr2 } = await _sb.from('profiles')
+        .update({ name, role, modules: mods, perms, avatar_color: color })
+        .eq('email', email);
+      if (profErr2) {
+        notify('⚠ Error guardando perfil: ' + profErr.message, true);
+        return;
+      }
     }
 
-    // Reload SB_PROFILES
+    // 3. Reload all profiles from Supabase
     const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
     if (allP) {
       SB_PROFILES = allP;
       USERS = allP.map(p => ({
-        id: p.id, name: p.name, email: p.email, role: p.role,
+        id: p.id, name: p.name, email: p.email || '', role: p.role,
         initials: p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
         color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
       }));
     }
 
     closeUserMo(); renderCfg();
-    notify('✅ Usuario "' + name + '" creado. ' + (authUserId ? 'Se envió email de invitación.' : 'Ve a Supabase → Authentication → Invite para enviar el email de acceso.'));
+    if (authUserId && !authUserId.startsWith('pending_')) {
+      notify('✅ Usuario "' + name + '" creado correctamente. Ya puede ingresar con su email y contraseña.');
+    } else {
+      notify('⚠ Perfil guardado, pero debes invitar al usuario desde Supabase → Authentication → Invite user (' + email + ')');
+    }
     document.getElementById('nu-name').value = '';
     document.getElementById('nu-email').value = '';
+    document.getElementById('nu-pass').value = '';
+    renderNUPerms(); // reset form
 
   } catch(e) {
     notify('⚠ Error inesperado: ' + e.message, true);
@@ -3582,16 +3915,20 @@ async function saveUser() {
 async function openEditUser(userId) {
   const u = USERS.find(x => x.id === userId || x.email === userId);
   if (!u) return;
-  // Build a quick modal
   const allMods = Object.keys(MOD_LBL);
-  const permsKeys = ['Dashboard','Actividades','Timeline','Calendario','Reportes','Configuración'];
-  const modsHtml = allMods.map(m =>
+  const permsKeys = ['Dashboard','Proyectos','Actividades','Timeline','Calendario','Reportes','Configuración'];
+  const isDev = u.role === 'developer';
+  const modsHtml = isDev
+    ? `<span class="p-chip p-on">Todos los módulos (acceso completo)</span>`
+    : allMods.map(m =>
     `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
       <input type="checkbox" id="eu-m-${m}" ${(u.modules||[]).includes(m)?'checked':''} style="accent-color:var(--accent)">
       ${MOD_LBL[m]}
     </label>`
   ).join('');
-  const permsHtml = permsKeys.map(p =>
+  const permsHtml = isDev
+    ? `<span class="p-chip p-on">Todos los permisos (acceso completo)</span>`
+    : permsKeys.map(p =>
     `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
       <input type="checkbox" id="eu-p-${p}" ${(u.perms||{})[p]?'checked':''} style="accent-color:var(--accent)">
       ${p}
@@ -3607,7 +3944,8 @@ async function openEditUser(userId) {
 
     <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Rol</div>
-      <select id="eu-role" class="fi" style="width:100%">
+      <select id="eu-role" class="fi" style="width:100%" onchange="(function(){const r=document.getElementById('eu-role').value;const devMods=document.getElementById('eu-dev-mods');const devPerms=document.getElementById('eu-dev-perms');const modGrid=document.getElementById('eu-mods-grid');const permGrid=document.getElementById('eu-perms-grid');if(r==='developer'){devMods.style.display='block';devPerms.style.display='block';modGrid.style.display='none';permGrid.style.display='none';}else{devMods.style.display='none';devPerms.style.display='none';modGrid.style.display='flex';permGrid.style.display='flex';}})()">
+        <option value="developer" ${u.role==='developer'?'selected':''}>Desarrollador</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
         <option value="collaborator" ${u.role==='collaborator'?'selected':''}>Colaborador</option>
         <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer (solo lectura)</option>
@@ -3616,12 +3954,22 @@ async function openEditUser(userId) {
 
     <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Módulos visibles</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${modsHtml}</div>
+      <div id="eu-dev-mods" style="display:${isDev?'block':'none'}"><span class="p-chip p-on">Todos los módulos (acceso completo)</span></div>
+      <div id="eu-mods-grid" style="display:${isDev?'none':'flex'};flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${allMods.map(m=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="eu-m-${m}" ${(u.modules||[]).includes(m)?'checked':''} style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`).join('')}</div>
     </div>
 
-    <div style="margin-bottom:20px">
+    <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Permisos de sección</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${permsHtml}</div>
+      <div id="eu-dev-perms" style="display:${isDev?'block':'none'}"><span class="p-chip p-on">Todos los permisos (acceso completo)</span></div>
+      <div id="eu-perms-grid" style="display:${isDev?'none':'flex'};flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg3);border-radius:8px">${permsKeys.map(p=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="eu-p-${p}" ${(u.perms||{})[p]?'checked':''} style="accent-color:var(--accent)">${p}</label>`).join('')}</div>
+    </div>
+
+    <div style="margin-bottom:20px;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🗑 Permiso de Eliminación</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+        <input type="checkbox" id="eu-can-delete" ${(u.perms||{}).can_delete||isDev?'checked':''} style="accent-color:var(--red);width:14px;height:14px">
+        <span>Permitir eliminar proyectos, actividades, subtareas y comentarios</span>
+      </label>
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -3634,11 +3982,18 @@ async function openEditUser(userId) {
 
 async function _saveEditUser(userId) {
   const allMods = Object.keys(MOD_LBL);
-  const permsKeys = ['Dashboard','Actividades','Timeline','Calendario','Reportes','Configuración'];
+  const permsKeys = ['Dashboard','Proyectos','Actividades','Timeline','Calendario','Reportes','Configuración'];
   const role  = document.getElementById('eu-role')?.value || 'collaborator';
-  const mods  = allMods.filter(m => document.getElementById('eu-m-'+m)?.checked);
+  const isDev = role === 'developer';
+  const mods  = isDev ? allMods : allMods.filter(m => document.getElementById('eu-m-'+m)?.checked);
   const perms = {};
-  permsKeys.forEach(p => { perms[p] = document.getElementById('eu-p-'+p)?.checked || false; });
+  if (isDev) {
+    permsKeys.forEach(p => { perms[p] = true; });
+    perms.can_delete = true;
+  } else {
+    permsKeys.forEach(p => { perms[p] = document.getElementById('eu-p-'+p)?.checked || false; });
+    perms.can_delete = document.getElementById('eu-can-delete')?.checked || false;
+  }
 
   const { error } = await _sb.from('profiles')
     .update({ role, modules: mods, perms })
@@ -3652,7 +4007,7 @@ async function _saveEditUser(userId) {
 
   document.getElementById('_eu-modal')?.remove();
   renderCfg();
-  notify('✅ Permisos de usuario actualizados');
+  notify('✅ Permisos de usuario actualizados y sincronizados con Supabase');
 }
 
 // ── New Project ─────────────────────────────────────────────────────
@@ -3861,7 +4216,7 @@ function openModal(id = null) {
   // Only admin can edit fecha completada
   const compEl = document.getElementById('m-comp');
   if (compEl) {
-    const isAdminUser = CURRENT_USER?.role === 'admin';
+    const isAdminUser = ['developer','admin'].includes(CURRENT_USER?.role);
     compEl.readOnly = !isAdminUser;
     compEl.style.opacity = isAdminUser ? '1' : '0.6';
     compEl.title = isAdminUser ? '' : 'Solo administradores pueden editar la fecha completada';
@@ -3971,7 +4326,7 @@ function renderSTs() {
         <button class="btn btn-sm" onclick="editST(${s.id})" style="font-size:10px;background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">✏ Editar</button>
         <button class="btn btn-sm" onclick="openSTReprog(${s.id})" style="font-size:10px;background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.3)">🔄 Reprogramar</button>
         <button class="btn btn-sm" onclick="closeSTWithComment(${s.id})" style="font-size:10px;background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)">✓ Cerrar</button>
-      </div>`:(CURRENT_USER?.role==='admin'?`<div style="display:flex;gap:6px;margin-top:6px">
+      </div>`:(['developer','admin'].includes(CURRENT_USER?.role)?`<div style="display:flex;gap:6px;margin-top:6px">
         <button class="btn btn-sm" onclick="editSTAdmin(${s.id})" style="font-size:10px;background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">✏ Editar (Admin)</button>
       </div>`:'')}
       ${s.stComment?`<div style="margin-top:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);line-height:1.4">💬 ${s.stComment}</div>`:''}
@@ -4184,7 +4539,7 @@ function _stCmtFmt(cmd) {
 }
 
 function editSTAdmin(stId) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar subtareas cerradas', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo administradores pueden editar subtareas cerradas', true); return; }
   openSTModal(stId, 'edit');
 }
 function addCmt() {
@@ -4264,7 +4619,7 @@ async function togDrST(aId, sId) {
 }
 
 async function removeReprog(actId) {
-  if (CURRENT_USER?.role !== 'admin') return;
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) return;
   if (!confirm('¿Eliminar la última reprogramación? Esta acción no se puede deshacer.')) return;
   const r = get().find(a => a._id === actId); if (!r) return;
   let detRep = r['DETALLE DE REPROGRAMACION'] || '';
@@ -4287,7 +4642,7 @@ async function removeReprog(actId) {
 }
 
 async function editReprog(actId) {
-  if (CURRENT_USER?.role !== 'admin') return;
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) return;
   const r = get().find(a => a._id === actId); if (!r) return;
   const current = r['DETALLE DE REPROGRAMACION'] || '';
   const newDetail = prompt('Editar detalle de reprogramación:', current);
@@ -5113,7 +5468,7 @@ function addDrawerComment(actId) {
   if (!plainTxt && !(window._pendingAttachments?.[actId]?.length)) return;
   const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
   if (!r.comments) r.comments = [];
-  const usr = CURRENT_USER || USERS.find(u => u.role === 'admin') || USERS[0];
+  const usr = CURRENT_USER || USERS.find(u => ['developer','admin'].includes(u.role)) || USERS[0];
   const attachments = window._pendingAttachments?.[actId] || [];
   const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments: [...attachments] };
   // Persist attachments in global store — survives navigation/view changes
@@ -5328,7 +5683,7 @@ function renderDrawerComments(actId) {
   const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   const el = document.getElementById('dr-cmts-thread'); if (!el) return;
   const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   if (!r.comments || !r.comments.length) {
     el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:12px">Sin comentarios aún.</div>';
     // Still setup mentions on the editor
@@ -5387,7 +5742,7 @@ function renderDrawerComments(actId) {
 }
 
 async function startEditCodigo(actId) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo administradores', true); return; }
   const r = get().find(a => a._id === actId); if (!r) return;
   const span = document.getElementById('dr-codigo-text'); if (!span) return;
   const orig = r['CÓDIGO'] || '';
@@ -5414,7 +5769,7 @@ async function startEditCodigo(actId) {
 }
 
 function editComment(actId, cmtId) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar comentarios', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo administradores pueden editar comentarios', true); return; }
   const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   const c = r.comments?.find(x => String(x.id) === String(cmtId)); if (!c) return;
   const textEl = document.getElementById('cmt-text-' + cmtId); if (!textEl) return;
@@ -5444,7 +5799,7 @@ function editComment(actId, cmtId) {
 }
 
 function deleteComment(actId, cmtId) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden eliminar comentarios', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar comentarios', true); return; }
   if (!confirm('¿Eliminar este comentario?')) return;
   const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   const idx = r.comments?.findIndex(x => String(x.id) === String(cmtId));
@@ -5466,7 +5821,7 @@ function deleteComment(actId, cmtId) {
 let selectedModColor = '#38bdf8';
 
 function openNewModModal() {
-  const usr = USERS.find(u => u.role === 'admin');
+  const usr = USERS.find(u => ['developer','admin'].includes(u.role));
   if (!usr) { notify('Solo el administrador puede crear módulos', true); return; }
   document.getElementById('nm-name').value = '';
   document.getElementById('nm-desc').value = '';
@@ -5498,7 +5853,7 @@ function saveNewMod() {
   btn.onclick = function() { switchMod(key, this); };
   extraMods.appendChild(btn);
   // Update USERS admin modules
-  USERS.filter(u => u.role === 'admin').forEach(u => { if (!u.modules.includes(key)) u.modules.push(key); });
+  USERS.filter(u => ['developer','admin'].includes(u.role)).forEach(u => { if (!u.modules.includes(key)) u.modules.push(key); });
   closeNewModModal();
   notify('✅ Módulo "' + name + '" creado');
   addNotif('system', `Nuevo módulo creado: "${name}"`);
@@ -5508,7 +5863,7 @@ function saveNewMod() {
 // DELETE PROJECT (admin only)
 // ══════════════════════════════════════════════════════════════════
 function deleteProject(proj) {
-  const isAdmin = USERS.some(u => u.role === 'admin' && u.name === 'Admin Sistema');
+  const isAdmin = USERS.some(u => ['developer','admin'].includes(u.role) && u.name === 'Admin Sistema');
   if (!isAdmin) { notify('⚠ Solo el administrador puede eliminar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
   if (!confirm(`¿Eliminar el proyecto "${proj}" y sus ${acts.length} actividades? Esta acción no se puede deshacer.`)) return;
@@ -5676,7 +6031,7 @@ function _DISABLED_openProjDr_v1(proj) {
   const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
-  const isAdmin = USERS.some(u => u.role === 'admin');
+  const isAdmin = USERS.some(u => ['developer','admin'].includes(u.role));
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -5725,7 +6080,7 @@ function _DISABLED_openProjDr_v1(proj) {
 // Show admin-only features after load
 // ══════════════════════════════════════════════════════════════════
 function initAdminFeatures() {
-  const isAdmin = USERS.some(u => u.role === 'admin');
+  const isAdmin = USERS.some(u => ['developer','admin'].includes(u.role));
   const btnNewMod = document.getElementById('btn-new-mod');
   if (btnNewMod) btnNewMod.style.display = isAdmin ? 'flex' : 'none';
 }
@@ -5774,33 +6129,44 @@ async function initSession(authUser) {
     initials: profile.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
   };
 
-  // Load ALL profiles for mention autocomplete + responsable dropdowns
-  const { data: allProfiles } = await _sb.from('profiles').select('id, name, role, avatar_color');
+  // Load ALL profiles for mention autocomplete + responsable dropdowns (with email + perms)
+  // Try with email column first; fallback without it if column doesn't exist yet
+  let allProfiles = null;
+  try {
+    const { data, error } = await _sb.from('profiles').select('id, name, role, avatar_color, email, modules, perms');
+    if (!error) allProfiles = data;
+    else {
+      // email column might not exist yet — fallback
+      const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
+      allProfiles = data2;
+    }
+  } catch(e) {
+    const { data: data2 } = await _sb.from('profiles').select('id, name, role, avatar_color, modules, perms');
+    allProfiles = data2;
+  }
   SB_PROFILES = allProfiles || [];
   USERS = SB_PROFILES.map(p => ({
-    id: p.id, name: p.name, role: p.role,
-    initials: p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+    id: p.id, name: p.name, role: p.role || 'viewer', email: p.email || '',
+    initials: (p.name || '?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
     color: p.avatar_color || '#38bdf8',
-    modules: [], perms: {}
+    modules: p.modules || [], perms: p.perms || {}
   }));
 
   applyUserToUI();
-  applyPermissions();
   applyStoredTheme();
   document.getElementById('login-screen').style.display = 'none';
 
-  // Load custom modules from Supabase and add to sidebar
+  // Load custom modules from Supabase FIRST — before applyPermissions so buttons exist in DOM
   const { data: sbModulos } = await _sb.from('modulos').select('*').eq('activo', true).order('created_at');
   if (sbModulos && sbModulos.length) {
     const builtinKeys = ['automatizacion','investigaciones','cambios'];
     sbModulos.forEach(mod => {
-      if (builtinKeys.includes(mod.key)) return; // skip builtins
+      if (builtinKeys.includes(mod.key)) return;
       if (!MOD_LBL[mod.key]) {
         MOD_LBL[mod.key] = mod.nombre;
         RAW[mod.key] = [];
         MS[mod.key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
         if (!COLORS_ALL[mod.key]) COLORS_ALL[mod.key] = {};
-        // Add button to sidebar if not already there
         if (!document.getElementById('mod-' + mod.key)) {
           const extraMods = document.getElementById('extra-mods');
           const btn = document.createElement('button');
@@ -5808,21 +6174,24 @@ async function initSession(authUser) {
           btn.innerHTML = `<span class="mod-dot" style="background:${mod.color||'#38bdf8'}"></span><span class="mod-txt">${mod.nombre}</span>`;
           btn.onclick = function() { switchMod(mod.key, this); };
           if (extraMods) extraMods.appendChild(btn);
+          // Developer/admin always get access to new modules
+          if (['developer','admin'].includes(CURRENT_USER.role) && !CURRENT_USER.modules.includes(mod.key)) {
+            CURRENT_USER.modules.push(mod.key);
+          }
         }
       }
     });
   }
 
-  // Load data and subscribe to realtime
-  // Pick the first module the user has access to (or first from DB modules if profile.modules is empty)
+  // Apply permissions AFTER all module buttons are in the DOM
+  applyPermissions();
+
   const allModKeys = Object.keys(MOD_LBL);
-  const accessibleMods = CURRENT_USER.role === 'admin'
+  const accessibleMods = ['developer','admin'].includes(CURRENT_USER.role)
     ? allModKeys
     : allModKeys.filter(k => CURRENT_USER.modules.includes(k));
   const initMod = accessibleMods[0] || CURRENT_USER.modules[0] || 'automatizacion';
   ACTIVE = initMod;
-  // Re-apply permissions now that dynamic module buttons exist in DOM
-  applyPermissions();
   try {
     await loadModFromDB(initMod);
   } catch (err) {
@@ -5876,10 +6245,9 @@ async function resetPwd() {
 
 function applyUserToUI() {
   if (!CURRENT_USER) return;
-  const RL = { admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
+  const RL = { developer:'Desarrollador', admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
   const sbName = document.querySelector('.sb-name');
   const sbRole = document.querySelector('.sb-role');
-  const sbAv   = document.querySelector('.sb-avatar');
   const tbAv   = document.querySelector('.tb-av');
   if (sbName) sbName.textContent = CURRENT_USER.name;
   if (sbRole) sbRole.textContent = RL[CURRENT_USER.role] || CURRENT_USER.role;
@@ -5896,14 +6264,14 @@ function applyUserToUI() {
 function applyPermissions() {
   if (!CURRENT_USER) return;
   const { role, modules, perms } = CURRENT_USER;
+  const isSuperUser = ['developer','admin'].includes(role);
   // For ALL module buttons (builtin + dynamic), show only those the user has access to
   document.querySelectorAll('.mod-btn').forEach(btn => {
-    // Derive key from button id: "mod-auto" → "automatizacion", or "mod-cambios" → "cambios"
     const id = btn.id || '';
     const keyMap = { 'mod-auto':'automatizacion', 'mod-inv':'investigaciones', 'mod-cam':'cambios' };
     const key = keyMap[id] || id.replace(/^mod-/, '');
     if (!key) return;
-    btn.style.display = (role === 'admin' || modules.includes(key)) ? 'flex' : 'none';
+    btn.style.display = (isSuperUser || modules.includes(key)) ? 'flex' : 'none';
   });
   const navPerms = {
     "goPage('inicio'":"Dashboard",
@@ -5914,7 +6282,16 @@ function applyPermissions() {
   document.querySelectorAll('.nav-item').forEach(btn => {
     const oc = btn.getAttribute('onclick')||'';
     for (const [match, perm] of Object.entries(navPerms)) {
-      if (oc.includes(match)) { btn.style.display = (role==='admin'||perms[perm]===true)?'flex':'none'; break; }
+      if (oc.includes(match)) {
+        // Only developer can see Configuración by default; admin/collaborator/viewer only if perm set
+        // But admin, collaborator, viewer should NOT see Configuración nav item
+        if (perm === 'Configuración') {
+          btn.style.display = role === 'developer' ? 'flex' : 'none';
+        } else {
+          btn.style.display = (isSuperUser || perms[perm]===true) ? 'flex' : 'none';
+        }
+        break;
+      }
     }
   });
   // Hide "Nueva Actividad" for viewers
@@ -5922,7 +6299,10 @@ function applyPermissions() {
     btn.style.display = role==='viewer' ? 'none' : 'inline-flex';
   });
   const btnNewMod = document.getElementById('btn-new-mod');
-  if (btnNewMod) btnNewMod.style.display = role==='admin' ? 'flex' : 'none';
+  if (btnNewMod) btnNewMod.style.display = isSuperUser ? 'flex' : 'none';
+  // Show/hide backup nav based on role (developer always sees it)
+  const bkNav = document.getElementById('cfg-nav-backup');
+  if (bkNav) bkNav.style.display = (role === 'developer') ? 'inline-flex' : 'none';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -6724,7 +7104,7 @@ async function markDone(id) {
 
 // delAct — admin only, persist to Supabase
 async function delAct(id) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar actividades', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar actividades', true); return; }
   const r = get().find(a => a._id === id); if (!r) return;
   if (!confirm('¿Eliminar esta actividad? Se moverá a la papelera y podrás recuperarla.')) return;
   // Soft-delete: mark modulo as _deleted_
@@ -6740,7 +7120,7 @@ async function delAct(id) {
 
 // deleteProject — admin only
 async function duplicateProject(proj) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede duplicar proyectos', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo el administrador puede duplicar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
   if (!acts.length) { notify('⚠ El proyecto no tiene actividades', true); return; }
   const newName = prompt('Nombre del proyecto duplicado:', proj + ' (copia)');
@@ -6803,7 +7183,7 @@ async function duplicateProject(proj) {
 }
 
 async function deleteProject(proj) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede eliminar proyectos', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
   if (!confirm(`¿Eliminar el proyecto "${proj}" con ${acts.length} actividades?\n\nSe moverá a la papelera y podrás recuperarlo desde Configuración → Recuperación.`)) return;
 
@@ -6835,7 +7215,7 @@ async function addDrawerComment(actId) {
   if (!plainTxt && !hasAttachments) return;
   const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   if (!r.comments) r.comments = [];
-  const usr = CURRENT_USER || USERS.find(u => u.role === 'admin') || USERS[0];
+  const usr = CURRENT_USER || USERS.find(u => ['developer','admin'].includes(u.role)) || USERS[0];
   const attachments = window._pendingAttachments?.[actId] || [];
   const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments: [...attachments] };
   if (attachments.length) storeCmtAttachments(cmt.id, [...attachments]);
@@ -7017,7 +7397,7 @@ function _DISABLED_openActDr_v2(id) {
   document.getElementById('dr-title').textContent = 'Detalle de Actividad';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -7099,7 +7479,7 @@ function _DISABLED_openProjDr_v2(proj) {
   const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -7301,7 +7681,7 @@ async function handleImport(e) {
 
 // saveNewMod — admin only, also save to DB
 async function saveNewMod() {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo el administrador puede crear módulos', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo el administrador puede crear módulos', true); return; }
   const name = document.getElementById('nm-name').value.trim();
   if (!name) { notify('⚠ El módulo necesita un nombre', true); return; }
   const key = 'mod_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
@@ -7421,7 +7801,7 @@ function setProjView(v) {
 // Override renderProjs to support view modes + by-plant grouping
 const _origRenderProjs = renderProjs;
 function renderProjs() {
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   const srch  = (document.getElementById('p-srch')?.value   || '').toLowerCase();
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
@@ -8068,7 +8448,7 @@ function toggleProjList(id) {
   const wrap = document.getElementById(id+'-arrow-wrap');
   if (wrap) wrap.style.color = open ? 'var(--text3)' : 'var(--accent)';
   // Attach sortable when opening
-  if (!open && CURRENT_USER?.role === 'admin') {
+  if (!open && ['developer','admin'].includes(CURRENT_USER?.role)) {
     const bodyId = id + '-body';
     // Find which project this list belongs to — read from first data-act-id row
     const bodyEl = document.getElementById(bodyId);
@@ -8095,7 +8475,7 @@ function openProjDr(proj) {
   const tDel = delayed.reduce((s,r)=>s+Math.floor((TODAY-new Date(r['FECHA FIN']))/(1000*86400)),0);
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   const canEdit = CURRENT_USER?.role !== 'viewer';
   // Stable order: respect saved custom order, fallback to code sort
   const actsOrdered = getOrderedActs(proj);
@@ -8260,7 +8640,7 @@ function openActDr(id) {
   if (expBtn) expBtn.style.display = 'none';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
-  const isAdmin = CURRENT_USER?.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -8371,7 +8751,7 @@ const DELETED_PROJS = [];
 
 function renderModMgmt() {
   const el = document.getElementById('mod-mgmt-list'); if (!el) return;
-  if (CURRENT_USER?.role !== 'admin') { el.innerHTML = '<div style="font-size:12px;color:var(--text2)">Solo disponible para administradores.</div>'; return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { el.innerHTML = '<div style="font-size:12px;color:var(--text2)">Solo disponible para administradores.</div>'; return; }
   const mods = Object.entries(MOD_LBL).filter(([k]) => !['automatizacion','investigaciones','cambios'].includes(k) || true);
   el.innerHTML = mods.map(([key, name]) => {
     const cnt = (MS[key]?.acts||[]).length;
@@ -8385,7 +8765,7 @@ function renderModMgmt() {
     </div>`;
   }).join('');
   const recSection = document.getElementById('recovery-section');
-  if (recSection) recSection.style.display = CURRENT_USER?.role === 'admin' ? 'block' : 'none';
+  if (recSection) recSection.style.display = ['developer','admin'].includes(CURRENT_USER?.role) ? 'block' : 'none';
 }
 
 function editModName(key) {
@@ -8401,7 +8781,7 @@ function editModName(key) {
 }
 
 async function deleteMod(key) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administrador', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo administrador', true); return; }
   const cnt = (MS[key]?.acts||[]).length;
   if (!confirm(`¿Eliminar el módulo "${MOD_LBL[key]}" con ${cnt} actividades? Se guardará en recuperación.`)) return;
   DELETED_MODS.push({ key, name: MOD_LBL[key], acts: MS[key]?.acts||[], deletedAt: tsNow() });
@@ -8444,10 +8824,10 @@ async function _addModToSidebar(key, nombre, color) {
     }
   }
   // Ensure admin users can see this module
-  USERS.filter(u => u.role === 'admin').forEach(u => {
+  USERS.filter(u => ['developer','admin'].includes(u.role)).forEach(u => {
     if (!u.modules.includes(key)) u.modules.push(key);
   });
-  if (CURRENT_USER?.role === 'admin' && !CURRENT_USER.modules.includes(key)) {
+  if (['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER.modules.includes(key)) {
     CURRENT_USER.modules.push(key);
   }
 }
@@ -8777,7 +9157,7 @@ function renderInicio() {
   // Search ALL loaded modules for this user's activities (not just ACTIVE)
   const allModActs = Object.values(MS).flatMap(m => m.acts || []);
   const d = allModActs;
-  const isAdmin = user.role === 'admin';
+  const isAdmin = ['developer','admin'].includes(user.role);
 
   // Only show THIS user's tasks (not all tasks for admin either — personal view)
   const myActs = d.filter(r =>
@@ -9177,7 +9557,7 @@ function openCustomFieldsModal() {
         ${cf.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="flex:1;font-size:12px;font-weight:600">${f.name}</span>
           <span style="font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px">${{text:'Texto',number:'Número',date:'Fecha',select:'Lista'}[f.type]||f.type}</span>
-          ${CURRENT_USER?.role==='admin'?'<button onclick="deleteCustomField('+i+')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>':''}
+          ${['developer','admin'].includes(CURRENT_USER?.role)?'<button onclick="deleteCustomField('+i+')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>':''}
         </div>`).join('')}
         ${!cf.length?'<div style="text-align:center;padding:16px;font-size:12px;color:var(--text2)">Sin columnas personalizadas</div>':''}
       </div>
@@ -9227,7 +9607,7 @@ function addCustomField() {
 }
 
 function deleteCustomField(idx) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden eliminar columnas', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar columnas', true); return; }
   if (!CUSTOM_FIELDS[ACTIVE]) return;
   if (!confirm('¿Eliminar esta columna personalizada? Se perderán los datos asociados.')) return;
   CUSTOM_FIELDS[ACTIVE].splice(idx, 1);
@@ -9579,7 +9959,7 @@ function applyStoredTheme() {
 // EDIT PROJECT NAME — admin only
 // ════════════════════════════════════════════════════════════════
 async function editProjectName(el, oldName) {
-  if (CURRENT_USER?.role !== 'admin') { notify('⚠ Solo administradores pueden editar nombres de proyecto', true); return; }
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo administradores pueden editar nombres de proyecto', true); return; }
   const input = document.createElement('input');
   input.type = 'text'; input.value = oldName;
   input.style.cssText = 'width:100%;font-size:16px;font-weight:700;background:var(--bg3);border:2px solid var(--accent);color:var(--text);padding:4px 8px;border-radius:6px;font-family:Barlow,sans-serif';
@@ -9612,6 +9992,552 @@ async function editProjectName(el, oldName) {
     await initSession(session.user);
   }
 })();
+
+// ════════════════════════════════════════════════════════════════════
+//  BACKUP MODULE — Seguimiento Geo
+//  Tab navigation, export, import with diff, scheduled backups
+// ════════════════════════════════════════════════════════════════════
+
+// ── Storage key for backup history ───────────────────────────────────
+const BK_HISTORY_KEY = 'sg_backup_history';
+const BK_SCHEDULE_KEY = 'sg_backup_schedule';
+let bkLoadedData = null; // holds parsed .sgbackup data after file load
+
+// ── Tab navigation ───────────────────────────────────────────────────
+function bkTab(id, btn) {
+  document.querySelectorAll('.bk-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.bk-panel').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('bk-panel-' + id);
+  if (panel) panel.classList.add('active');
+  if (id === 'exportar') bkRefreshStats();
+  if (id === 'historial') bkRenderHistory();
+  if (id === 'programado') bkLoadScheduleUI();
+}
+
+// ── Stats computation ─────────────────────────────────────────────────
+function bkRefreshStats() {
+  const modKeys = Object.keys(MOD_LBL);
+  let totalActs = 0, allPlants = new Set(), allProjs = new Set();
+  modKeys.forEach(k => {
+    const acts = (MS[k] && MS[k].acts) ? MS[k].acts.filter(a => !String(a.PROYECTO||'').startsWith('_deleted_proj_')) : [];
+    totalActs += acts.length;
+    acts.forEach(a => { if(a.PLANTA) allPlants.add(a.PLANTA); if(a.PROYECTO) allProjs.add(a.PROYECTO); });
+  });
+  const estimatedSize = (JSON.stringify(buildBackupPayload()).length / 1024).toFixed(1) + ' KB';
+  document.getElementById('bk-stat-mods').textContent   = modKeys.length;
+  document.getElementById('bk-stat-acts').textContent   = totalActs;
+  document.getElementById('bk-stat-projs').textContent  = allProjs.size;
+  document.getElementById('bk-stat-users').textContent  = USERS.length;
+  document.getElementById('bk-stat-plants').textContent = allPlants.size;
+  document.getElementById('bk-stat-size').textContent   = estimatedSize;
+  bkRenderModSelector();
+}
+
+// ── Module selector checkboxes ─────────────────────────────────────────
+function bkRenderModSelector() {
+  const container = document.getElementById('bk-mod-selector');
+  if (!container) return;
+  const COLORS_CYCLE = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
+  container.innerHTML = Object.keys(MOD_LBL).map((k, i) => {
+    const acts = (MS[k] && MS[k].acts) ? MS[k].acts.filter(a => !String(a.PROYECTO||'').startsWith('_deleted_proj_')).length : 0;
+    const col = COLORS_CYCLE[i % COLORS_CYCLE.length];
+    return `<div class="bk-mod-row">
+      <div class="bk-mod-dot" style="background:${col}"></div>
+      <div class="bk-mod-name">${MOD_LBL[k]}</div>
+      <div class="bk-mod-cnt">${acts} actividades</div>
+      <input type="checkbox" class="bk-mod-check" id="bk-mod-${k}" checked>
+    </div>`;
+  }).join('');
+}
+
+// ── Build backup payload ───────────────────────────────────────────────
+function buildBackupPayload(selectedMods) {
+  const now = new Date().toISOString();
+  const mods = selectedMods || Object.keys(MOD_LBL);
+  const modulesData = {};
+  mods.forEach(k => {
+    modulesData[k] = {
+      label: MOD_LBL[k],
+      acts:  (MS[k] && MS[k].acts) ? MS[k].acts : []
+    };
+  });
+  return {
+    meta: {
+      app:          'SeguimientoGeo',
+      version:      '1.0',
+      created_at:   now,
+      created_by:   CURRENT_USER ? CURRENT_USER.name : 'unknown',
+      module_count: mods.length,
+      total_acts:   mods.reduce((s, k) => s + ((MS[k]&&MS[k].acts)||[]).length, 0)
+    },
+    modules:          modulesData,
+    users:            document.getElementById('bk-inc-users')?.checked  !== false ? USERS : [],
+    colors:           document.getElementById('bk-inc-colors')?.checked !== false ? COLORS_ALL : {},
+    custom_fields:    document.getElementById('bk-inc-cf')?.checked     !== false ? (window.CUSTOM_FIELDS || {}) : {},
+    disabled_projects:document.getElementById('bk-inc-dp')?.checked     !== false ? (window.DISABLED_PROJECTS || {}) : {},
+    mod_labels:       MOD_LBL
+  };
+}
+
+// ── Export backup ──────────────────────────────────────────────────────
+async function bkExport(silent = false) {
+  // Collect selected mods
+  const selectedMods = Object.keys(MOD_LBL).filter(k => {
+    const cb = document.getElementById('bk-mod-' + k);
+    return cb ? cb.checked : true;
+  });
+  if (!selectedMods.length) { notify('⚠ Selecciona al menos un módulo', true); return; }
+
+  // Progress animation
+  const bar = document.getElementById('bk-export-bar');
+  const prog = document.getElementById('bk-export-progress');
+  if (prog) { prog.style.display = 'block'; if(bar) bar.style.width = '0%'; }
+
+  try {
+    await new Promise(r => setTimeout(r, 80));
+    if(bar) bar.style.width = '30%';
+
+    const payload = buildBackupPayload(selectedMods);
+    await new Promise(r => setTimeout(r, 80));
+    if(bar) bar.style.width = '70%';
+
+    const json   = JSON.stringify(payload, null, 2);
+    const blob   = new Blob([json], { type: 'application/json' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    const ts     = new Date().toISOString().split('T')[0];
+    a.href       = url;
+    a.download   = `sg_backup_${ts}.sgbackup`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    if(bar) bar.style.width = '100%';
+    await new Promise(r => setTimeout(r, 400));
+    if(prog) prog.style.display = 'none';
+
+    // Record in history
+    bkAddHistory({ type:'export', name: a.download, size: (blob.size/1024).toFixed(1)+' KB', mods: selectedMods, ts: new Date().toISOString() });
+    if(!silent) notify('✅ Backup exportado: ' + a.download);
+  } catch(e) {
+    if(prog) prog.style.display = 'none';
+    notify('⚠ Error al exportar: ' + e.message, true);
+  }
+}
+
+// ── Drag & Drop ────────────────────────────────────────────────────────
+function bkDragOver(e) { e.preventDefault(); document.getElementById('bk-drop-zone')?.classList.add('drag-over'); }
+function bkDragLeave()  { document.getElementById('bk-drop-zone')?.classList.remove('drag-over'); }
+function bkDrop(e)      { e.preventDefault(); bkDragLeave(); const f = e.dataTransfer?.files?.[0]; if(f) bkParseFile(f); }
+function bkLoadFile(e)  { const f = e.target?.files?.[0]; if(f) bkParseFile(f); }
+
+// ── Parse & validate backup file ──────────────────────────────────────
+function bkParseFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.meta || data.meta.app !== 'SeguimientoGeo') {
+        notify('⚠ Archivo no válido: no es un backup de SeguimientoGeo', true);
+        return;
+      }
+      bkLoadedData = data;
+      bkShowFileInfo(file, data);
+      bkRunComparison(data);
+    } catch(ex) {
+      notify('⚠ Error al leer el archivo: ' + ex.message, true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Show file metadata ─────────────────────────────────────────────────
+function bkShowFileInfo(file, data) {
+  const el = document.getElementById('bk-import-info');
+  if (!el) return;
+  const ts = new Date(data.meta.created_at).toLocaleString('es-BO');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="bk-card" style="border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.05)">
+    <div class="bk-card-title">📄 Archivo cargado</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;font-size:12px">
+      <div><span style="color:var(--text2)">Archivo:</span><br><strong>${file.name}</strong></div>
+      <div><span style="color:var(--text2)">Creado:</span><br><strong>${ts}</strong></div>
+      <div><span style="color:var(--text2)">Por:</span><br><strong>${data.meta.created_by||'—'}</strong></div>
+      <div><span style="color:var(--text2)">Módulos:</span><br><strong>${data.meta.module_count}</strong></div>
+      <div><span style="color:var(--text2)">Actividades:</span><br><strong>${data.meta.total_acts}</strong></div>
+      <div><span style="color:var(--text2)">Versión:</span><br><strong>v${data.meta.version}</strong></div>
+    </div>
+  </div>`;
+}
+
+// ── Run diff/comparison ───────────────────────────────────────────────
+function bkRunComparison(bkData) {
+  const resultEl = document.getElementById('bk-import-result');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+
+  // Per-module comparison
+  const modKeys = Object.keys(bkData.modules || {});
+  let modRows = '';
+  let totalNew = 0, totalDel = 0, totalMod = 0, totalOk = 0;
+
+  modKeys.forEach(k => {
+    const bkActs  = (bkData.modules[k]?.acts || []);
+    const curActs = (MS[k]?.acts || []);
+    const bkMap   = {}; bkActs.forEach(a => { bkMap[a['CÓDIGO']] = a; });
+    const curMap  = {}; curActs.forEach(a => { curMap[a['CÓDIGO']] = a; });
+
+    let newActs = 0, delActs = 0, modActs = 0, okActs = 0;
+
+    // In backup but not in current = would be restored (new to current)
+    bkActs.forEach(a => {
+      if (!curMap[a['CÓDIGO']]) { newActs++; }
+      else {
+        // compare key fields
+        const cur = curMap[a['CÓDIGO']];
+        const changed = ['ACTIVIDAD','ESTADO','AVANCE','FECHA FIN','PROYECTO'].some(f => String(a[f]||'') !== String(cur[f]||''));
+        if (changed) modActs++; else okActs++;
+      }
+    });
+    // In current but not in backup = would be lost if full restore
+    curActs.forEach(a => { if (!bkMap[a['CÓDIGO']]) delActs++; });
+
+    totalNew += newActs; totalDel += delActs; totalMod += modActs; totalOk += okActs;
+    const label = MOD_LBL[k] || k;
+    modRows += `<tr>
+      <td><strong>${label}</strong></td>
+      <td>${curActs.length}</td>
+      <td>${bkActs.length}</td>
+      <td class="bk-diff-new">${newActs > 0 ? '+'+newActs : '—'}</td>
+      <td class="bk-diff-del">${delActs > 0 ? '−'+delActs : '—'}</td>
+      <td class="bk-diff-mod">${modActs > 0 ? '~'+modActs : '—'}</td>
+      <td class="bk-diff-ok">${okActs}</td>
+    </tr>`;
+  });
+
+  // Users comparison
+  const bkUsers  = bkData.users || [];
+  const curEmails = new Set(USERS.map(u => u.email));
+  const newUsers  = bkUsers.filter(u => !curEmails.has(u.email)).length;
+  const delUsers  = USERS.filter(u => !bkUsers.some(b => b.email === u.email)).length;
+
+  // Summary badges
+  const hasDangerousLoss = totalDel > 0 || delUsers > 0;
+  const hasNewData       = totalNew > 0 || newUsers > 0;
+  const hasConflicts     = totalMod > 0;
+
+  resultEl.innerHTML = `
+    <div class="bk-import-result">
+      <div class="bk-import-hdr">
+        <div class="bk-import-title">🔍 Comparativa: Backup vs Sistema Actual</div>
+        <div style="display:flex;gap:6px">
+          ${hasNewData ? `<span class="bk-diff-badge new">+${totalNew+newUsers} Nuevos</span>` : ''}
+          ${hasDangerousLoss ? `<span class="bk-diff-badge del">−${totalDel+delUsers} Se perderían</span>` : ''}
+          ${hasConflicts ? `<span class="bk-diff-badge mod">~${totalMod} Diferentes</span>` : ''}
+          ${!hasNewData&&!hasDangerousLoss&&!hasConflicts ? `<span class="bk-diff-badge ok">✓ Sin diferencias</span>` : ''}
+        </div>
+      </div>
+      <div style="padding:14px 16px">
+        ${hasDangerousLoss ? `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red)">
+          ⚠️ <strong>Atención:</strong> ${totalDel} actividades y ${delUsers} usuarios en el sistema actual NO están en el backup. Si restauras en modo "Reemplazar", esos datos se perderán.
+        </div>` : ''}
+        ${hasNewData ? `<div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--green)">
+          ✅ El backup contiene ${totalNew} actividades y ${newUsers} usuarios que no están en el sistema actual — se agregarán al restaurar.
+        </div>` : ''}
+
+        <div style="overflow-x:auto;margin-bottom:14px">
+          <table class="bk-diff-table">
+            <thead><tr>
+              <th>Módulo</th><th>Actual</th><th>Backup</th>
+              <th style="color:var(--green)">+Nuevas</th>
+              <th style="color:var(--red)">−Pérdida</th>
+              <th style="color:var(--orange)">~Cambios</th>
+              <th>Sin cambios</th>
+            </tr></thead>
+            <tbody>${modRows}</tbody>
+            <tfoot><tr style="background:var(--bg3);font-weight:700">
+              <td>TOTAL</td><td>—</td><td>—</td>
+              <td class="bk-diff-new">${totalNew > 0 ? '+'+totalNew : '—'}</td>
+              <td class="bk-diff-del">${totalDel > 0 ? '−'+totalDel : '—'}</td>
+              <td class="bk-diff-mod">${totalMod > 0 ? '~'+totalMod : '—'}</td>
+              <td class="bk-diff-ok">${totalOk}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Usuarios</div>
+          <div style="font-size:12px;color:var(--text2)">Actuales: <strong style="color:var(--text)">${USERS.length}</strong> · En backup: <strong style="color:var(--text)">${bkUsers.length}</strong> · 
+          ${newUsers > 0 ? `<span class="bk-diff-badge new" style="margin:0 4px">+${newUsers} nuevos</span>` : ''}
+          ${delUsers > 0 ? `<span class="bk-diff-badge del" style="margin:0 4px">−${delUsers} se perderían</span>` : ''}
+          ${newUsers===0&&delUsers===0 ? `<span class="bk-diff-badge ok">✓ Sin diferencias</span>` : ''}
+          </div>
+        </div>
+
+        <div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Modo de restauración</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+              <input type="radio" name="bk-restore-mode" value="merge" checked style="accent-color:var(--accent)">
+              <span><strong>Fusionar</strong> — agrega datos nuevos, mantiene los actuales</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+              <input type="radio" name="bk-restore-mode" value="replace" style="accent-color:var(--red)">
+              <span style="color:var(--red)"><strong>Reemplazar</strong> — sustituye todo por el backup (¡irreversible!)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="bk-import-actions">
+        <button class="btn btn-sm" onclick="bkCancelImport()">Cancelar</button>
+        <button class="btn btn-accent btn-sm" onclick="bkDoRestore()">✅ Restaurar ahora</button>
+      </div>
+    </div>`;
+}
+
+// ── Cancel import ─────────────────────────────────────────────────────
+function bkCancelImport() {
+  bkLoadedData = null;
+  const info = document.getElementById('bk-import-info');
+  const res  = document.getElementById('bk-import-result');
+  if (info) { info.style.display = 'none'; info.innerHTML = ''; }
+  if (res)  { res.style.display  = 'none'; res.innerHTML  = ''; }
+  // Reset file input
+  const inp = document.querySelector('#bk-drop-zone input[type=file]');
+  if (inp) inp.value = '';
+}
+
+// ── Do restore ────────────────────────────────────────────────────────
+function bkDoRestore() {
+  if (!bkLoadedData) { notify('⚠ Sin datos de backup cargados', true); return; }
+  const mode = document.querySelector('input[name="bk-restore-mode"]:checked')?.value || 'merge';
+
+  if (mode === 'replace') {
+    if (!confirm('⚠ ADVERTENCIA: Esto reemplazará TODOS los datos actuales con el backup.\n\nEsta acción no se puede deshacer. ¿Continuar?')) return;
+  }
+
+  try {
+    const bk = bkLoadedData;
+
+    // Restore modules
+    Object.keys(bk.modules || {}).forEach(k => {
+      const bkActs = bk.modules[k].acts || [];
+      if (!MS[k]) MS[k] = { acts: [], sF: 'CÓDIGO', sA: true, pg: 1 };
+
+      if (mode === 'replace') {
+        MS[k].acts = bkActs;
+      } else {
+        // Merge: add activities not already present by CÓDIGO
+        const curCodes = new Set((MS[k].acts || []).map(a => a['CÓDIGO']));
+        const toAdd    = bkActs.filter(a => !curCodes.has(a['CÓDIGO']));
+        MS[k].acts     = [...(MS[k].acts || []), ...toAdd];
+      }
+      // Also restore mod label if new
+      if (bk.mod_labels && bk.mod_labels[k] && !MOD_LBL[k]) {
+        MOD_LBL[k] = bk.mod_labels[k];
+      }
+    });
+
+    // Restore colors
+    if (bk.colors) {
+      Object.keys(bk.colors).forEach(k => {
+        if (mode === 'replace' || !COLORS_ALL[k]) COLORS_ALL[k] = bk.colors[k];
+        else Object.assign(COLORS_ALL[k], bk.colors[k]);
+      });
+    }
+    // Restore custom fields
+    if (bk.custom_fields && window.CUSTOM_FIELDS) {
+      Object.keys(bk.custom_fields).forEach(k => {
+        if (mode === 'replace' || !window.CUSTOM_FIELDS[k]) window.CUSTOM_FIELDS[k] = bk.custom_fields[k];
+      });
+    }
+    // Restore disabled projects
+    if (bk.disabled_projects && window.DISABLED_PROJECTS) {
+      if (mode === 'replace') window.DISABLED_PROJECTS = bk.disabled_projects;
+      else Object.assign(window.DISABLED_PROJECTS, bk.disabled_projects);
+    }
+    // Restore users (merge only — never delete current users on merge)
+    if (bk.users && bk.users.length) {
+      if (mode === 'replace') {
+        USERS.splice(0, USERS.length, ...bk.users);
+      } else {
+        const curEmails = new Set(USERS.map(u => u.email));
+        bk.users.filter(u => !curEmails.has(u.email)).forEach(u => USERS.push(u));
+      }
+    }
+
+    // Refresh UI
+    try { applyF(); renderDash(); renderActs(); renderProjs(); renderCfg(); } catch(e) {}
+    bkAddHistory({ type:'import', name: 'backup_' + bk.meta.created_at.split('T')[0] + '.sgbackup', size: '—', mods: Object.keys(bk.modules||{}), ts: new Date().toISOString(), mode });
+    notify(`✅ Backup restaurado (${mode === 'replace' ? 'Reemplazar' : 'Fusionar'})`);
+    bkCancelImport();
+
+  } catch(ex) {
+    notify('⚠ Error al restaurar: ' + ex.message, true);
+    console.error('bkDoRestore error:', ex);
+  }
+}
+
+// ── History ───────────────────────────────────────────────────────────
+let BK_HISTORY = [];
+function bkLoadHistory() {
+  try { const s = localStorage.getItem(BK_HISTORY_KEY); if(s) BK_HISTORY = JSON.parse(s); } catch(e) {}
+}
+function bkSaveHistoryLS() {
+  try { localStorage.setItem(BK_HISTORY_KEY, JSON.stringify(BK_HISTORY.slice(0, 50))); } catch(e) {}
+}
+function bkAddHistory(entry) {
+  bkLoadHistory();
+  BK_HISTORY.unshift(entry);
+  bkSaveHistoryLS();
+}
+function bkClearHistory() {
+  if (!confirm('¿Limpiar el historial de backups?')) return;
+  BK_HISTORY = [];
+  try { localStorage.removeItem(BK_HISTORY_KEY); } catch(e) {}
+  bkRenderHistory();
+}
+function bkRenderHistory() {
+  bkLoadHistory();
+  const el = document.getElementById('bk-history-list');
+  if (!el) return;
+  if (!BK_HISTORY.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:20px;text-align:center">Sin backups registrados</div>';
+    return;
+  }
+  el.innerHTML = BK_HISTORY.slice(0, 30).map(h => {
+    const icon  = h.type === 'export' ? '📦' : '📥';
+    const label = h.type === 'export' ? 'Exportado' : ('Restaurado' + (h.mode ? ' ('+h.mode+')' : ''));
+    const ts    = new Date(h.ts).toLocaleString('es-BO');
+    const mods  = (h.mods || []).join(', ');
+    return `<div class="bk-history-row">
+      <div class="bk-history-icon">${icon}</div>
+      <div class="bk-history-info">
+        <div class="bk-history-name">${h.name}</div>
+        <div class="bk-history-meta">${label} · ${ts}${mods ? ' · '+mods : ''}</div>
+      </div>
+      <div class="bk-history-size">${h.size||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Scheduled backup ──────────────────────────────────────────────────
+function bkLoadScheduleUI() {
+  try {
+    const s = localStorage.getItem(BK_SCHEDULE_KEY);
+    if (s) {
+      const cfg = JSON.parse(s);
+      const freq = document.getElementById('bk-sch-freq');
+      const keep = document.getElementById('bk-sch-keep');
+      const lfreq = document.getElementById('bk-local-freq');
+      if (freq && cfg.freq)  freq.value  = cfg.freq;
+      if (keep && cfg.keep)  keep.value  = cfg.keep;
+      if (lfreq && cfg.lfreq) lfreq.value = cfg.lfreq;
+      const st = document.getElementById('bk-sch-status');
+      if (st && cfg.saved_at) st.textContent = '✅ Configuración guardada el ' + new Date(cfg.saved_at).toLocaleString('es-BO');
+      const ll = document.getElementById('bk-local-last');
+      if (ll && cfg.last_local) ll.textContent = 'Último backup local: ' + new Date(cfg.last_local).toLocaleString('es-BO');
+    }
+  } catch(e) {}
+}
+function bkSaveSchedule() {
+  const freq  = document.getElementById('bk-sch-freq')?.value  || 'manual';
+  const keep  = document.getElementById('bk-sch-keep')?.value  || '10';
+  const lfreq = document.getElementById('bk-local-freq')?.value || 'manual';
+  const cfg   = { freq, keep, lfreq, saved_at: new Date().toISOString() };
+  try { localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfg)); } catch(e) {}
+  notify('✅ Configuración de backup guardada');
+  const st = document.getElementById('bk-sch-status');
+  if (st) st.textContent = '✅ Guardado el ' + new Date().toLocaleString('es-BO');
+}
+function bkSaveLocalSchedule() {
+  bkSaveSchedule();
+  notify('✅ Configuración local guardada');
+}
+function bkToggleLocalConfig() {
+  const el = document.getElementById('bk-local-config');
+  if (el) el.classList.toggle('open');
+}
+
+// ── Cloud connections (OAuth flow stubs) ──────────────────────────────
+function bkConnectGDrive() {
+  notify('🟢 Conectando con Google Drive…');
+  // Google OAuth2 implicit flow — requires client_id configuration
+  const CLIENT_ID = ''; // Set your Google OAuth client ID here
+  if (!CLIENT_ID) {
+    alert('Para conectar Google Drive:\n\n1. Crea un proyecto en Google Cloud Console\n2. Habilita Google Drive API\n3. Crea credenciales OAuth2 (tipo Web Application)\n4. Establece el Client ID en la variable CLIENT_ID del código\n5. Agrega este origen como URI autorizado\n\nPor ahora, usa el backup local.');
+    return;
+  }
+  const scope  = 'https://www.googleapis.com/auth/drive.file';
+  const redir  = encodeURIComponent(window.location.href);
+  const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${CLIENT_ID}&redirect_uri=${redir}&scope=${scope}&response_type=token`;
+  const w = window.open(authUrl, 'gdrive_auth', 'width=500,height=600');
+  if (!w) notify('⚠ Habilita pop-ups para esta página', true);
+}
+function bkConnectOneDrive() {
+  notify('🔵 Conectando con OneDrive…');
+  const CLIENT_ID = ''; // Set your Microsoft Azure App client ID here
+  if (!CLIENT_ID) {
+    alert('Para conectar OneDrive:\n\n1. Registra tu app en Azure Portal (portal.azure.com)\n2. Agrega permiso "Files.ReadWrite"\n3. Copia el Application (client) ID\n4. Establece el Client ID en la variable CLIENT_ID del código\n5. Agrega este origen como URI de redirección\n\nPor ahora, usa el backup local.');
+    return;
+  }
+  const scope   = 'Files.ReadWrite';
+  const redir   = encodeURIComponent(window.location.href);
+  const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${CLIENT_ID}&redirect_uri=${redir}&scope=${scope}&response_type=token`;
+  const w = window.open(authUrl, 'onedrive_auth', 'width=500,height=600');
+  if (!w) notify('⚠ Habilita pop-ups para esta página', true);
+}
+
+// ── Auto-check scheduled backup on page load ──────────────────────────
+(function bkCheckAutoBackup() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem(BK_SCHEDULE_KEY) || '{}');
+    if (!cfg.freq || cfg.freq === 'manual') return;
+    const last = cfg.last_local ? new Date(cfg.last_local) : null;
+    const now  = new Date();
+    let shouldRun = false;
+    if (cfg.lfreq === 'daily')  shouldRun = !last || (now - last) > 23*3600*1000;
+    if (cfg.lfreq === 'weekly') shouldRun = !last || (now - last) > 6*24*3600*1000;
+    if (!shouldRun) return;
+    // Run after app is initialized
+    setTimeout(() => {
+      bkExport(true);
+      cfg.last_local = now.toISOString();
+      localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfg));
+      notify('🔄 Backup automático ejecutado');
+    }, 3000);
+  } catch(e) {}
+})();
+
+// Backup section visibility is handled inside renderCfg directly
+
+// ════════════════════════════════════════════════════════════════════
+//  CONFIG SUB-NAVIGATION
+// ════════════════════════════════════════════════════════════════════
+window._activeCfgPage = 'general';
+
+function cfgShowPage(id, btn) {
+  window._activeCfgPage = id;
+  // Toggle sub-pages
+  ['general','backup'].forEach(p => {
+    const el = document.getElementById('cfg-page-' + p);
+    if (el) el.style.display = p === id ? 'block' : 'none';
+  });
+  // Toggle nav buttons active state
+  document.querySelectorAll('.cfg-subnav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    const navBtn = document.getElementById('cfg-nav-' + id);
+    if (navBtn) navBtn.classList.add('active');
+  }
+  // Init backup stats when entering backup page
+  if (id === 'backup') {
+    setTimeout(bkRefreshStats, 50);
+    bkRenderHistory();
+    bkLoadScheduleUI();
+  }
+}
 </script>
 </body>
 </html>
