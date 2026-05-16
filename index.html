@@ -6275,6 +6275,7 @@ function applyUserToUI() {
   const RL = { developer:'Desarrollador', admin:'Administrador', collaborator:'Colaborador', viewer:'Visualizador' };
   const sbName = document.querySelector('.sb-name');
   const sbRole = document.querySelector('.sb-role');
+  const sbAv   = document.querySelector('.sb-avatar');
   const tbAv   = document.querySelector('.tb-av');
   if (sbName) sbName.textContent = CURRENT_USER.name;
   if (sbRole) sbRole.textContent = RL[CURRENT_USER.role] || CURRENT_USER.role;
