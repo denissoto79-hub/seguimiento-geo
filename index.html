@@ -2526,7 +2526,7 @@ function renderActs() {
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
         <button class="abtn" onclick="duplicateAct('${r._id}')" title="Duplicar" style="background:rgba(168,85,247,.12);color:var(--purple)">⧉</button>
         ${r.ESTADO!=='REALIZADA'?`<button class="abtn abtn-d" onclick="markDone('${r._id}')">✓</button>`:''}
-        ${(()=>{ const _cd = ['developer','admin'].includes(CURRENT_USER?.role)||(CURRENT_USER?.perms?.can_delete===true); return _cd?`<button class="abtn abtn-x" onclick="delAct('${r._id}')">✕</button>`:''; })()}
+        ${(()=>{ const _cd = (CURRENT_USER?.perms?.can_delete===true); return _cd?`<button class="abtn abtn-x" onclick="delAct('${r._id}')">✕</button>`:''; })()}
       </div></td>
     </tr>`;
   }).join('');
@@ -3753,7 +3753,7 @@ function renderCfg() {
           <div class="perms-wrap">
             ${role==='developer'?`<span class="p-chip p-on">Acceso Total ✓</span>`:PERM_K.map(p => `<span class="p-chip ${(u.perms||{})[p]?'p-on':'p-off'}">${p}</span>`).join('')}
           </div>
-          ${(u.perms||{}).can_delete!==undefined?`<div style="margin-top:5px"><span class="p-chip ${u.perms.can_delete?'p-on':'p-off'}" style="font-size:8px">🗑 Puede eliminar</span></div>`:''}
+          ${((u.perms||{}).can_delete===true)?`<div style="margin-top:5px"><span class="p-chip p-on" style="font-size:8px">🗑 Puede eliminar</span></div>`:''}
         </div>`).join('')}
       </div>
     </div>`;
@@ -3849,6 +3849,7 @@ async function saveUser() {
     if (!signUpErr && signUpData?.user?.id) {
       authUserId = signUpData.user.id;
       console.log('Auth user created:', authUserId);
+      // Note: email is auto-confirmed via DB trigger — user can login immediately
     } else if (signUpErr) {
       console.warn('signUp error:', signUpErr.message);
       // User might already exist in Auth — check profiles by email
@@ -3882,15 +3883,7 @@ async function saveUser() {
     }
 
     // 3. Reload all profiles from Supabase
-    const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
-    if (allP) {
-      SB_PROFILES = allP;
-      USERS = allP.map(p => ({
-        id: p.id, name: p.name, email: p.email || '', role: p.role,
-        initials: p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
-        color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
-      }));
-    }
+    await _reloadAllProfiles();
 
     closeUserMo(); renderCfg();
     if (authUserId && !authUserId.startsWith('pending_')) {
@@ -3972,12 +3965,30 @@ async function openEditUser(userId) {
       </label>
     </div>
 
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px">
+      <button onclick="_deleteUser('${u.id}','${u.name}')" class="btn btn-sm" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.35);color:var(--red);margin-right:auto">🗑 Eliminar</button>
+      <button onclick="_changeUserPassword('${u.id}','${u.email||u.name}')" class="btn btn-sm" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.35);color:var(--purple)">&#128273; Cambiar contrasena</button>
       <button onclick="document.getElementById('_eu-modal').remove()" class="btn btn-ghost btn-sm">Cancelar</button>
-      <button onclick="_saveEditUser('${u.id}')" class="btn btn-accent btn-sm">💾 Guardar cambios</button>
+      <button onclick="_saveEditUser('${u.id}')" class="btn btn-accent btn-sm">&#128190; Guardar cambios</button>
     </div>
   </div>`;
   document.body.appendChild(div);
+}
+
+async function _reloadAllProfiles() {
+  try {
+    const { data: allP, error } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
+    if (!error && allP) {
+      SB_PROFILES = allP;
+      USERS = allP.map(p => ({
+        id: p.id, name: p.name || '', email: p.email || '', role: p.role || 'viewer',
+        initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
+        color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
+      }));
+      return true;
+    }
+  } catch(e) { console.warn('_reloadAllProfiles error:', e); }
+  return false;
 }
 
 async function _saveEditUser(userId) {
@@ -3985,71 +3996,185 @@ async function _saveEditUser(userId) {
   const permsKeys = ['Dashboard','Proyectos','Actividades','Timeline','Calendario','Reportes','Configuración'];
   const role  = document.getElementById('eu-role')?.value || 'collaborator';
   const isDev = role === 'developer';
-  const mods  = isDev ? allMods : allMods.filter(m => document.getElementById('eu-m-'+m)?.checked);
+
+  // Read modules from checkboxes
+  const mods = isDev ? allMods : allMods.filter(m => {
+    const cb = document.getElementById('eu-m-' + m);
+    return cb ? cb.checked : false;
+  });
+
+  // Read perms from checkboxes
   const perms = {};
   if (isDev) {
     permsKeys.forEach(p => { perms[p] = true; });
     perms.can_delete = true;
   } else {
-    permsKeys.forEach(p => { perms[p] = document.getElementById('eu-p-'+p)?.checked || false; });
-    perms.can_delete = document.getElementById('eu-can-delete')?.checked || false;
+    permsKeys.forEach(p => {
+      const cb = document.getElementById('eu-p-' + p);
+      perms[p] = cb ? cb.checked : false;
+    });
+    const delCb = document.getElementById('eu-can-delete');
+    perms.can_delete = delCb ? delCb.checked : false;
   }
 
-  // Save to Supabase — use .select() to detect if RLS blocked the update (0 rows returned)
-  const { data: updatedRows, error } = await _sb.from('profiles')
-    .update({ role, modules: mods, perms })
-    .eq('id', userId)
-    .select('id, role, modules, perms');
+  const saveBtn = document.querySelector('#_eu-modal .btn-accent');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
 
-  if (error) {
-    notify('⚠ Error al guardar: ' + error.message, true);
-    return;
-  }
+  try {
+    // Step 1: perform the update
+    const { error: updateErr } = await _sb.from('profiles')
+      .update({ role, modules: mods, perms })
+      .eq('id', userId);
 
-  // If RLS blocked the update, updatedRows will be empty array
-  if (!updatedRows || updatedRows.length === 0) {
-    notify('⚠ No se pudo guardar. El SQL de RLS no permite actualizar otros perfiles. Ejecuta el SQL de RLS del archivo developer_role_migration_v2.sql', true);
-    return;
-  }
-
-  // Update local USERS array immediately with confirmed data
-  const u = USERS.find(x => x.id === userId);
-  if (u) { u.role = role; u.modules = mods; u.perms = perms; }
-
-  // Reload all profiles from Supabase
-  async function _reloadUsers() {
-    try {
-      const { data: allP } = await _sb.from('profiles').select('id,name,role,email,avatar_color,modules,perms');
-      if (allP) {
-        SB_PROFILES = allP;
-        USERS = allP.map(p => ({
-          id: p.id, name: p.name || '', email: p.email || '', role: p.role || 'viewer',
-          initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
-          color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
-        }));
-        return true;
-      }
-    } catch(e) {
-      try {
-        const { data: allP2 } = await _sb.from('profiles').select('id,name,role,avatar_color,modules,perms');
-        if (allP2) {
-          SB_PROFILES = allP2;
-          USERS = allP2.map(p => ({
-            id: p.id, name: p.name || '', email: '', role: p.role || 'viewer',
-            initials: (p.name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(),
-            color: p.avatar_color || '#38bdf8', modules: p.modules||[], perms: p.perms||{}
-          }));
-          return true;
-        }
-      } catch(e2) { console.warn('Could not reload profiles:', e2); }
+    if (updateErr) {
+      notify('⚠ Error al guardar: ' + updateErr.message, true);
+      return;
     }
-    return false;
-  }
 
-  await _reloadUsers();
-  document.getElementById('_eu-modal')?.remove();
-  renderCfg();
-  notify('✅ Cambios guardados correctamente en Supabase');
+    // Step 2: verify the update actually persisted by reading the row back
+    const { data: check, error: checkErr } = await _sb.from('profiles')
+      .select('id, role, modules, perms')
+      .eq('id', userId)
+      .single();
+
+    if (checkErr || !check) {
+      notify('⚠ No se pudo verificar el guardado: ' + (checkErr?.message||'sin datos'), true);
+      return;
+    }
+
+    // Compare what we sent vs what's in DB
+    const savedModsMatch = JSON.stringify((check.modules||[]).sort()) === JSON.stringify([...mods].sort());
+    const savedRoleMatch = check.role === role;
+
+    if (!savedRoleMatch || !savedModsMatch) {
+      notify('⚠ RLS bloqueó el guardado. Ejecuta fix_rls_profiles.sql en Supabase SQL Editor.', true);
+      return;
+    }
+
+    // Step 3: update local USERS array with confirmed data from DB
+    const u = USERS.find(x => x.id === userId);
+    if (u) { u.role = check.role; u.modules = check.modules||[]; u.perms = check.perms||{}; }
+
+    // Step 4: reload all profiles to keep everything in sync
+    await _reloadAllProfiles();
+
+    // Step 5: if the edited user IS the currently logged-in user, apply changes immediately
+    if (CURRENT_USER && CURRENT_USER.id === userId) {
+      await _applyProfileUpdate(check);
+    }
+
+    document.getElementById('_eu-modal')?.remove();
+    renderCfg();
+    // Re-render current view so delete buttons and module sidebar update
+    try { renderActs();  } catch(e) {}
+    try { renderProjs(); } catch(e) {}
+    notify('✅ Cambios guardados correctamente en Supabase');
+
+  } catch(e) {
+    console.error('_saveEditUser error:', e);
+    notify('⚠ Error inesperado: ' + e.message, true);
+  } finally {
+    if (saveBtn && saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = '💾 Guardar cambios'; }
+  }
+}
+
+// ── Delete User ─────────────────────────────────────────────────────
+async function _deleteUser(userId, userName) {
+  if (!confirm('¿Eliminar al usuario "' + userName + '"?\n\nEsto eliminara su perfil del sistema. El acceso de autenticacion debe eliminarse manualmente desde Supabase Dashboard > Authentication.')) return;
+  if (!confirm('CONFIRMACION FINAL: Seguro de eliminar a "' + userName + '"? Esta accion no se puede deshacer.')) return;
+
+  try {
+    const { error } = await _sb.from('profiles').delete().eq('id', userId);
+    if (error) { notify('⚠ Error al eliminar perfil: ' + error.message, true); return; }
+    document.getElementById('_eu-modal')?.remove();
+    await _reloadAllProfiles();
+    renderCfg();
+    notify('✅ Perfil de "' + userName + '" eliminado. Recuerda eliminar también el acceso en Supabase → Authentication.');
+  } catch(e) {
+    notify('⚠ Error: ' + e.message, true);
+  }
+}
+
+// ── Change User Password ──────────────────────────────────────────────
+async function _changeUserPassword(userId, userEmailOrName) {
+  // Show inline password change form inside the modal
+  const existing = document.getElementById('_pw-change-section');
+  if (existing) { existing.remove(); return; }
+
+  const section = document.createElement('div');
+  section.id = '_pw-change-section';
+  section.style.cssText = 'margin-top:12px;padding:12px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.3);border-radius:8px';
+  window._pwUID_current = userId;
+  const pwRow = document.createElement('div');
+  pwRow.style.cssText = 'display:flex;gap:8px;align-items:center;margin:8px 0';
+  const pwInput = document.createElement('input');
+  pwInput.type = 'password'; pwInput.id = '_new-pass-input'; pwInput.className = 'fi';
+  pwInput.placeholder = 'Nueva contrasena (min. 6 caracteres)';
+  pwInput.style.flex = '1';
+  const pwSave = document.createElement('button');
+  pwSave.className = 'btn btn-accent btn-sm'; pwSave.textContent = 'Guardar';
+  pwSave.onclick = function() { _submitPasswordChange(window._pwUID_current); };
+  const pwClose = document.createElement('button');
+  pwClose.className = 'btn btn-ghost btn-sm'; pwClose.textContent = '✕';
+  pwClose.onclick = function() { document.getElementById('_pw-change-section').remove(); };
+  pwRow.appendChild(pwInput); pwRow.appendChild(pwSave); pwRow.appendChild(pwClose);
+  const pwTitle = document.createElement('div');
+  pwTitle.style.cssText = 'font-size:11px;color:var(--purple);font-weight:700;margin-bottom:8px';
+  pwTitle.textContent = 'Nueva contrasena para: ' + userEmailOrName;
+  const pwNote = document.createElement('div');
+  pwNote.style.cssText = 'font-size:10px;color:var(--text2);margin-top:6px';
+  pwNote.textContent = 'Nota: Para cambiar contrasena de otro usuario se enviara un email de reseteo.';
+  section.appendChild(pwTitle); section.appendChild(pwRow); section.appendChild(pwNote);
+  // Insert before the footer buttons
+  const modal = document.getElementById('_eu-modal');
+  if (modal) {
+    const footer = modal.querySelector('[style*="justify-content:flex-end"]');
+    if (footer) footer.before(section);
+    else modal.querySelector('div > div').appendChild(section);
+  }
+}
+
+async function _submitPasswordChange(userId) {
+  const uid = userId || window._pwUID_current;
+  if (!uid) { notify('⚠ Error: ID de usuario no encontrado', true); return; }
+  const pass = document.getElementById('_new-pass-input')?.value?.trim();
+  if (!pass || pass.length < 6) { notify('⚠ La contrasena debe tener al menos 6 caracteres', true); return; }
+
+  const saveBtn = document.querySelector('#_pw-change-section button.btn-accent');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
+
+  try {
+    if (CURRENT_USER && CURRENT_USER.id === uid) {
+      // Changing own password — works directly via Supabase JS
+      const { error } = await _sb.auth.updateUser({ password: pass });
+      if (error) { notify('⚠ Error: ' + error.message, true); return; }
+    } else {
+      // Changing another user's password — requires Edge Function with service_role
+      const { data: { session } } = await _sb.auth.getSession();
+      if (!session) { notify('⚠ Sesion expirada. Recarga la pagina.', true); return; }
+
+      const resp = await fetch(SB_URL + '/functions/v1/change-user-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.access_token,
+          'apikey': SB_KEY
+        },
+        body: JSON.stringify({ userId: uid, newPassword: pass })
+      });
+      const result = await resp.json();
+      if (!resp.ok || !result.success) {
+        notify('⚠ Error: ' + (result.error || 'No se pudo cambiar la contrasena'), true);
+        return;
+      }
+    }
+    document.getElementById('_pw-change-section')?.remove();
+    notify('✅ Contrasena actualizada correctamente. El usuario puede iniciar sesion con la nueva contrasena.');
+  } catch(e) {
+    notify('⚠ Error inesperado: ' + e.message, true);
+  } finally {
+    if (saveBtn && saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar'; }
+  }
 }
 
 // ── New Project ─────────────────────────────────────────────────────
@@ -4295,7 +4420,7 @@ function _DISABLED_saveAct_sync() {
 
   if (est === 'REPROGRAMADA') {
     const det = document.getElementById('m-repdet').value.trim();
-    if (det) { detRep = (detRep ? detRep + '\n' : '') + `[${tds()}] ` + det; cntRep++; }
+    if (det) { detRep = (detRep ? detRep + '\n' : '') + '[' + tds() + '] ' + det; cntRep++; }
     // REPROGRAMADA: keep original FECHA FIN unchanged (for period reports), only set NUEVA FECHA DE CIERRE
     // DO NOT replace newFin (FECHA FIN) — keep the original planned date
     finalEst = 'REPROGRAMADA'; // Keep REPROGRAMADA state (don't change to EN CURSO)
@@ -5726,7 +5851,7 @@ function renderDrawerComments(actId) {
   const el = document.getElementById('dr-cmts-thread'); if (!el) return;
   const avColors = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308'];
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   if (!r.comments || !r.comments.length) {
     el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:12px">Sin comentarios aún.</div>';
     // Still setup mentions on the editor
@@ -5842,7 +5967,7 @@ function editComment(actId, cmtId) {
 }
 
 function deleteComment(actId, cmtId) {
-  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar comentarios', true); return; }
+  if (CURRENT_USER?.role !== 'developer' && CURRENT_USER?.perms?.can_delete !== true) { notify('⚠ No tienes permiso para eliminar comentarios', true); return; }
   if (!confirm('¿Eliminar este comentario?')) return;
   const r = get().find(a => String(a._id) === String(actId)); if (!r) return;
   const idx = r.comments?.findIndex(x => String(x.id) === String(cmtId));
@@ -6075,7 +6200,7 @@ function _DISABLED_openProjDr_v1(proj) {
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -6235,7 +6360,7 @@ async function initSession(authUser) {
               btn.innerHTML = `<span class="mod-dot" style="background:${mod.color||'#38bdf8'}"></span><span class="mod-txt">${mod.nombre}</span>`;
               btn.onclick = function() { switchMod(mod.key, this); };
               if (extraMods) extraMods.appendChild(btn);
-              if (['developer','admin'].includes(CURRENT_USER.role) && !CURRENT_USER.modules.includes(mod.key)) {
+              if (CURRENT_USER.role === 'developer' && !CURRENT_USER.modules.includes(mod.key)) {
                 CURRENT_USER.modules.push(mod.key);
               }
             }
@@ -6249,7 +6374,7 @@ async function initSession(authUser) {
 
     // 6. Pick first accessible module and load data
     const allModKeys = Object.keys(MOD_LBL);
-    const accessibleMods = ['developer','admin'].includes(CURRENT_USER.role)
+    const accessibleMods = CURRENT_USER.role === 'developer'
       ? allModKeys
       : allModKeys.filter(k => CURRENT_USER.modules.includes(k));
     const initMod = accessibleMods[0] || CURRENT_USER.modules[0] || 'automatizacion';
@@ -6336,15 +6461,21 @@ function applyUserToUI() {
 function applyPermissions() {
   if (!CURRENT_USER) return;
   const { role, modules, perms } = CURRENT_USER;
-  const isSuperUser = ['developer','admin'].includes(role);
-  // For ALL module buttons (builtin + dynamic), show only those the user has access to
+  // Only 'developer' bypasses module restrictions — all other roles use their modules array
+  const isDeveloper = role === 'developer';
+  const isSuperUI   = isDeveloper; // for UI elements like "New Module" button
+
+  // Module sidebar buttons: show only modules the user has access to
   document.querySelectorAll('.mod-btn').forEach(btn => {
     const id = btn.id || '';
+    if (id === 'btn-new-mod') return; // handled separately below
     const keyMap = { 'mod-auto':'automatizacion', 'mod-inv':'investigaciones', 'mod-cam':'cambios' };
     const key = keyMap[id] || id.replace(/^mod-/, '');
     if (!key) return;
-    btn.style.display = (isSuperUser || modules.includes(key)) ? 'flex' : 'none';
+    btn.style.display = (isDeveloper || modules.includes(key)) ? 'flex' : 'none';
   });
+
+  // Nav items: show based on perms, config only for developer
   const navPerms = {
     "goPage('inicio'":"Dashboard",
     "goPage('mis-tareas'":"Actividades",
@@ -6355,23 +6486,22 @@ function applyPermissions() {
     const oc = btn.getAttribute('onclick')||'';
     for (const [match, perm] of Object.entries(navPerms)) {
       if (oc.includes(match)) {
-        // Only developer can see Configuración by default; admin/collaborator/viewer only if perm set
-        // But admin, collaborator, viewer should NOT see Configuración nav item
         if (perm === 'Configuración') {
-          btn.style.display = role === 'developer' ? 'flex' : 'none';
+          btn.style.display = isDeveloper ? 'flex' : 'none';
         } else {
-          btn.style.display = (isSuperUser || perms[perm]===true) ? 'flex' : 'none';
+          btn.style.display = (isDeveloper || perms[perm]===true) ? 'flex' : 'none';
         }
         break;
       }
     }
   });
+
   // Hide "Nueva Actividad" for viewers
   document.querySelectorAll('[onclick="openModal()"]').forEach(btn => {
     btn.style.display = role==='viewer' ? 'none' : 'inline-flex';
   });
   const btnNewMod = document.getElementById('btn-new-mod');
-  if (btnNewMod) btnNewMod.style.display = isSuperUser ? 'flex' : 'none';
+  if (btnNewMod) btnNewMod.style.display = isSuperUI ? 'flex' : 'none';
   // Show/hide backup nav based on role (developer always sees it)
   const bkNav = document.getElementById('cfg-nav-backup');
   if (bkNav) bkNav.style.display = (role === 'developer') ? 'inline-flex' : 'none';
@@ -6667,7 +6797,7 @@ function inlineEditField(cell, field, actId, proj) {
 // Kanban drag-and-drop state
 let _dragActId = null;
 
-function buildProjKanban(projs, isAdmin) {
+function buildProjKanban(projs, isAdmin, canDelete) { canDelete = canDelete ?? (CURRENT_USER?.perms?.can_delete===true);
   const COLS = [
     { key:'PLANIFICADA',  label:'Planificadas', color:'var(--text2)',   bg:'rgba(139,148,158,.12)' },
     { key:'EN CURSO',     label:'En Curso',     color:'var(--accent)',  bg:'rgba(56,189,248,.08)' },
@@ -6838,12 +6968,69 @@ function subscribeRealtime() {
     })
     .subscribe();
 
-  REALTIME_SUBS = [actSub, cmtSub, modSub];
+  // Subscribe to profile changes for THIS user
+  const profSub = _sb.channel('profiles-changes')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles',
+      filter: `id=eq.${CURRENT_USER?.id}`
+    }, async payload => {
+      const updated = payload.new;
+      if (!updated || !CURRENT_USER) return;
+      await _applyProfileUpdate(updated);
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub];
+
+  // Polling fallback: re-check own profile every 30s in case Realtime misses the event
+  _startProfilePolling();
+}
+
+// Shared logic to apply a profile update to the current session
+async function _applyProfileUpdate(updated) {
+  if (!CURRENT_USER || !updated) return;
+  const changed = (
+    JSON.stringify(CURRENT_USER.modules) !== JSON.stringify(updated.modules) ||
+    JSON.stringify(CURRENT_USER.perms)   !== JSON.stringify(updated.perms)   ||
+    CURRENT_USER.role !== updated.role
+  );
+  if (!changed) return;
+  CURRENT_USER.role    = updated.role    || CURRENT_USER.role;
+  CURRENT_USER.modules = updated.modules || [];
+  CURRENT_USER.perms   = updated.perms   || {};
+  await _reloadAllProfiles();
+  applyUserToUI();
+  applyPermissions();
+  try { renderActs();  } catch(e) {}
+  try { renderProjs(); } catch(e) {}
+  try { renderDash();  } catch(e) {}
+  notify('🔄 Tus permisos fueron actualizados. Cambios aplicados.');
+}
+
+let _profilePollTimer = null;
+function _startProfilePolling() {
+  if (_profilePollTimer) clearInterval(_profilePollTimer);
+  _profilePollTimer = setInterval(async () => {
+    if (!CURRENT_USER) return;
+    try {
+      const { data, error } = await _sb.from('profiles')
+        .select('id, role, modules, perms')
+        .eq('id', CURRENT_USER.id)
+        .single();
+      if (!error && data) await _applyProfileUpdate(data);
+    } catch(e) { /* silent */ }
+  }, 30000); // every 30 seconds
+}
+function _stopProfilePolling() {
+  if (_profilePollTimer) { clearInterval(_profilePollTimer); _profilePollTimer = null; }
 }
 
 function unsubscribeRealtime() {
   REALTIME_SUBS.forEach(s => _sb.removeChannel(s));
   REALTIME_SUBS = [];
+  _stopProfilePolling();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -7176,7 +7363,7 @@ async function markDone(id) {
 
 // delAct — admin only, persist to Supabase
 async function delAct(id) {
-  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar actividades', true); return; }
+  if (CURRENT_USER?.role !== 'developer' && CURRENT_USER?.perms?.can_delete !== true) { notify('⚠ No tienes permiso para eliminar actividades', true); return; }
   const r = get().find(a => a._id === id); if (!r) return;
   if (!confirm('¿Eliminar esta actividad? Se moverá a la papelera y podrás recuperarla.')) return;
   // Soft-delete: mark modulo as _deleted_
@@ -7255,7 +7442,7 @@ async function duplicateProject(proj) {
 }
 
 async function deleteProject(proj) {
-  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar proyectos', true); return; }
+  if (CURRENT_USER?.role !== 'developer' && CURRENT_USER?.perms?.can_delete !== true) { notify('⚠ No tienes permiso para eliminar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
   if (!confirm(`¿Eliminar el proyecto "${proj}" con ${acts.length} actividades?\n\nSe moverá a la papelera y podrás recuperarlo desde Configuración → Recuperación.`)) return;
 
@@ -7470,7 +7657,7 @@ function _DISABLED_openActDr_v2(id) {
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -7553,7 +7740,7 @@ function _DISABLED_openProjDr_v2(proj) {
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   document.getElementById('dr-title').textContent = 'Detalle de Proyecto';
   document.getElementById('dr-body').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
@@ -7876,7 +8063,7 @@ function setProjView(v) {
 const _origRenderProjs = renderProjs;
 function renderProjs() {
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   const srch  = (document.getElementById('p-srch')?.value   || '').toLowerCase();
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
@@ -7947,15 +8134,15 @@ function renderProjs() {
 
     if (PROJ_VIEW === 'card') {
       html += `<div class="projs-grid" style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
-      html += plantProjs.map(p => buildProjCard(p, isAdmin)).join('');
+      html += plantProjs.map(p => buildProjCard(p, isAdmin, canDelete)).join('');
       html += '</div>';
     } else if (PROJ_VIEW === 'list') {
       html += `<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">`;
-      html += plantProjs.map(p => buildProjListRow(p, isAdmin)).join('');
+      html += plantProjs.map(p => buildProjListRow(p, isAdmin, canDelete)).join('');
       html += '</div>';
     } else {
       // Kanban view
-      html += buildProjKanban(plantProjs, isAdmin);
+      html += buildProjKanban(plantProjs, isAdmin, canDelete);
     }
     html += '</div>';
   });
@@ -7963,7 +8150,7 @@ function renderProjs() {
   container.innerHTML = html;
 }
 
-function buildProjCard(p, isAdmin) {
+function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURRENT_USER?.perms?.can_delete===true);
   const a = get().filter(r => r.PROYECTO === p);
   const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
   const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
@@ -8015,7 +8202,7 @@ function buildProjCard(p, isAdmin) {
   </div>`;
 }
 
-function buildProjListRow(p, isAdmin) {
+function buildProjListRow(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURRENT_USER?.perms?.can_delete===true);
   const a = get().filter(r => r.PROYECTO === p);
   const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
   const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
@@ -8551,7 +8738,7 @@ function openProjDr(proj) {
   const col  = pcol(proj), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const plant = [...new Set(acts.map(r=>r.PLANTA).filter(Boolean))].map(p=>p.replace('PLANTA ','')).join(', ');
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
   // Stable order: respect saved custom order, fallback to code sort
   const actsOrdered = getOrderedActs(proj);
@@ -8717,7 +8904,7 @@ function openActDr(id) {
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
-  const canDelete = isAdmin || (CURRENT_USER?.perms?.can_delete === true);
+  const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
@@ -9684,7 +9871,7 @@ function addCustomField() {
 }
 
 function deleteCustomField(idx) {
-  if (!['developer','admin'].includes(CURRENT_USER?.role) && !CURRENT_USER?.perms?.can_delete) { notify('⚠ No tienes permiso para eliminar columnas', true); return; }
+  if (CURRENT_USER?.role !== 'developer' && CURRENT_USER?.perms?.can_delete !== true) { notify('⚠ No tienes permiso para eliminar columnas', true); return; }
   if (!CUSTOM_FIELDS[ACTIVE]) return;
   if (!confirm('¿Eliminar esta columna personalizada? Se perderán los datos asociados.')) return;
   CUSTOM_FIELDS[ACTIVE].splice(idx, 1);
@@ -10093,8 +10280,18 @@ function bkTab(id, btn) {
 }
 
 // ── Stats computation ─────────────────────────────────────────────────
-function bkRefreshStats() {
+async function bkRefreshStats() {
+  // Load ALL modules from Supabase so stats and backup are complete
   const modKeys = Object.keys(MOD_LBL);
+  const unloaded = modKeys.filter(k => !MS[k] || MS[k].acts === null);
+
+  if (unloaded.length > 0) {
+    document.getElementById('bk-stat-acts').textContent = '⏳';
+    document.getElementById('bk-stat-size').textContent = 'Cargando…';
+    // Load unloaded modules in parallel
+    await Promise.all(unloaded.map(k => loadModFromDB(k).catch(e => console.warn('bk load error', k, e))));
+  }
+
   let totalActs = 0, allPlants = new Set(), allProjs = new Set();
   modKeys.forEach(k => {
     const acts = (MS[k] && MS[k].acts) ? MS[k].acts.filter(a => !String(a.PROYECTO||'').startsWith('_deleted_proj_')) : [];
@@ -10172,6 +10369,14 @@ async function bkExport(silent = false) {
   if (prog) { prog.style.display = 'block'; if(bar) bar.style.width = '0%'; }
 
   try {
+    // Load ALL selected modules from Supabase before building the payload
+    // This ensures the backup contains complete data, not just the active module
+    const unloaded = selectedMods.filter(k => !MS[k] || MS[k].acts === null);
+    if (unloaded.length > 0) {
+      if(!silent) notify('⏳ Cargando datos de todos los módulos…');
+      await Promise.all(unloaded.map(k => loadModFromDB(k).catch(e => console.warn('bk export load error', k, e))));
+    }
+
     await new Promise(r => setTimeout(r, 80));
     if(bar) bar.style.width = '30%';
 
@@ -10576,13 +10781,21 @@ function bkConnectOneDrive() {
     if (cfg.lfreq === 'daily')  shouldRun = !last || (now - last) > 23*3600*1000;
     if (cfg.lfreq === 'weekly') shouldRun = !last || (now - last) > 6*24*3600*1000;
     if (!shouldRun) return;
-    // Run after app is initialized
-    setTimeout(() => {
-      bkExport(true);
-      cfg.last_local = now.toISOString();
-      localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfg));
-      notify('🔄 Backup automático ejecutado');
-    }, 3000);
+    // Run after app is initialized — delay to ensure login + initial module load complete
+    setTimeout(async () => {
+      try {
+        // Load ALL modules before the scheduled backup
+        const modKeys = Object.keys(MOD_LBL);
+        const unloaded = modKeys.filter(k => !MS[k] || MS[k].acts === null);
+        if (unloaded.length > 0) {
+          await Promise.all(unloaded.map(k => loadModFromDB(k).catch(() => {})));
+        }
+        await bkExport(true);
+        cfg.last_local = now.toISOString();
+        localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfg));
+        notify('🔄 Backup automático ejecutado correctamente');
+      } catch(e) { console.warn('Auto backup error:', e); }
+    }, 5000); // 5s delay to let app fully initialize
   } catch(e) {}
 })();
 
