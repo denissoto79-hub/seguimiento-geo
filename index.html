@@ -4371,6 +4371,12 @@ function openModal(id = null) {
   tmpST  = JSON.parse(JSON.stringify(r.subtasks  || [])); // deep clone — never share reference
   tmpCmt = JSON.parse(JSON.stringify(r.comments  || []));
   tmpAtt = JSON.parse(JSON.stringify(r.attachments|| []));
+  // Resolve signed URLs for existing Storage attachments (async, non-blocking)
+  tmpAtt.forEach(a => {
+    if (a.storageKey && !a.url) {
+      _getAttachmentUrl(a.storageKey).then(url => { if (url) { a.url = url; renderAtts(); } });
+    }
+  });
   window._CURRENT_ACT_SUBTASKS = tmpST;
   // Auto-generate monthly subtasks if new activity (no id) and date range > 1 month
   if (id === null || !r._dbid) {
@@ -4726,12 +4732,57 @@ function renderCmts() {
   el.innerHTML = tmpCmt.map(c =>
     `<div class="cmt-row"><div class="cmt-av">${c.user[0]}</div><div class="cmt-b"><div class="cmt-m">${c.user} · ${c.ts}</div><div class="cmt-t">${c.text}</div></div></div>`).join('');
 }
-function handleAtt(e) { [...e.target.files].forEach(f => { tmpAtt.push({ id:Date.now(), name:f.name, size:f.size, url:URL.createObjectURL(f) }); }); renderAtts(); }
+function handleAtt(e) {
+  const files = [...e.target.files];
+  files.forEach(f => {
+    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    const isImg = f.type.startsWith('image/');
+    const entry = { id: uid, name: f.name, size: f.size, type: f.type, isImg, _pending: true };
+    tmpAtt.push(entry);
+    renderAtts();
+    // Upload to Supabase Storage async
+    (async () => {
+      try {
+        const blob = isImg ? await _compressImage(f) : f;
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g,'_').substring(0,80);
+        const actId = editingId || 'new';
+        const storageKey = (ACTIVE||'gen') + '/act/' + actId + '/' + uid + '_' + safeName;
+        const { error } = await _sb.storage.from(_ATT_BUCKET).upload(storageKey, blob, {
+          contentType: isImg ? 'image/webp' : f.type, upsert: true
+        });
+        if (!error) {
+          entry.storageKey = storageKey;
+          entry.size = blob.size;
+          entry.type = isImg ? 'image/webp' : f.type;
+          // Get signed URL for immediate "Ver"
+          const { data } = await _sb.storage.from(_ATT_BUCKET).createSignedUrl(storageKey, 60*60*24*365);
+          if (data?.signedUrl) { entry.url = data.signedUrl; _ATT_URL_CACHE[storageKey] = data.signedUrl; }
+        } else {
+          // Fallback: keep blob URL for this session only
+          entry.url = URL.createObjectURL(blob);
+          console.warn('Act attachment upload failed:', error.message);
+        }
+        entry._pending = false;
+        renderAtts();
+      } catch(err) { entry._pending = false; renderAtts(); }
+    })();
+  });
+  e.target.value = '';
+}
+
 function renderAtts() {
   const el = document.getElementById('att-list');
   if (!tmpAtt.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text2);text-align:center;padding:12px">Sin adjuntos</div>'; return; }
-  el.innerHTML = tmpAtt.map(a =>
-    `<div class="att-row"><span style="font-size:13px">📎</span><span class="att-name">${a.name}</span><span class="att-sz">${(a.size/1024).toFixed(1)} KB</span><a href="${a.url}" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none">Ver</a></div>`).join('');
+  el.innerHTML = tmpAtt.map(a => {
+    const sz = (a.size/1024).toFixed(1);
+    const icon = a.isImg ? '🖼' : '📎';
+    const status = a._pending ? ' <span style="font-size:9px;color:var(--text2)">⏳</span>' : '';
+    const verBtn = a.url
+      ? `<a href="${a.url}" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none">Ver</a>`
+      : (a.storageKey ? `<span style="font-size:9px;color:var(--text2)">✓ Storage</span>` : '');
+    const delBtn = `<button onclick="tmpAtt=tmpAtt.filter(x=>x.id!=='${a.id}');if(${JSON.stringify(!!a.storageKey)})_deleteAttachmentFromStorage('${a.storageKey||''}');renderAtts();" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 4px">×</button>`;
+    return `<div class="att-row"><span style="font-size:13px">${icon}</span><span class="att-name">${a.name}</span>${status}<span class="att-sz">${sz} KB</span>${verBtn}${delBtn}</div>`;
+  }).join('');
 }
 
 // ── Drawers ─────────────────────────────────────────────────────────
@@ -6808,7 +6859,12 @@ async function saveActToDB(obj, existingDbId) {
     detalle_reprog:     obj['DETALLE DE REPROGRAMACION']   || '',
     nueva_fecha_cierre: obj['NUEVA FECHA DE CIERRE']       || null,
     subtasks:    obj.subtasks    || [],
-    attachments: obj.attachments || [],
+    // Guardar solo metadatos en DB — no URLs temporales de blob
+    attachments: (obj.attachments || []).map(a => ({
+      id: a.id, name: a.name, size: a.size, type: a.type, isImg: a.isImg || false,
+      storageKey: a.storageKey || null
+      // 'url' se omite — se genera firmada en tiempo real desde storageKey
+    })),
     updated_at:  new Date().toISOString(),
     created_by:  CURRENT_USER?.id || null,
   };
