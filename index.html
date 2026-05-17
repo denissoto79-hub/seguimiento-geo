@@ -1202,7 +1202,13 @@ tr:hover .act-btns { opacity:1 }
               </label>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
+                <input type="checkbox" id="bk-inc-attachments" checked style="accent-color:var(--accent)"> Adjuntos e imágenes (Supabase Storage)
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
               <button class="btn btn-accent btn-sm" onclick="bkExport()">⬇ Descargar Backup (.sgbackup)</button>
+              <button class="btn btn-sm" onclick="bkExportStorageManifest()" title="Genera un manifiesto JSON con todas las URLs de adjuntos en Supabase Storage" style="font-size:11px">📦 Manifiesto de Adjuntos</button>
               <div style="font-size:10px;color:var(--text2)">Formato JSON estructurado · Compatible con importación</div>
             </div>
             <div class="bk-progress" id="bk-export-progress" style="display:none"><div class="bk-progress-bar" id="bk-export-bar" style="width:0%"></div></div>
@@ -5583,134 +5589,259 @@ function cmtHandleAttach(actId, input) {
   if (!files.length) return;
   if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
   const preview = document.getElementById('dr-attach-preview-' + actId);
+
   files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const isImg = file.type.startsWith('image/');
-      if (isImg) {
-        // Compress to max 800px / 72% quality — reduces 2MB→~120KB
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 800, ratio = Math.min(MAX/img.width, MAX/img.height, 1);
-          const canvas = document.createElement('canvas');
-          canvas.width  = Math.round(img.width  * ratio);
-          canvas.height = Math.round(img.height * ratio);
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          const compressed = canvas.toDataURL('image/jpeg', 0.72);
-          const attach = { name: file.name, type: 'image/jpeg', data: compressed, isImg: true };
-          if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
-          window._pendingAttachments[actId].push(attach);
-          if (preview) {
-            const item = document.createElement('div');
-            item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
-            item.innerHTML = `<img src="${compressed}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:zoom-in" onclick="openImgLightbox('${compressed}','${file.name.replace(/'/g,'')}')">`
-              + `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
-              + `<button onclick="this.parentNode.remove();const pa=window._pendingAttachments['${actId}'];if(pa){const i=pa.findIndex(a=>a.name==='${file.name.replace(/'/g,'')}');if(i>=0)pa.splice(i,1);}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
-            preview.appendChild(item);
+    const isImg  = file.type.startsWith('image/');
+    const uid    = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    // Placeholder attachment with pending state
+    const attach = { name: file.name, type: file.type, isImg, _uid: uid, _pending: true };
+    if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
+    window._pendingAttachments[actId].push(attach);
+
+    // Build preview item immediately (with upload spinner)
+    const item = document.createElement('div');
+    item.id = 'att-prev-' + uid;
+    item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:200px;position:relative';
+    const iconHtml = isImg ? '<span style="font-size:14px">🖼</span>' : '<span style="font-size:14px">📄</span>';
+    item.innerHTML = iconHtml
+      + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">' + file.name + '</span>'
+      + '<span id="att-status-' + uid + '" style="font-size:9px;color:var(--text2)">⏳</span>'
+      + '<button onclick="this.closest(\'div\').remove();const pa=window._pendingAttachments[\'' + actId + '\'];if(pa){const i=pa.findIndex(a=>a._uid===\'' + uid + '\');if(i>=0)pa.splice(i,1);}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>';
+    if (preview) preview.appendChild(item);
+
+    // Upload to Supabase Storage async — does not block UI
+    (async () => {
+      try {
+        let blob = file;
+        let previewSrc = null;
+        if (isImg) {
+          blob = await _compressImage(file);
+          previewSrc = URL.createObjectURL(blob);
+          // Show thumbnail in preview
+          const prevItem = document.getElementById('att-prev-' + uid);
+          if (prevItem) {
+            const iconEl = prevItem.querySelector('span:first-child');
+            if (iconEl) {
+              const thumbImg = document.createElement('img');
+              thumbImg.src = previewSrc;
+              thumbImg.style.cssText = 'width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:zoom-in;flex-shrink:0';
+              thumbImg.onclick = () => resolveAttachmentUrl(attach).then(u => openImgLightbox(u, file.name)).catch(() => {});
+              iconEl.replaceWith(thumbImg);
+            }
           }
-        };
-        img.src = ev.target.result;
-      } else {
-        const attach = { name: file.name, type: file.type, data: ev.target.result, isImg: false };
-        if (!window._pendingAttachments[actId]) window._pendingAttachments[actId] = [];
-        window._pendingAttachments[actId].push(attach);
-        if (preview) {
-          const item = document.createElement('div');
-          item.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;max-width:180px';
-          item.innerHTML = `<span style="font-size:14px">📄</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)">${file.name}</span>`
-            + `<button onclick="this.parentNode.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">×</button>`;
-          preview.appendChild(item);
         }
+        const r    = get().find(a => a._id == actId);
+        const dbId = r?._dbid || actId;
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 80);
+        const storageKey = (ACTIVE || 'gen') + '/' + dbId + '/pending/' + uid + '_' + safeName;
+        const { error } = await _sb.storage.from(_ATT_BUCKET).upload(storageKey, blob, {
+          contentType: isImg ? 'image/webp' : file.type, upsert: true
+        });
+        const statusEl = document.getElementById('att-status-' + uid);
+        if (error) {
+          console.warn('Attach upload error:', error.message);
+          // Fallback: keep blob as object URL for session (no base64 in localStorage)
+          if (isImg && previewSrc) { attach.data = previewSrc; } // temporary URL
+          attach._pending = false;
+          if (statusEl) { statusEl.textContent = '⚠'; statusEl.title = 'Upload fallido — se guardará localmente'; }
+        } else {
+          attach.storageKey = storageKey;
+          attach.size = blob.size;
+          attach.type = isImg ? 'image/webp' : file.type;
+          attach._pending = false;
+          if (previewSrc) URL.revokeObjectURL(previewSrc);
+          if (statusEl) { statusEl.textContent = '✓'; statusEl.style.color = 'var(--green, #22c55e)'; }
+        }
+      } catch(e) {
+        console.warn('cmtHandleAttach upload error:', e);
+        const statusEl = document.getElementById('att-status-' + uid);
+        if (statusEl) statusEl.textContent = '⚠';
+        attach._pending = false;
       }
-    };
-    reader.readAsDataURL(file);
+    })();
   });
   input.value = '';
 }
 
-function addDrawerComment(actId) {
+async function addDrawerComment(actId) {
   const el = document.getElementById('dr-cmt-inp'); if (!el) return;
   const txt = el.innerHTML.trim();
   const plainTxt = el.innerText.trim();
-  if (!plainTxt && !(window._pendingAttachments?.[actId]?.length)) return;
+  const pending = window._pendingAttachments?.[actId] || [];
+  if (!plainTxt && !pending.length) return;
   const r = get().find(a => a._id == actId || a._id === actId); if (!r) return;
   if (!r.comments) r.comments = [];
   const usr = CURRENT_USER || USERS.find(u => ['developer','admin'].includes(u.role)) || USERS[0];
-  const attachments = window._pendingAttachments?.[actId] || [];
-  const cmt = { id: Date.now(), user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments: [...attachments] };
-  // Persist attachments in global store — survives navigation/view changes
-  if (attachments.length) storeCmtAttachments(cmt.id, [...attachments]);
+  const cmtId = Date.now();
+  const attachments = [...pending];
+  const cmt = { id: cmtId, user: usr?.name || 'Admin', text: txt, ts: tsNow(), attachments };
+  if (attachments.length) storeCmtAttachments(cmtId, attachments);
   r.comments.push(cmt);
-  // Clear
+  // Clear input + pending
   el.innerHTML = '';
   if (window._pendingAttachments) window._pendingAttachments[actId] = [];
   const preview = document.getElementById('dr-attach-preview-' + actId);
   if (preview) preview.innerHTML = '';
-  // Save to DB
-  const htmlTxt = txt;
+  // Render immediately
+  renderDrawerComments(actId);
+  // Save to DB — then rename Storage paths from pending/ to cmtId/
   if (r._dbid) {
-    saveCommentToDB(r._dbid, htmlTxt).then(data => {
-      if (data) { cmt._dbid = data.id; }
+    saveCommentToDB(r._dbid, txt).then(async data => {
+      if (data) {
+        cmt._dbid = data.id;
+        // Rename storage paths: pending/<uid>_name → <cmtId>/<uid>_name
+        const toRename = attachments.filter(a => a.storageKey?.includes('/pending/'));
+        if (toRename.length) {
+          await Promise.all(toRename.map(async att => {
+            try {
+              const newKey = att.storageKey.replace('/pending/', '/' + cmtId + '/');
+              const { error } = await _sb.storage.from(_ATT_BUCKET).move(att.storageKey, newKey);
+              if (!error) {
+                att.storageKey = newKey;
+                delete _ATT_URL_CACHE[att.storageKey]; // invalidate old URL
+              }
+            } catch(e) { console.warn('Storage rename error:', e); }
+          }));
+          storeCmtAttachments(cmtId, attachments); // update metadata with new paths
+        }
+        // Persist attachment metadata in the comment row
+        if (attachments.length) {
+          const meta = attachments.map(a => ({ name:a.name, type:a.type, isImg:a.isImg, storageKey:a.storageKey||null, size:a.size||null }));
+          await _sb.from('comentarios').update({ attachments_meta: meta }).eq('id', data.id).catch(()=>{});
+        }
+      }
     });
   }
   // Mentions
   const mentions = plainTxt.match(/@(\S+)/g);
   if (mentions) mentions.forEach(m => addNotif('mention', `Te mencionaron en "${(r.ACTIVIDAD||'').substring(0,25)}…": ${plainTxt.substring(0,40)}`, actId));
   addNotif('comment', `Nuevo comentario en "${(r.ACTIVIDAD||'').substring(0,25)}…"`, actId);
-  renderDrawerComments(actId);
 }
 
-// ── Attachment store — localStorage persistence ───────────────────────
-// localStorage persists across page refreshes AND tab changes, unlike sessionStorage.
-// Base64 images are compressed to ~80-150KB so localStorage (5-10MB limit) can hold
-// dozens of images. Keys: _cmtAtt_<commentId>
-const _CMT_LS_PREFIX = '_cmtAtt_';
+// ════════════════════════════════════════════════════════════════
+// ATTACHMENT STORE — Supabase Storage (primary) + localStorage (fallback)
+// ════════════════════════════════════════════════════════════════
+// Strategy:
+//   1. Images   → compressed WebP/JPEG → Supabase Storage bucket "adjuntos"
+//   2. Docs     → Supabase Storage bucket "adjuntos"
+//   3. Metadata → stored as JSON in comment row (tabla comentarios, column attachments_meta)
+//   4. localStorage → in-memory URL cache + fallback for offline
+//
+// File path in bucket: <moduleKey>/<actDbId>/<cmtId>/<uuid>_<sanitizedName>
+// Public URLs are signed (1 year TTL) or public depending on bucket policy.
+// ════════════════════════════════════════════════════════════════
 
+const _CMT_LS_PREFIX  = '_cmtAtt_';    // legacy key prefix (kept for migration)
+const _ATT_BUCKET     = 'adjuntos';    // Supabase Storage bucket name
+const _ATT_URL_CACHE  = {};            // { storageKey: signedUrl } — session cache
+const _ATT_IMG_MAX_PX = 1200;         // max dimension for images (px) — better than 800
+const _ATT_IMG_QUALITY = 0.80;        // WebP quality — better quality/size ratio than JPEG 0.72
+
+// ── Compress image before upload ──────────────────────────────────────
+function _compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio  = Math.min(_ATT_IMG_MAX_PX / img.width, _ATT_IMG_MAX_PX / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(blob || file), 'image/webp', _ATT_IMG_QUALITY);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+// ── Upload one attachment to Supabase Storage ─────────────────────────
+// Returns: { storageKey, name, type, size, isImg } or null on failure
+async function _uploadAttachmentToStorage(file, moduleKey, actDbId, cmtId) {
+  try {
+    const isImg  = file.type.startsWith('image/');
+    const blob   = isImg ? await _compressImage(file) : file;
+    const ext    = isImg ? 'webp' : (file.name.split('.').pop() || 'bin');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 80);
+    const uid    = (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)).toUpperCase();
+    const storageKey = `${moduleKey || 'gen'}/${actDbId || '0'}/${cmtId}/${uid}_${safeName}`;
+    const { error } = await _sb.storage.from(_ATT_BUCKET).upload(storageKey, blob, {
+      contentType: isImg ? 'image/webp' : file.type,
+      upsert: false
+    });
+    if (error) { console.warn('Storage upload error:', error.message); return null; }
+    return { storageKey, name: file.name, type: isImg ? 'image/webp' : file.type,
+             size: blob.size, isImg };
+  } catch(e) { console.warn('_uploadAttachmentToStorage error:', e); return null; }
+}
+
+// ── Get a usable URL for a stored attachment ──────────────────────────
+// Uses 1-year signed URLs cached in memory for the session.
+async function _getAttachmentUrl(storageKey) {
+  if (!storageKey) return null;
+  if (_ATT_URL_CACHE[storageKey]) return _ATT_URL_CACHE[storageKey];
+  try {
+    const { data, error } = await _sb.storage.from(_ATT_BUCKET)
+      .createSignedUrl(storageKey, 60 * 60 * 24 * 365); // 1 year TTL
+    if (error || !data?.signedUrl) return null;
+    _ATT_URL_CACHE[storageKey] = data.signedUrl;
+    return data.signedUrl;
+  } catch(e) { return null; }
+}
+
+// ── Store attachment metadata (after upload) ──────────────────────────
+// Persists storage keys to localStorage for offline access &
+// updates in-memory cache.
 function storeCmtAttachments(cmtId, attachments) {
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
   window._cmtAttachStore[cmtId] = attachments;
   try {
-    localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(
-      attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, data: a.data }))
-    ));
+    // Store only metadata (no base64 blobs) — keeps localStorage light
+    const meta = attachments.map(a => ({
+      name: a.name, type: a.type, isImg: a.isImg,
+      storageKey: a.storageKey || null,
+      size: a.size || null,
+      // Only persist base64 if there's no storageKey (upload failed fallback)
+      data: a.storageKey ? undefined : a.data
+    }));
+    localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(meta));
   } catch(e) {
-    // localStorage may be full — try clearing old entries
-    console.warn('localStorage full, trying cleanup:', e);
+    console.warn('localStorage metadata save failed:', e);
+    // Clear old entries and retry
     try {
-      // Remove oldest attachment entries to free space
       const keys = Object.keys(localStorage).filter(k => k.startsWith(_CMT_LS_PREFIX));
-      if (keys.length > 0) {
-        localStorage.removeItem(keys[0]);
-        localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(
-          attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, data: a.data }))
-        ));
-      }
-    } catch(e2) { console.warn('Could not persist attachment:', e2); }
+      if (keys.length > 0) { localStorage.removeItem(keys[0]); }
+      const minMeta = attachments.map(a => ({ name: a.name, type: a.type, isImg: a.isImg, storageKey: a.storageKey || null }));
+      localStorage.setItem(_CMT_LS_PREFIX + cmtId, JSON.stringify(minMeta));
+    } catch(e2) { console.warn('Could not persist attachment metadata:', e2); }
   }
 }
 
+// ── Retrieve attachments for a comment ───────────────────────────────
+// Returns array of attachment objects. For Storage-backed items,
+// the `url` field is populated lazily (async) via _getAttachmentUrl.
 function getCmtAttachments(cmt) {
   if (!cmt || !cmt.id) return [];
-  // 1. In-memory cache (fastest, for current session)
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
-  if (window._cmtAttachStore[cmt.id] && window._cmtAttachStore[cmt.id].length > 0) {
-    // Keep comment.attachments in sync
+  // 1. In-memory cache
+  if (window._cmtAttachStore[cmt.id]?.length > 0) {
     cmt.attachments = window._cmtAttachStore[cmt.id];
     return window._cmtAttachStore[cmt.id];
   }
-  // 2. comment.attachments (in-memory on activity object)
-  if (cmt.attachments && cmt.attachments.length > 0) {
+  // 2. In-memory on comment object
+  if (cmt.attachments?.length > 0) {
     window._cmtAttachStore[cmt.id] = cmt.attachments;
     return cmt.attachments;
   }
-  // 3. localStorage (survives page refresh AND tab changes)
+  // 3. localStorage metadata
   try {
     const raw = localStorage.getItem(_CMT_LS_PREFIX + cmt.id);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.length > 0) {
+      if (parsed?.length > 0) {
         window._cmtAttachStore[cmt.id] = parsed;
-        cmt.attachments = parsed; // hydrate comment object for future calls
+        cmt.attachments = parsed;
         return parsed;
       }
     }
@@ -5718,7 +5849,16 @@ function getCmtAttachments(cmt) {
   return [];
 }
 
-// Hydrate all attachments from localStorage when app loads (call after MS loads)
+// ── Resolve a display URL for an attachment (async) ───────────────────
+// Call this when rendering attachment thumbnails / download links.
+// Returns base64 data URL (legacy) or signed Storage URL.
+async function resolveAttachmentUrl(att) {
+  if (!att) return null;
+  if (att.storageKey) return _getAttachmentUrl(att.storageKey);
+  return att.data || null; // legacy base64 fallback
+}
+
+// ── Hydrate all attachments from localStorage on app load ─────────────
 function hydrateAllAttachments() {
   try {
     Object.keys(localStorage)
@@ -5731,11 +5871,11 @@ function hydrateAllAttachments() {
         const parsed = JSON.parse(raw);
         if (!window._cmtAttachStore) window._cmtAttachStore = {};
         window._cmtAttachStore[cmtId] = parsed;
-        // Also hydrate into the comment object if it exists in memory
+        // Hydrate comment objects in memory
         Object.values(MS).forEach(mod => {
           (mod.acts || []).forEach(act => {
             (act.comments || []).forEach(c => {
-              if (c.id === cmtId && (!c.attachments || c.attachments.length === 0)) {
+              if (c.id === cmtId && (!c.attachments || !c.attachments.length)) {
                 c.attachments = parsed;
               }
             });
@@ -5743,6 +5883,34 @@ function hydrateAllAttachments() {
         });
       });
   } catch(e) {}
+}
+
+// ── Delete a file from Supabase Storage ──────────────────────────────
+async function _deleteAttachmentFromStorage(storageKey) {
+  if (!storageKey) return;
+  try {
+    await _sb.storage.from(_ATT_BUCKET).remove([storageKey]);
+    delete _ATT_URL_CACHE[storageKey];
+  } catch(e) { console.warn('Storage delete error:', e); }
+}
+
+// ── List all files in Storage bucket (for backup) ────────────────────
+async function _listAllStorageFiles(prefix = '') {
+  const allFiles = [];
+  let offset = 0;
+  const PAGE = 100;
+  try {
+    while (true) {
+      const { data, error } = await _sb.storage.from(_ATT_BUCKET).list(prefix, {
+        limit: PAGE, offset, sortBy: { column: 'created_at', order: 'desc' }
+      });
+      if (error || !data?.length) break;
+      allFiles.push(...data);
+      if (data.length < PAGE) break;
+      offset += PAGE;
+    }
+  } catch(e) { console.warn('_listAllStorageFiles error:', e); }
+  return allFiles;
 }
 
 // ── Image lightbox ──────────────────────────────────────────────────────
@@ -5858,22 +6026,20 @@ function renderDrawerComments(actId) {
     setTimeout(() => setupCEMentions('dr-cmt-inp'), 80);
     return;
   }
+  // Attachments rendered async: placeholder divs get URLs filled in after Storage fetch
+  const _cmtAttIds = r.comments.map(c => c.id);
+
   el.innerHTML = r.comments.map((c, i) => {
-    // Attachments: use persistent global store so they survive navigation
-    const attachHtml = getCmtAttachments(c).map(att => {
+    const atts = getCmtAttachments(c);
+    // Render placeholder tiles — URLs loaded async below
+    const attachHtml = atts.map(att => {
+      const tileId = '_attTile_' + c.id + '_' + (att.name||'').replace(/[^a-zA-Z0-9]/g,'_');
       if (att.isImg) {
-        // Escape data URI for attribute use — store in window cache
-        const cacheKey = '_attCache_' + c.id + '_' + (att.name||'').replace(/\W/g,'_');
-        window[cacheKey] = att.data;
-        return `<div style="margin-top:6px;display:inline-block;margin-right:6px">
-          <img src="${att.data}"
-            style="width:72px;height:72px;border-radius:6px;object-fit:cover;cursor:zoom-in;border:1px solid var(--border);transition:transform .15s"
-            onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''"
-            onclick="openImgLightbox(window['${cacheKey}'],'${(att.name||'').replace(/'/g,'')}')"
-            title="${att.name||'imagen'}">
+        return `<div id="${tileId}" style="margin-top:6px;display:inline-block;margin-right:6px">
+          <div style="width:72px;height:72px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px">🖼</div>
         </div>`;
       } else {
-        return `<div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text2);cursor:pointer;margin-right:4px" onclick="openImgLightbox(window['_attCache_${c.id}_${(att.name||'').replace(/\W/g,'_')}'],'${(att.name||'')}')">📄 ${att.name}</div>`;
+        return `<div id="${tileId}" style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:10px;color:var(--text2);cursor:pointer;margin-right:4px">📄 ${att.name}</div>`;
       }
     }).join('');
     const editBtn = (isAdmin || canDelete)
@@ -5884,13 +6050,6 @@ function renderDrawerComments(actId) {
           style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 4px;transition:color .15s"
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" title="Eliminar">🗑</button>`:''}`
       : '';
-    // Cache non-image attachments too
-    getCmtAttachments(c).forEach(att => {
-      if (!att.isImg) {
-        const cacheKey = '_attCache_' + c.id + '_' + (att.name||'').replace(/\W/g,'_');
-        window[cacheKey] = att.data;
-      }
-    });
     return `<div class="ac-msg" id="cmt-${c.id}" style="margin-bottom:10px">
       <div class="ac-av" style="background:${avColors[i % avColors.length]};flex-shrink:0">${(c.user||'?')[0].toUpperCase()}</div>
       <div class="ac-bubble" style="flex:1;min-width:0">
@@ -5905,6 +6064,28 @@ function renderDrawerComments(actId) {
     </div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
+  // Async: fill in real URLs for each attachment tile after rendering
+  r.comments.forEach(c => {
+    getCmtAttachments(c).forEach(att => {
+      const tileId = '_attTile_' + c.id + '_' + (att.name||'').replace(/[^a-zA-Z0-9]/g,'_');
+      resolveAttachmentUrl(att).then(url => {
+        if (!url) return;
+        const tile = document.getElementById(tileId);
+        if (!tile) return;
+        const safeName = (att.name||'').replace(/'/g, '');
+        if (att.isImg) {
+          tile.innerHTML = `<img src="${url}"
+            style="width:72px;height:72px;border-radius:6px;object-fit:cover;cursor:zoom-in;border:1px solid var(--border);transition:transform .15s"
+            onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''"
+            onclick="openImgLightbox('${url}','${safeName}')"
+            title="${safeName}">`;
+        } else {
+          tile.onclick = () => window.open(url, '_blank');
+          tile.style.color = 'var(--accent)';
+        }
+      }).catch(() => {});
+    });
+  });
   // Setup mention autocomplete on the editor
   setTimeout(() => setupCEMentions('dr-cmt-inp'), 80);
 }
@@ -9804,7 +9985,7 @@ async function duplicateAct(id) {
 if (!window.CUSTOM_FIELDS) window.CUSTOM_FIELDS = {};
 
 function openCustomFieldsModal() {
-  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+  const canEdit = ['developer','admin','collaborator'].includes(CURRENT_USER?.role);
   if (!canEdit) { notify('⚠ Solo administradores y colaboradores pueden gestionar columnas', true); return; }
   const cf = CUSTOM_FIELDS[ACTIVE] || [];
   const modal = document.createElement('div');
@@ -9938,7 +10119,7 @@ function saveDashConfig(cfg) {
 }
 
 function openDashCustomize() {
-  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+  const canEdit = ['developer','admin','collaborator'].includes(CURRENT_USER?.role);
   if (!canEdit) { notify('⚠ Solo administradores y colaboradores pueden personalizar el dashboard', true); return; }
   const ALL_KPI_KEYS = ['total','realizada','ontime','en curso','planificada','reprogramada','reprog','mes','sinFecha','totalMes'];
   const KPI_LABELS = { total:'Total Actividades', realizada:'Cumplimiento Global', ontime:'Cumplidas en Fecha', 'en curso':'En Curso', planificada:'Planificadas', reprogramada:'Reprogramadas', reprog:'Reprog. No Justificadas', mes:'Cumplimiento del Mes', sinFecha:'Sin Fecha Asignada', totalMes:'Total Efectuar Mes' };
@@ -10117,7 +10298,7 @@ let PROJ_METRICS_CFG = {};
 function openProjMetrics(proj) {
   const acts = get().filter(r => r.PROYECTO === proj);
   if (!acts.length) { notify('Sin actividades para mostrar métricas', true); return; }
-  const canEdit = ['admin','collaborator'].includes(CURRENT_USER?.role);
+  const canEdit = ['developer','admin','collaborator'].includes(CURRENT_USER?.role);
 
   const avg  = Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length);
   const cum  = Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100);
@@ -10350,8 +10531,110 @@ function buildBackupPayload(selectedMods) {
     colors:           document.getElementById('bk-inc-colors')?.checked !== false ? COLORS_ALL : {},
     custom_fields:    document.getElementById('bk-inc-cf')?.checked     !== false ? (window.CUSTOM_FIELDS || {}) : {},
     disabled_projects:document.getElementById('bk-inc-dp')?.checked     !== false ? (window.DISABLED_PROJECTS || {}) : {},
-    mod_labels:       MOD_LBL
+    mod_labels:       MOD_LBL,
+    // Storage manifest: keys of all attachments referenced in comments (no binary data)
+    storage_manifest: document.getElementById('bk-inc-attachments')?.checked !== false
+      ? _buildStorageManifest(mods, modulesData)
+      : null
   };
+}
+
+// ── Storage manifest helpers ──────────────────────────────────────────
+// Collect all storage keys referenced in comments, grouped by module/activity.
+// This is metadata only — no binary data — so the .sgbackup stays small.
+function _buildStorageManifest(mods, modulesData) {
+  const manifest = { bucket: _ATT_BUCKET, generated_at: new Date().toISOString(), files: [] };
+  mods.forEach(k => {
+    const acts = modulesData[k]?.acts || [];
+    acts.forEach(act => {
+      (act.comments || []).forEach(c => {
+        const atts = (c.attachments || []).filter(a => a.storageKey);
+        atts.forEach(a => {
+          manifest.files.push({
+            storageKey: a.storageKey,
+            name: a.name,
+            type: a.type,
+            size: a.size || null,
+            isImg: a.isImg,
+            module: k,
+            actId: act._dbid || act._id,
+            cmtId: c.id
+          });
+        });
+      });
+    });
+  });
+  // Also include any keys from localStorage that aren't in memory yet
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith(_CMT_LS_PREFIX)).forEach(lsKey => {
+      const parsed = JSON.parse(localStorage.getItem(lsKey) || '[]');
+      parsed.filter(a => a.storageKey).forEach(a => {
+        if (!manifest.files.find(f => f.storageKey === a.storageKey)) {
+          manifest.files.push({ storageKey: a.storageKey, name: a.name, type: a.type,
+                                size: a.size || null, isImg: a.isImg });
+        }
+      });
+    });
+  } catch(e) {}
+  return manifest;
+}
+
+// ── Export Storage manifest as standalone JSON ─────────────────────────
+// Lists all files in the Supabase Storage bucket with signed download URLs.
+// Use this to verify or restore attachments independently of the .sgbackup.
+async function bkExportStorageManifest() {
+  notify('⏳ Generando manifiesto de adjuntos…');
+  try {
+    // List all files recursively from the bucket root
+    const allFiles = await _listAllStorageFiles('');
+    // Also scan module sub-folders
+    const modKeys = Object.keys(MOD_LBL);
+    const folderFiles = [];
+    await Promise.all(modKeys.map(async k => {
+      const files = await _listAllStorageFiles(k + '/');
+      files.forEach(f => { if (f.name && f.name !== '.emptyFolderPlaceholder') folderFiles.push({ ...f, _folder: k }); });
+    }));
+    const combined = [...allFiles, ...folderFiles];
+
+    // Build signed URLs for each (batch to avoid rate limits)
+    const manifest = {
+      meta: {
+        app: 'SeguimientoGeo',
+        bucket: _ATT_BUCKET,
+        generated_at: new Date().toISOString(),
+        generated_by: CURRENT_USER?.name || 'unknown',
+        total_files: combined.length
+      },
+      files: []
+    };
+
+    // Get signed URLs in batches of 10
+    for (let i = 0; i < combined.length; i += 10) {
+      const batch = combined.slice(i, i + 10);
+      const results = await Promise.allSettled(batch.map(async f => {
+        const key = (f._folder ? f._folder + '/' : '') + f.name;
+        const url = await _getAttachmentUrl(key);
+        return { storageKey: key, name: f.name, size: f.metadata?.size || null,
+                 contentType: f.metadata?.mimetype || null, url, lastModified: f.updated_at };
+      }));
+      results.forEach(r => { if (r.status === 'fulfilled') manifest.files.push(r.value); });
+    }
+
+    const json = JSON.stringify(manifest, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'sg_storage_manifest_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    bkAddHistory({ type: 'storage_manifest', name: a.download,
+                   size: (blob.size / 1024).toFixed(1) + ' KB',
+                   mods: modKeys, ts: new Date().toISOString() });
+    notify('✅ Manifiesto de adjuntos exportado: ' + a.download);
+  } catch(e) {
+    notify('⚠ Error generando manifiesto: ' + e.message, true);
+  }
 }
 
 // ── Export backup ──────────────────────────────────────────────────────
