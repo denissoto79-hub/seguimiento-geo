@@ -6800,6 +6800,7 @@ async function loadModFromDB(key) {
       attachments: r.attachments || [],
       comments:    [],
       _history:    [],
+      _customFields: r.custom_fields || {},
     }));
 
     try { await loadCommentsForMod(key); } catch(e) { console.error('Comments load error:', e); }
@@ -6807,7 +6808,8 @@ async function loadModFromDB(key) {
   }
 
   populateDDs();
-  loadCustomFieldsView(); loadDashConfig(); loadDisabledProjects();
+  await Promise.all([loadCustomFieldsView(), loadDisabledProjects()]);
+  loadDashConfig();
   setTimeout(hydrateAllAttachments, 300); // hydrate image attachments from localStorage
   // Render everything
   applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
@@ -6883,6 +6885,7 @@ async function saveActToDB(obj, existingDbId) {
       storageKey: a.storageKey || null
       // 'url' se omite — se genera firmada en tiempo real desde storageKey
     })),
+    custom_fields: obj._customFields || {},
     updated_at:  new Date().toISOString(),
     created_by:  CURRENT_USER?.id || null,
   };
@@ -9982,11 +9985,11 @@ async function updateCustomField(actId, fieldName, value, cellEl) {
   } catch(e) {}
   // NOTE: do NOT call cellEl.textContent — that would destroy the <input> element
   // The input field already shows the correct value the user typed
-  // Async: also save to Supabase (fire and forget)
+  // Async: save custom_fields to Supabase so ALL devices/users see the values
   if (r._dbid) {
     try {
       await _sb.from('actividades')
-        .update({ updated_at: new Date().toISOString() })
+        .update({ custom_fields: r._customFields, updated_at: new Date().toISOString() })
         .eq('id', r._dbid);
     } catch(e) { console.warn('CF Supabase save error:', e); }
   }
@@ -9996,16 +9999,17 @@ function loadCustomFieldValues() {
   const acts = get();
   const cf = CUSTOM_FIELDS?.[ACTIVE] || [];
   if (!cf.length) return;
-  // Load from module-wide storage first (faster)
+  // _customFields already loaded from Supabase (custom_fields column) in loadModFromDB.
+  // localStorage is only a legacy fallback for data saved before the migration.
   let allCf = {};
   try { allCf = JSON.parse(localStorage.getItem('sg_cf_all_' + ACTIVE) || '{}'); } catch(e) {}
   acts.forEach(r => {
     try {
-      // Try activity-specific key
-      const key = 'sg_cf_' + ACTIVE + '_' + (r._dbid || r._id);
-      const stored = localStorage.getItem(key);
-      if (stored) { r._customFields = { ...(allCf[String(r._dbid || r._id)] || {}), ...JSON.parse(stored) }; }
-      else if (allCf[String(r._dbid || r._id)]) { r._customFields = allCf[String(r._dbid || r._id)]; }
+      const lsKey = 'sg_cf_' + ACTIVE + '_' + (r._dbid || r._id);
+      const lsStored = localStorage.getItem(lsKey);
+      const lsData = lsStored ? JSON.parse(lsStored) : (allCf[String(r._dbid || r._id)] || {});
+      // Supabase (r._customFields from DB) wins; localStorage fills only missing keys
+      r._customFields = Object.assign({}, lsData, r._customFields || {});
     } catch(e) {}
   });
 }
