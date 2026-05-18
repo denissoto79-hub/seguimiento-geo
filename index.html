@@ -293,9 +293,9 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .srch-select-wrap input.srch-inp { width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:5px 28px 5px 9px;border-radius:6px;font-size:12px;font-family:'Barlow',sans-serif;cursor:pointer;transition:border-color .15s;box-sizing:border-box }
 .srch-select-wrap input.srch-inp:focus { outline:none;border-color:var(--accent) }
 .srch-select-wrap .srch-arrow { position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text2);font-size:10px }
-.srch-dropdown { position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;min-width:160px;max-height:220px;overflow-y:auto;display:none }
+.srch-dropdown { position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;min-width:180px;max-width:360px;max-height:240px;overflow-y:auto;display:none }
 .srch-dropdown.open { display:block }
-.srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);transition:background .12s }
+.srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px }
 .srch-opt:hover,.srch-opt.sel { background:rgba(56,189,248,.12);color:var(--accent) }
 .srch-opt.placeholder { color:var(--text2);font-style:italic }
 
@@ -962,7 +962,7 @@ tr:hover .act-btns { opacity:1 }
             <input id="g-proj-search" type="text" placeholder="Buscar proyecto…" autocomplete="off"
               style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text);font-size:11px;outline:none"
               oninput="gProjFilter(this.value)" onfocus="gProjDropdown(true)" onblur="setTimeout(()=>gProjDropdown(false),200)">
-            <div id="g-proj-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:5px;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.3);margin-top:2px"></div>
+            <div id="g-proj-list" style="display:none;position:absolute;top:100%;left:0;min-width:100%;width:max-content;max-width:420px;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:5px;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.3);margin-top:2px"></div>
           </div>
           <input type="hidden" id="g-proj" value="">
         </div>
@@ -983,26 +983,13 @@ tr:hover .act-btns { opacity:1 }
           <button class="btn btn-sm" onclick="calNav(1)" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">&#9654;</button>
           <button class="btn btn-ghost btn-sm" onclick="calNav(0)" style="font-size:10px">Hoy</button>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
-            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Estado</span>
-            <select id="cal-est" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer">
-              <option value="">Todos</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option>
-            </select>
+        <div class="filter-bar" style="margin:0;padding:0;background:none;border:none">
+          <div class="fg"><label>Estado</label>
+            <select id="cal-est" onchange="renderCal()"><option value="">Todos</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option></select>
           </div>
-          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
-            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Planta</span>
-            <select id="cal-planta" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;max-width:120px">
-              <option value="">Todas</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px">
-            <span style="font-size:10px;color:var(--text2);white-space:nowrap">Responsable</span>
-            <select id="cal-resp" onchange="renderCal()" style="background:transparent;border:none;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer;max-width:130px">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cal-est').value='';document.getElementById('cal-planta').value='';document.getElementById('cal-resp').value='';renderCal()" style="font-size:10px">✕</button>
+          <div class="fg"><label>Planta</label><select id="cal-planta" onchange="renderCal()"><option value="">Todas</option></select></div>
+          <div class="fg"><label>Responsable</label><select id="cal-resp" onchange="renderCal()"><option value="">Todos</option></select></div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cal-est').value='';document.getElementById('cal-planta').value='';document.getElementById('cal-resp').value='';renderCal()">&#10005; Limpiar</button>
         </div>
       </div>
       <div id="cal-legend" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;flex-shrink:0"></div>
@@ -1744,8 +1731,11 @@ function setDD(id, vals, keepFirst = true, addNew = false) {
   const cur = s.value;
   // Remove all except possibly first placeholder
   while (s.options.length > (keepFirst ? 1 : 0)) s.remove(keepFirst ? 1 : 0);
+  // Deduplicate values and trim whitespace before adding
+  const seen = new Set();
   vals.forEach(v => {
-    const o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o);
+    const vt = String(v).trim(); if (!vt || seen.has(vt.toUpperCase())) return; seen.add(vt.toUpperCase());
+    const o = document.createElement('option'); o.value = vt; o.textContent = vt; s.appendChild(o);
   });
   if (addNew) {
     const o = document.createElement('option'); o.value = '__new'; o.textContent = '+ Agregar nuevo'; s.appendChild(o);
@@ -1804,7 +1794,17 @@ function makeSearchableSelect(selectId, placeholder) {
     const r = inp.getBoundingClientRect();
     dd.style.left = r.left + 'px';
     dd.style.top  = (r.bottom + 2) + 'px';
-    dd.style.width = Math.max(r.width, 180) + 'px';
+    // Width = max of input width, 200px, or content — capped at 360px
+    dd.style.width = Math.min(Math.max(r.width, 200), 360) + 'px';
+    // Flip upward if not enough space below
+    dd.style.top = '';
+    dd.style.bottom = '';
+    const spaceBelow = window.innerHeight - r.bottom - 6;
+    if (spaceBelow < 180 && r.top > 180) {
+      dd.style.bottom = (window.innerHeight - r.top + 2) + 'px';
+    } else {
+      dd.style.top = (r.bottom + 2) + 'px';
+    }
     dd.classList.add('open');
     _srchSelectState[selectId].open = true;
     renderDD(inp.value);
@@ -1856,6 +1856,15 @@ function initSearchableFilters() {
     {id:'rep-proj',ph:'Todos los proyectos'},
     {id:'rep-plan-planta',ph:'Todas las plantas'},
     {id:'rep-plan-proj',ph:'Todos los proyectos'},
+    {id:'p-planta',ph:'Todas las plantas'},
+    {id:'p-resp',ph:'Todos los responsables'},
+    {id:'p-est',ph:'Todos los estados'},
+    {id:'g-planta',ph:'Todas las plantas'},
+    {id:'g-est',ph:'Todos los estados'},
+    {id:'g-resp',ph:'Todos los responsables'},
+    {id:'cal-est',ph:'Todos los estados'},
+    {id:'cal-planta',ph:'Todas las plantas'},
+    {id:'cal-resp',ph:'Todos los responsables'},
   ];
   filterSelects.forEach(({id, ph}) => makeSearchableSelect(id, ph));
 }
@@ -1917,16 +1926,24 @@ function toggleSB() {
   tb.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
 }
 function goPage(id, el) {
-  // Block config access for non-developer roles
+  // Block config access for non-developer roles unless they have explicit Configuración perm
   if (id === 'config' && CURRENT_USER && CURRENT_USER.role !== 'developer') {
-    notify('⚠ El módulo de Configuración es exclusivo del Desarrollador', true);
-    return;
+    const hasConfigPerm = CURRENT_USER.perms && CURRENT_USER.perms['Configuración'] === true;
+    if (!hasConfigPerm) {
+      notify('⚠ El módulo de Configuración es exclusivo del Desarrollador', true);
+      return;
+    }
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const pageEl = document.getElementById('page-' + id);
   if (pageEl) pageEl.classList.add('active');
   if (el) el.classList.add('active');
+  // Calendar manages its own internal scroll; all other pages scroll via #content
+  const contentEl = document.getElementById('content');
+  if (contentEl) {
+    contentEl.style.overflowY = (id === 'calendar') ? 'hidden' : 'auto';
+  }
   const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
   document.getElementById('tb-title').textContent = T[id] || id;
   // Keep tb-mod always showing the active module name
@@ -6719,7 +6736,8 @@ function applyPermissions() {
     for (const [match, perm] of Object.entries(navPerms)) {
       if (oc.includes(match)) {
         if (perm === 'Configuración') {
-          btn.style.display = isDeveloper ? 'flex' : 'none';
+          // Show for developer always; also show for users with explicit Configuración perm (e.g. admin granted by developer)
+          btn.style.display = (isDeveloper || perms['Configuración'] === true) ? 'flex' : 'none';
         } else {
           btn.style.display = (isDeveloper || perms[perm]===true) ? 'flex' : 'none';
         }
@@ -7827,7 +7845,7 @@ function gProjDropdown(show) {
 function _gProjRenderList(q) {
   const dl = document.getElementById('g-proj-list'); if (!dl) return;
   const filtered = _gProjAll.filter(p => !q || p.toLowerCase().includes(q.toLowerCase()));
-  dl.innerHTML = filtered.map(p => `<div style="padding:5px 10px;cursor:pointer;font-size:11px;color:${p?'var(--text)':'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+  dl.innerHTML = filtered.map(p => `<div style="padding:6px 10px;cursor:pointer;font-size:11px;color:${p?'var(--text)':'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:410px" title="${p||'Todos los proyectos'}"
     onmousedown="event.preventDefault();gProjSelect('${p.replace(/'/g,"\\'")}')"
     onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background=''"
   >${p || '— Todos los proyectos —'}</div>`).join('');
