@@ -6808,7 +6808,7 @@ async function loadModFromDB(key) {
   }
 
   populateDDs();
-  await Promise.all([loadCustomFieldsView(), loadDisabledProjects(), loadDashConfig()]);
+  await Promise.all([loadCustomFieldsView(), loadDisabledProjects(), loadDashConfig(), loadAllProjOrders()]);
   setTimeout(hydrateAllAttachments, 300); // hydrate image attachments from localStorage
   // Render everything
   applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
@@ -7229,8 +7229,8 @@ function subscribeRealtime() {
         await loadCustomFieldsView();
         renderActs();
       } else if (key.includes('_proj_order_')) {
-        const parts = key.split('_proj_order_');
-        if (parts[1]) { try { delete window._projActOrder[decodeURIComponent(parts[1])]; } catch(e) {} }
+        // Another user saved a new order — reload all orders and re-render
+        await loadAllProjOrders();
         renderProjs();
       }
     })
@@ -8940,16 +8940,40 @@ async function saveProjActOrder(proj) {
   } catch(e) { console.warn('ProjActOrder save error:', e); }
   notify('✅ Orden guardado');
 }
-async function loadProjActOrder(proj) {
-  if (window._projActOrder[proj]) return; // already loaded
+// Preload ALL project orders for the active module in one Supabase query.
+// Called during loadModFromDB so orders are ready before any render.
+async function loadAllProjOrders() {
   try {
-    const key = ACTIVE + '_proj_order_' + encodeURIComponent(proj);
-    const { data } = await _sb.from('modulos').select('config_json').eq('key', key).maybeSingle();
-    if (data?.config_json) {
-      window._projActOrder[proj] = JSON.parse(data.config_json);
-      return;
+    const prefix = ACTIVE + '_proj_order_';
+    const { data } = await _sb.from('modulos')
+      .select('key, config_json')
+      .like('key', prefix + '%');
+    if (data && data.length) {
+      data.forEach(row => {
+        try {
+          const proj = decodeURIComponent(row.key.slice(prefix.length));
+          window._projActOrder[proj] = JSON.parse(row.config_json);
+          // Mirror to localStorage for offline access
+          try { localStorage.setItem('projActOrder_' + proj, row.config_json); } catch(e) {}
+        } catch(e) {}
+      });
     }
-  } catch(e) {}
+  } catch(e) {
+    // Fallback: load whatever is in localStorage
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('projActOrder_')).forEach(k => {
+        const proj = k.slice('projActOrder_'.length);
+        if (!window._projActOrder[proj]) {
+          try { window._projActOrder[proj] = JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) {}
+        }
+      });
+    } catch(e2) {}
+  }
+}
+// Sync version — just reads already-loaded memory (populated by loadAllProjOrders at init)
+function loadProjActOrder(proj) {
+  if (window._projActOrder[proj]) return; // already in memory
+  // Last-resort localStorage fallback (e.g. first load before preload completes)
   try {
     const saved = localStorage.getItem('projActOrder_' + proj);
     if (saved) window._projActOrder[proj] = JSON.parse(saved);
