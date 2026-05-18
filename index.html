@@ -6639,7 +6639,7 @@ async function initSession(authUser) {
 
     try { subscribeRealtime(); } catch(e) { console.warn('Realtime subscribe error:', e); }
     try { await loadUserNotifs(); } catch(e) { console.warn('Notifs load error:', e); }
-    try { loadIOHistory(); } catch(e) {}
+    try { await loadIOHistory(); } catch(e) {}
     setTimeout(checkDueNotifs, 1500);
 
     notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
@@ -6808,8 +6808,7 @@ async function loadModFromDB(key) {
   }
 
   populateDDs();
-  await Promise.all([loadCustomFieldsView(), loadDisabledProjects()]);
-  loadDashConfig();
+  await Promise.all([loadCustomFieldsView(), loadDisabledProjects(), loadDashConfig()]);
   setTimeout(hydrateAllAttachments, 300); // hydrate image attachments from localStorage
   // Render everything
   applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
@@ -7191,6 +7190,7 @@ function subscribeRealtime() {
           a['NUEVA FECHA DE CIERRE'] = updated.nueva_fecha_cierre;
           a.subtasks    = updated.subtasks    || a.subtasks;
           a.attachments = updated.attachments || a.attachments;
+          a._customFields = updated.custom_fields || a._customFields || {};
           // Re-render without full reload
           renderActs(); renderDash(); renderProjs(); renderGantt();
           return;
@@ -7221,6 +7221,16 @@ function subscribeRealtime() {
       const key = payload.new?.key || payload.old?.key || '';
       if (key.includes('_proj_status')) {
         await loadDisabledProjects();
+        renderProjs();
+      } else if (key === 'global_dash_config') {
+        await loadDashConfig();
+        renderDash();
+      } else if (key.includes('_custom_fields')) {
+        await loadCustomFieldsView();
+        renderActs();
+      } else if (key.includes('_proj_order_')) {
+        const parts = key.split('_proj_order_');
+        if (parts[1]) { try { delete window._projActOrder[decodeURIComponent(parts[1])]; } catch(e) {} }
         renderProjs();
       }
     })
@@ -8056,7 +8066,7 @@ function renderHistory(act) {
 // ── Import/Export history (admin only) ──────────────
 if (!window.IO_HISTORY) window.IO_HISTORY = [];
 
-function addIOHistory(type, detail) {
+async function addIOHistory(type, detail) {
   IO_HISTORY.unshift({
     type,   // 'import' | 'export_pdf' | 'export_xlsx'
     detail,
@@ -8065,15 +8075,31 @@ function addIOHistory(type, detail) {
     ts: new Date().toLocaleString('es-BO'),
   });
   if (IO_HISTORY.length > 100) IO_HISTORY.length = 100;
-  // Persist to localStorage
-  try { localStorage.setItem('sg_io_history', JSON.stringify(IO_HISTORY)); } catch(e) {}
-  // Refresh config page if open
+  const json = JSON.stringify(IO_HISTORY);
+  try { localStorage.setItem('sg_io_history', json); } catch(e) {}
+  // Persist to Supabase so all admin devices see the full import/export log
+  try {
+    const { data } = await _sb.from('modulos').select('id').eq('key', 'global_io_history').maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', 'global_io_history');
+    } else {
+      await _sb.from('modulos').insert({ key: 'global_io_history', nombre: '_io_history', activo: false, config_json: json });
+    }
+  } catch(e) { console.warn('IO history save error:', e); }
   if (document.getElementById('page-config')?.classList.contains('active')) {
     renderIOHistory();
   }
 }
 
-function loadIOHistory() {
+async function loadIOHistory() {
+  try {
+    const { data } = await _sb.from('modulos').select('config_json').eq('key', 'global_io_history').maybeSingle();
+    if (data?.config_json) {
+      IO_HISTORY = JSON.parse(data.config_json);
+      try { localStorage.setItem('sg_io_history', data.config_json); } catch(e) {}
+      return;
+    }
+  } catch(e) {}
   try {
     const s = localStorage.getItem('sg_io_history');
     if (s) IO_HISTORY = JSON.parse(s);
@@ -8899,12 +8925,31 @@ function _makeSortable(containerId, proj, onReorder) {
   });
 }
 
-function saveProjActOrder(proj) {
-  try { localStorage.setItem('projActOrder_' + proj, JSON.stringify(window._projActOrder[proj] || [])); } catch(e) {}
+async function saveProjActOrder(proj) {
+  const json = JSON.stringify(window._projActOrder[proj] || []);
+  try { localStorage.setItem('projActOrder_' + proj, json); } catch(e) {}
+  // Persist to Supabase so all users/devices share the same activity order
+  try {
+    const key = ACTIVE + '_proj_order_' + encodeURIComponent(proj);
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_proj_order', activo: false, config_json: json });
+    }
+  } catch(e) { console.warn('ProjActOrder save error:', e); }
   notify('✅ Orden guardado');
 }
-function loadProjActOrder(proj) {
+async function loadProjActOrder(proj) {
   if (window._projActOrder[proj]) return; // already loaded
+  try {
+    const key = ACTIVE + '_proj_order_' + encodeURIComponent(proj);
+    const { data } = await _sb.from('modulos').select('config_json').eq('key', key).maybeSingle();
+    if (data?.config_json) {
+      window._projActOrder[proj] = JSON.parse(data.config_json);
+      return;
+    }
+  } catch(e) {}
   try {
     const saved = localStorage.getItem('projActOrder_' + proj);
     if (saved) window._projActOrder[proj] = JSON.parse(saved);
@@ -10183,16 +10228,35 @@ async function loadCustomFieldsView() {
 // ════════════════════════════════════════════════════════════════
 let DASH_KPI_CONFIG = null;
 
-function loadDashConfig() {
+async function loadDashConfig() {
+  try {
+    const { data } = await _sb.from('modulos').select('config_json').eq('key', 'global_dash_config').maybeSingle();
+    if (data?.config_json) {
+      DASH_KPI_CONFIG = JSON.parse(data.config_json);
+      try { localStorage.setItem('sg_dash_config', data.config_json); } catch(e) {}
+      return;
+    }
+  } catch(e) {}
+  // Fallback to localStorage
   try {
     const s = localStorage.getItem('sg_dash_config');
     if (s) DASH_KPI_CONFIG = JSON.parse(s);
   } catch(e) {}
 }
 
-function saveDashConfig(cfg) {
+async function saveDashConfig(cfg) {
   DASH_KPI_CONFIG = cfg;
-  try { localStorage.setItem('sg_dash_config', JSON.stringify(cfg)); } catch(e) {}
+  const json = JSON.stringify(cfg);
+  try { localStorage.setItem('sg_dash_config', json); } catch(e) {}
+  try {
+    const key = 'global_dash_config';
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_dash_config', activo: false, config_json: json });
+    }
+  } catch(e) { console.warn('Dashboard config save error:', e); }
   notify('💾 Dashboard guardado para todos los usuarios');
 }
 
