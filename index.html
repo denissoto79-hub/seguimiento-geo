@@ -94,8 +94,27 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
 #m-obs-editor table td { border:1px solid #555; padding:5px 8px; min-width:60px; }
 #m-obs-editor table td:focus, #m-obs-editor table th:focus { outline:2px solid #38bdf8; outline-offset:-2px; background:rgba(56,189,248,.08); }
 #m-obs-editor table td.obs-sel, #m-obs-editor table th.obs-sel { background:rgba(56,189,248,.18) !important; outline:1px solid #38bdf8; }
+/* Lists in obs editor — override global * {margin:0;padding:0} reset */
+#m-obs-editor ul, #m-obs-editor ol { margin:3px 0; padding-left:22px; }
+#m-obs-editor ul { list-style-type:disc; }
+#m-obs-editor ol { list-style-type:decimal; }
+#m-obs-editor li { margin-bottom:2px; list-style-position:outside; }
 
-#m-obs-editor img { max-width:120px;max-height:90px;border-radius:4px;margin:2px;object-fit:cover;cursor:zoom-in;vertical-align:middle; }
+/* Lists in inline obs editor */
+.obs-inline-editor ul, .obs-inline-editor ol { margin:3px 0; padding-left:22px; }
+.obs-inline-editor ul { list-style-type:disc; }
+.obs-inline-editor ol { list-style-type:decimal; }
+.obs-inline-editor li { margin-bottom:2px; list-style-position:outside; }
+/* Obs-html-cell */
+.obs-html-cell { line-height:1.45; }
+.obs-html-cell p { margin:0 0 2px; }
+.obs-html-cell p:last-child { margin-bottom:0; }
+.obs-html-cell ul, .obs-html-cell ol { margin:2px 0; padding-left:20px; }
+.obs-html-cell ul { list-style-type:disc; }
+.obs-html-cell ol { list-style-type:decimal; }
+.obs-html-cell li { margin-bottom:1px; list-style-position:outside; }
+.obs-html-cell img { max-width:80px; max-height:60px; width:auto; height:auto; border-radius:3px; margin:1px; object-fit:contain; cursor:zoom-in; vertical-align:middle; background:#1c2333; }
+#m-obs-editor img { max-width:160px; max-height:120px; width:auto; height:auto; border-radius:4px; margin:2px; object-fit:contain; cursor:zoom-in; vertical-align:middle; background:rgba(28,35,51,.3); border:1px solid var(--border); }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
@@ -455,7 +474,14 @@ tr:hover .act-btns { opacity:1 }
 .d-mb { background:var(--bg3); border-radius:7px; padding:7px 9px }
 .d-ml { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; font-weight:700 }
 .d-mv { font-size:12px; font-weight:600; word-break:break-word; white-space:normal }
-.d-obs   { background:rgba(56,189,248,.06); border:1px solid rgba(56,189,248,.2); border-radius:7px; padding:11px; margin-bottom:12px; font-size:12px; color:var(--text); line-height:1.6; white-space:pre-wrap; word-break:break-word }
+.d-obs   { background:rgba(56,189,248,.06); border:1px solid rgba(56,189,248,.2); border-radius:7px; padding:11px; margin-bottom:12px; font-size:12px; color:var(--text); line-height:1.6; word-break:break-word }
+.d-obs p { margin:0 0 3px; }
+.d-obs p:last-child { margin-bottom:0; }
+.d-obs ul, .d-obs ol { margin:3px 0; padding-left:22px; }
+.d-obs ul { list-style-type:disc; }
+.d-obs ol { list-style-type:decimal; }
+.d-obs li { margin-bottom:2px; list-style-position:outside; }
+.d-obs img { max-width:200px; max-height:150px; width:auto; height:auto; border-radius:4px; margin:4px 4px 4px 0; object-fit:contain; cursor:zoom-in; vertical-align:middle; background:rgba(28,35,51,.5); border:1px solid var(--border); }
 .d-obs-l { font-size:9px; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin-bottom:3px }
 .d-sec   { font-size:9px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:7px; margin-top:4px }
 .d-st    { display:flex; align-items:center; gap:7px; padding:6px 0; border-bottom:1px solid rgba(33,38,45,.5); font-size:11px }
@@ -1406,10 +1432,14 @@ tr:hover .act-btns { opacity:1 }
               <div style="display:flex;gap:3px;align-items:center">
                 <button type="button" onclick="obsExecCmd('bold')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-weight:bold;font-size:10px" title="Negrita (Ctrl+B)">B</button>
                 <button type="button" onclick="obsExecCmd('italic')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-style:italic;font-size:10px" title="Cursiva">I</button>
-                <button type="button" onclick="obsExecCmd('insertUnorderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px" title="Lista">☰</button>
+                <button type="button" onclick="obsExecCmd('underline')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;text-decoration:underline;font-size:10px" title="Subrayado (Ctrl+U)">U</button>
+                <button type="button" onclick="obsExecCmd('insertUnorderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px" title="Viñetas">• Lista</button>
+                <button type="button" onclick="obsExecCmd('insertOrderedList')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:10px" title="Lista numerada">1. Lista</button>
               </div>
               <!-- Tabla: isolated on the right, clearly separated -->
               <button type="button" onclick="obsInsertTable()" style="padding:2px 11px;border:1px solid rgba(56,189,248,.5);border-radius:5px;background:rgba(56,189,248,.08);color:var(--accent);cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.03em" title="Insertar nueva tabla">⊞ Nueva Tabla</button>
+              <input type="file" id="obs-img-input" accept="image/*" multiple style="display:none" onchange="obsHandleImgUpload(this)">
+              <button type="button" onclick="document.getElementById('obs-img-input').click()" style="padding:2px 9px;border:1px solid rgba(34,197,94,.5);border-radius:5px;background:rgba(34,197,94,.08);color:var(--green);cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.03em" title="Adjuntar imagen (se guarda en Supabase)">🖼 Imagen</button>
             </div>
             <!-- Table context toolbar (shown when a cell is focused) -->
             <div id="obs-tbl-toolbar">
@@ -1440,7 +1470,11 @@ tr:hover .act-btns { opacity:1 }
             <!-- Editable area -->
             <div id="m-obs-editor" contenteditable="true"
               style="min-height:80px;max-height:280px;overflow-y:auto;padding:8px 10px;font-size:12px;color:var(--text);outline:none;line-height:1.6;word-break:break-word"
-              data-placeholder="Notas, contexto…"></div>
+              data-placeholder="Notas, contexto…"
+              onclick="if(event.target.tagName==='IMG'&&event.target.src){event.preventDefault();obsImgZoom(event.target.src);}"
+              onpaste="obsHandlePaste(event)"
+              ondragover="event.preventDefault()"
+              ondrop="obsHandleDrop(event)"></div>
           </div>
           <textarea id="m-obs" style="display:none" placeholder="Notas, contexto…"></textarea>
         </div>
@@ -1672,6 +1706,14 @@ function get() {
 function pcol(p)          { return (COLORS_ALL[ACTIVE] || {})[p] || '#8b949e'; }
 function uniq(arr, k)     { return [...new Set(arr.map(r => r[k]).filter(Boolean))].sort(); }
 // Convert newlines to <br> for HTML display
+// Render HTML obs content cleanly (no double-spacing from pre-wrap + <p> tags)
+function obsSnippet(html) {
+  if (!html) return '—';
+  // If pure text (no tags), convert newlines to <br>
+  if (!/<[a-z]/i.test(html)) return html.replace(/\n/g,'<br>') || '—';
+  // Strip excess empty <p> margins via a wrapper class
+  return `<div class="obs-html-cell">${html}</div>`;
+}
 function nlBr(s) {
   if (!s) return '';
   return String(s).replace(/\n/g, '<br>').replace(/\r/g, '');
@@ -4420,7 +4462,7 @@ function openModal(id = null) {
   document.getElementById('m-est').value     = r.ESTADO        || 'PLANIFICADA';
   document.getElementById('m-avance').value  = r.AVANCE        || 0;
   document.getElementById('m-avl').textContent = r.AVANCE      || 0;
-  setObsValue(r.OBSERVACIONES || '');
+  setObsValue(r.OBSERVACIONES || '', r._id || r.id || '');
   document.getElementById('reprog-sec').classList.remove('show');
   document.getElementById('m-nfcierre').value = r['NUEVA FECHA DE CIERRE'] || '';
   document.getElementById('m-repdet').value  = '';
@@ -5634,15 +5676,158 @@ function obsInsertImage(input) {
   reader.readAsDataURL(file);
   input.value = '';
 }
+// Handle paste (Ctrl+V screenshot or copied image) in obs editor
+async function obsHandlePaste(e) {
+  const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+  if (!items) return;
+  const imgItems = [...items].filter(i => i.type.startsWith('image/'));
+  if (!imgItems.length) return; // let normal paste happen
+  e.preventDefault();
+  const files = imgItems.map(i => i.getAsFile()).filter(Boolean);
+  if (files.length) await obsHandleImgUpload({ files, value: '' });
+}
+
+// Handle drag & drop image onto obs editor
+async function obsHandleDrop(e) {
+  e.preventDefault();
+  const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  await obsHandleImgUpload({ files, value: '' });
+}
+
+// ── Observation images — Supabase Storage ──────────────────────────────────
+const _OBS_IMG_BUCKET = 'adjuntos';   // same bucket used for attachments
+const _OBS_IMG_PREFIX = 'obs-imgs';   // folder: obs-imgs/<module>/<actId>/
+
+async function obsHandleImgUpload(input) {
+  if (!_sb) { alert('Sin conexión a Supabase.'); return; }
+  const files = [...input.files];
+  if (!files.length) return;
+  input.value = '';  // reset so same file can be re-selected
+
+  const editor = document.getElementById('m-obs-editor');
+  if (!editor) return;
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+
+    // Insert placeholder while uploading
+    const placeholderId = 'obs-img-' + Date.now().toString(36);
+    const ph = document.createElement('img');
+    ph.id = placeholderId;
+    ph.src = URL.createObjectURL(file);
+    ph.style.cssText = 'opacity:0.5;outline:2px dashed #38bdf8';
+    ph.title = '⏳ Subiendo...';
+    editor.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      range.insertNode(ph);
+      range.setStartAfter(ph);
+      range.setEndAfter(ph);
+      sel.removeAllRanges(); sel.addRange(range);
+    } else {
+      editor.appendChild(ph);
+    }
+
+    try {
+      // Convert to webp for efficiency
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise(r => { img.onload = r; });
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { const s = MAX / Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/webp', 0.88));
+
+      const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+      const modKey = (typeof ACTIVE !== 'undefined' && ACTIVE) ? ACTIVE : 'gen';
+      // Try to get current activity id from modal
+      const actId = document.getElementById('m-title')?.dataset?.actId || '0';
+      const storageKey = `${_OBS_IMG_PREFIX}/${modKey}/${actId}/${uid}.webp`;
+
+      const { error } = await _sb.storage.from(_OBS_IMG_BUCKET).upload(storageKey, blob, {
+        contentType: 'image/webp', upsert: false
+      });
+      if (error) throw error;
+
+      // Get signed URL (1 year)
+      const { data } = await _sb.storage.from(_OBS_IMG_BUCKET)
+        .createSignedUrl(storageKey, 60 * 60 * 24 * 365);
+      const signedUrl = data?.signedUrl;
+      if (!signedUrl) throw new Error('No signed URL');
+
+      // Replace placeholder with final img (store storageKey for renewal)
+      const finalImg = document.getElementById(placeholderId);
+      if (finalImg) {
+        finalImg.id = '';
+        finalImg.src = signedUrl;
+        finalImg.style.opacity = '1';
+        finalImg.style.outline = '';
+        finalImg.removeAttribute('style'); // let CSS class handle all sizing
+        finalImg.title = 'Click para ampliar';
+        finalImg.dataset.storageKey = storageKey;
+        finalImg.onclick = () => obsImgZoom(signedUrl);
+      }
+    } catch(err) {
+      console.error('obs img upload error', err);
+      const failImg = document.getElementById(placeholderId);
+      if (failImg) { failImg.style.outline = '2px dashed red'; failImg.title = '❌ Error al subir'; }
+    }
+  }
+}
+
+// Zoom lightbox for obs images
+function obsImgZoom(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:92vw;max-height:92vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)';
+  overlay.appendChild(img);
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+// When loading obs into editor, refresh any expired signed URLs for obs images
+async function obsRefreshImgUrls(editor) {
+  if (!editor || !_sb) return;
+  const imgs = editor.querySelectorAll('img[data-storage-key]');
+  for (const img of imgs) {
+    try {
+      const { data } = await _sb.storage.from(_OBS_IMG_BUCKET)
+        .createSignedUrl(img.dataset.storageKey, 60 * 60 * 24 * 365);
+      if (data?.signedUrl) img.src = data.signedUrl;
+    } catch(e) { /* ignore */ }
+  }
+}
+
+// Also make d-obs displayed images clickable for zoom
+document.addEventListener('click', function(e) {
+  const img = e.target;
+  if (img.tagName === 'IMG' && img.closest('.d-obs, .obs-html-cell') && img.src) {
+    obsImgZoom(img.src);
+  }
+});
+
 function getObsValue() {
   const editor = document.getElementById('m-obs-editor');
   if (editor) return editor.innerHTML.trim();
   const ta = document.getElementById('m-obs');
   return ta ? ta.value : '';
 }
-function setObsValue(val) {
+function setObsValue(val, actId) {
   const editor = document.getElementById('m-obs-editor');
-  if (editor) editor.innerHTML = val || '';
+  if (editor) {
+    editor.innerHTML = val || '';
+    // Store actId so image uploads go to the right folder
+    if (actId) editor.dataset.actId = actId;
+    // Asynchronously refresh any signed URLs that may have expired
+    obsRefreshImgUrls(editor);
+  }
   const ta = document.getElementById('m-obs');
   if (ta) ta.value = val || '';
 }
@@ -5892,17 +6077,21 @@ function storeCmtAttachments(cmtId, attachments) {
 function getCmtAttachments(cmt) {
   if (!cmt || !cmt.id) return [];
   if (!window._cmtAttachStore) window._cmtAttachStore = {};
-  // 1. In-memory cache
+
+  // 1. In-memory on the comment object itself (populated by loadCommentsForMod from Supabase)
+  //    This is the most authoritative source — check it FIRST
+  if (cmt.attachments?.length > 0) {
+    window._cmtAttachStore[cmt.id] = cmt.attachments; // keep cache in sync
+    return cmt.attachments;
+  }
+
+  // 2. In-memory store cache (set earlier this session)
   if (window._cmtAttachStore[cmt.id]?.length > 0) {
     cmt.attachments = window._cmtAttachStore[cmt.id];
     return window._cmtAttachStore[cmt.id];
   }
-  // 2. In-memory on comment object
-  if (cmt.attachments?.length > 0) {
-    window._cmtAttachStore[cmt.id] = cmt.attachments;
-    return cmt.attachments;
-  }
-  // 3. localStorage metadata
+
+  // 3. localStorage metadata (legacy / offline fallback)
   try {
     const raw = localStorage.getItem(_CMT_LS_PREFIX + cmt.id);
     if (raw) {
@@ -6833,7 +7022,21 @@ async function loadCommentsForMod(key) {
   if (!data) return;
   data.forEach(c => {
     const act = acts.find(a => a._dbid === c.actividad_id);
-    if (act) act.comments.push({ id:c.id, user:c.user_name, text:c.texto, ts:new Date(c.created_at).toLocaleString('es-BO') });
+    if (act) {
+      const cmt = {
+        id:   c.id,
+        user: c.user_name,
+        text: c.texto,
+        ts:   new Date(c.created_at).toLocaleString('es-BO'),
+        attachments: c.attachments_meta || []   // ← load from Supabase column
+      };
+      // Sync to in-memory cache so getCmtAttachments finds it
+      if (cmt.attachments.length) {
+        if (!window._cmtAttachStore) window._cmtAttachStore = {};
+        window._cmtAttachStore[c.id] = cmt.attachments;
+      }
+      act.comments.push(cmt);
+    }
   });
 }
 
@@ -7015,10 +7218,15 @@ function inlineEditField(cell, field, actId, proj) {
     inputEl.value = r.ACTIVIDAD || '';
     inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
   } else if (field === 'observaciones') {
-    inputEl = document.createElement('textarea');
-    inputEl.value = r.OBSERVACIONES || '';
-    inputEl.rows = 2;
-    inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px;resize:vertical';
+    // Use a contenteditable div so HTML content renders correctly (not as raw code)
+    inputEl = document.createElement('div');
+    inputEl.contentEditable = 'true';
+    inputEl.innerHTML = r.OBSERVACIONES || '';
+    inputEl.className = 'obs-inline-editor';
+    inputEl.style.cssText = 'min-width:200px;min-height:48px;max-height:180px;overflow-y:auto;background:var(--bg2);border:2px solid var(--accent);color:var(--text);padding:5px 7px;font-size:11px;border-radius:6px;outline:none;line-height:1.5;word-break:break-word;white-space:normal';
+    inputEl.title = 'Editar observaciones. Para guardar: click fuera';
+    // Override blur/value logic below — patch via dataset
+    inputEl.dataset.isHtmlEditor = '1';
   } else return;
 
   cell.innerHTML = '';
@@ -7026,7 +7234,7 @@ function inlineEditField(cell, field, actId, proj) {
   inputEl.focus();
 
   async function saveInline() {
-    let newVal = inputEl.value;
+    let newVal = inputEl.dataset.isHtmlEditor === '1' ? inputEl.innerHTML.trim() : inputEl.value;
     if (field === 'avance') newVal = Math.min(100, Math.max(0, parseInt(newVal)||0));
     const update = {};
     if (field === 'estado')       { update.estado = newVal; r.ESTADO = newVal; if (newVal==='REALIZADA') { update.avance=100; r.AVANCE=100; update.fecha_completada=tds(); } }
@@ -7045,7 +7253,7 @@ function inlineEditField(cell, field, actId, proj) {
 
   inputEl.addEventListener('blur', saveInline);
   inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && inputEl.tagName !== 'TEXTAREA') { e.preventDefault(); inputEl.blur(); }
+    if (e.key === 'Enter' && inputEl.tagName !== 'TEXTAREA' && !inputEl.dataset.isHtmlEditor) { e.preventDefault(); inputEl.blur(); }
     if (e.key === 'Escape') { cell.innerHTML = orig; }
   });
 }
@@ -8586,7 +8794,7 @@ function openProjSummaryReport() {
   sel.style.display = 'flex';
 }
 
-function generateProjSummaryPDF(proj) {
+async function generateProjSummaryPDF(proj) {
   if (!proj) { notify('⚠ Seleccione un proyecto', true); return; }
   document.getElementById('_psr-modal').style.display = 'none';
 
@@ -8648,7 +8856,19 @@ function generateProjSummaryPDF(proj) {
       <strong>Reprogramación:</strong> ${r['DETALLE DE REPROGRAMACION']}${r['NUEVA FECHA DE CIERRE']?` → Nueva fecha: <strong>${r['NUEVA FECHA DE CIERRE']}</strong>`:''}
     </div>` : '';
 
-    const obsHtml = r.OBSERVACIONES ? `<div style="margin-top:5px;font-size:10px;color:#374151;white-space:pre-wrap;line-height:1.5;word-break:break-word">${r.OBSERVACIONES}</div>` : '';
+    // Sanitize obs HTML: strip inline width/height attrs on imgs, apply report class
+    const sanitizeObsHtml = (html) => {
+      if (!html) return '';
+      // Remove inline style/width/height attrs from img tags so CSS controls sizing
+      return html.replace(/<img([^>]*?)>/gi, (match, attrs) => {
+        let cleaned = attrs
+          .replace(/\s+width\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/\s+height\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/\s+style\s*=\s*["'][^"']*["']/gi, '');
+        return `<img${cleaned} class="rep-obs-img">`;
+      });
+    };
+    const obsHtml = r.OBSERVACIONES ? `<div class="obs-html" style="margin-top:5px;font-size:10px;color:#374151;line-height:1.5;word-break:break-word">${sanitizeObsHtml(r.OBSERVACIONES)}</div>` : '';
 
     const stColor = r.ESTADO==='REALIZADA'?'#16a34a':r.ESTADO==='EN CURSO'?'#0891b2':r.ESTADO==='REPROGRAMADA'?'#ea580c':'#64748b';
     const stBg    = r.ESTADO==='REALIZADA'?'#dcfce7':r.ESTADO==='EN CURSO'?'#dbeafe':r.ESTADO==='REPROGRAMADA'?'#ffedd5':'#f1f5f9';
@@ -8705,27 +8925,112 @@ function generateProjSummaryPDF(proj) {
     </div>`;
   }).join('');
 
-  // Build annexes section (image attachments)
-  const annexes = [];
+  // Build annexes section — fresh Supabase query + localStorage fallback for ALL attachments
+  const annexImgs = [];
+  const annexFiles = [];
+
+  // ── SOURCE 1: Activity-level attachments (tab "Adjuntos" in the modal) ──────
+  // These are stored in actividades.attachments JSON column, loaded in loadModFromDB.
+  // This is the PRIMARY source — it's what users see in Image 1 (the Adjuntos tab).
+  acts.forEach(r => {
+    (r.attachments || []).forEach(att => {
+      if (!att.storageKey && !att.url && !att.data) return; // skip empty entries
+      const entry = {
+        actName: r.ACTIVIDAD, actCode: r['CÓDIGO'],
+        name: att.name || 'Adjunto',
+        storageKey: att.storageKey || null,
+        url: att.url || att.data || null,
+        isImg: att.isImg || false,
+      };
+      if (att.isImg) annexImgs.push(entry);
+      else annexFiles.push(entry);
+    });
+  });
+
+  // ── SOURCE 2: Comment attachments (adjuntos adjuntos en comentarios) ─────────
+  // Fresh Supabase query for attachments_meta on comentarios rows
+  const actDbIds = acts.map(r => r._dbid).filter(Boolean);
+  const freshAttMap = {};  // cmtId → attachments array
+  if (actDbIds.length && _sb) {
+    try {
+      const { data: cmtRows } = await _sb.from('comentarios')
+        .select('id, actividad_id, attachments_meta')
+        .in('actividad_id', actDbIds);
+      if (cmtRows) {
+        cmtRows.forEach(c => {
+          if (c.attachments_meta?.length) freshAttMap[c.id] = c.attachments_meta;
+        });
+      }
+    } catch(e) { console.warn('Report: Supabase comment attachment fetch failed', e); }
+  }
+
   acts.forEach(r => {
     (r.comments||[]).forEach(c => {
-      getCmtAttachments(c).filter(a=>a.isImg).forEach(att => {
-        annexes.push({ actName: r.ACTIVIDAD, actCode: r['CÓDIGO'], imgData: att.data, name: att.name });
+      const atts = freshAttMap[c.id] || getCmtAttachments(c);
+      atts.forEach(att => {
+        const entry = { actName: r.ACTIVIDAD, actCode: r['CÓDIGO'], name: att.name, storageKey: att.storageKey||null, url: att.url||att.data||null, isImg: att.isImg||false };
+        if (att.isImg) annexImgs.push(entry);
+        else annexFiles.push(entry);
       });
     });
   });
-  const annexHtml = annexes.length ? `
+
+  // Also check localStorage for comment attachments not yet in Supabase
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith(_CMT_LS_PREFIX)).forEach(lsKey => {
+      const cmtId = parseInt(lsKey.replace(_CMT_LS_PREFIX, ''), 10);
+      if (!cmtId || freshAttMap[cmtId]) return;
+      const raw = localStorage.getItem(lsKey); if (!raw) return;
+      let parsed; try { parsed = JSON.parse(raw); } catch(e) { return; }
+      if (!parsed?.length) return;
+      const act = acts.find(r => (r.comments||[]).some(c => c.id === cmtId));
+      if (!act) return;
+      parsed.forEach(att => {
+        const entry = { actName: act.ACTIVIDAD, actCode: act['CÓDIGO'], name: att.name, storageKey: att.storageKey||null, url: att.url||att.data||null, isImg: att.isImg||false };
+        if (att.isImg) annexImgs.push(entry);
+        else annexFiles.push(entry);
+      });
+    });
+  } catch(e) {}
+
+  // ── Resolve signed URLs for all entries that have storageKey but no url ──────
+  await Promise.all([...annexImgs, ...annexFiles].filter(a => a.storageKey && !a.url).map(async a => {
+    try { a.url = await _getAttachmentUrl(a.storageKey); } catch(e) {}
+  }));
+
+  const annexHtml = (annexImgs.length || annexFiles.length) ? `
   <div style="page-break-before:always">
-    <div style="font-size:13px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #1e40af">ANEXOS — IMÁGENES ADJUNTAS</div>
-    <div style="display:flex;flex-wrap:wrap;gap:16px">
-      ${annexes.map((a, i) => `<div style="width:220px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;page-break-inside:avoid">
-        <img src="${a.imgData}" style="width:100%;height:160px;object-fit:cover;display:block">
-        <div style="padding:6px 10px;background:#f8fafc">
+    <div style="font-size:13px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #1e40af">ANEXOS — ARCHIVOS ADJUNTOS</div>
+    ${annexImgs.length ? `
+    <div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:10px">📷 Imágenes (${annexImgs.length})</div>
+    <div style="margin-bottom:20px">
+      ${annexImgs.map((a, i) => `<div class="annex-img-card">
+        ${a.url ? `<img src="${a.url}" crossorigin="anonymous">` : `<div style="width:280px;height:120px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;color:#94a3b8">🖼 ${a.name||'Imagen '+(i+1)}</div>`}
+        <div class="annex-img-caption">
           <div style="font-size:9px;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name||'Imagen '+(i+1)}</div>
-          <div style="font-size:8px;color:#64748b;margin-top:2px">Actividad: ${a.actCode||''} ${a.actName||''}</div>
+          <div style="font-size:8px;color:#64748b;margin-top:2px">${a.actCode||''} — ${(a.actName||'').substring(0,50)}</div>
+          ${a.url ? `<a href="${a.url}" target="_blank" style="font-size:8px;color:#2563eb">🔗 Abrir en nueva ventana</a>` : '<span style="font-size:8px;color:#ef4444">URL no disponible</span>'}
         </div>
       </div>`).join('')}
-    </div>
+    </div>` : ''}
+    ${annexFiles.length ? `
+    <div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:8px">📎 Documentos y Archivos (${annexFiles.length})</div>
+    <table style="width:100%;border-collapse:collapse;font-size:10px">
+      <thead><tr style="background:#f1f5f9">
+        <th style="padding:5px 8px;border:1px solid #e2e8f0;text-align:left;width:30px">#</th>
+        <th style="padding:5px 8px;border:1px solid #e2e8f0;text-align:left">Archivo</th>
+        <th style="padding:5px 8px;border:1px solid #e2e8f0;text-align:left">Actividad</th>
+        <th style="padding:5px 8px;border:1px solid #e2e8f0;text-align:left;width:80px">Enlace</th>
+      </tr></thead>
+      <tbody>
+        ${annexFiles.map((a,i)=>`<tr>
+          <td style="padding:5px 8px;border:1px solid #e2e8f0;color:#64748b">${i+1}</td>
+          <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:600">${a.name||'—'}</td>
+          <td style="padding:5px 8px;border:1px solid #e2e8f0;color:#64748b">${a.actCode||''} — ${(a.actName||'').substring(0,45)}</td>
+          <td style="padding:5px 8px;border:1px solid #e2e8f0">${a.url?`<a href="${a.url}" target="_blank" style="color:#2563eb">Abrir</a>`:'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : ''}
   </div>` : '';
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -8749,6 +9054,22 @@ function generateProjSummaryPDF(proj) {
     /* Obs HTML tables: full borders */
     .obs-html table { border-collapse:collapse !important; border:2px solid #666 !important; }
     .obs-html table th,.obs-html table td { border:1px solid #666 !important; padding:5px 8px !important; }
+    /* Lists in obs HTML — no global reset in this popup, but be explicit */
+    .obs-html ul, .obs-html ol { margin:4px 0; padding-left:22px; }
+    .obs-html ul { list-style-type:disc; }
+    .obs-html ol { list-style-type:decimal; }
+    .obs-html li { margin-bottom:2px; list-style-position:outside; }
+    /* Standardized image sizes in report body - proportional, no cropping */
+    .rep-obs-img { max-width:100%; width:auto; height:auto; max-height:400px; object-fit:contain; border-radius:5px; margin:6px 0; display:block; border:1px solid #e2e8f0; }
+    /* Annex images: consistent card grid, full image visible */
+    .annex-img-card { width:280px; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; page-break-inside:avoid; display:inline-block; vertical-align:top; margin:0 14px 14px 0; }
+    .annex-img-card img { width:280px; max-height:220px; object-fit:contain; display:block; background:#f8fafc; padding:4px; }
+    .annex-img-caption { padding:6px 10px; background:#f1f5f9; border-top:1px solid #e2e8f0; }
+    @media print {
+      .rep-obs-img { max-height:360px; }
+      .annex-img-card { width:240px; margin:0 10px 12px 0; }
+      .annex-img-card img { width:240px; max-height:190px; }
+    }
   </style>
   </head><body>
 
@@ -9165,8 +9486,8 @@ function openProjDr(proj) {
               ondblclick="inlineEditField(this,'avance','${r._id}','${esc(proj)}')">${r.AVANCE}%</td>
             <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap;cursor:pointer"
               ondblclick="inlineEditField(this,'fecha_fin','${r._id}','${esc(proj)}')">${fmtD(r['FECHA FIN'])}</td>
-            <td style="padding:7px 10px;font-size:11px;color:var(--text);min-width:220px;max-width:340px;white-space:pre-line;word-break:break-word;cursor:pointer;line-height:1.5"
-              ondblclick="inlineEditField(this,'observaciones','${r._id}','${esc(proj)}')">${r.OBSERVACIONES||'—'}</td>
+            <td class="obs-cell-proj" style="padding:7px 10px;font-size:11px;color:var(--text);min-width:220px;max-width:340px;word-break:break-word;cursor:pointer;line-height:1.5"
+              ondblclick="inlineEditField(this,'observaciones','${r._id}','${esc(proj)}')">${obsSnippet(r.OBSERVACIONES)}</td>
             <td style="padding:7px 10px;text-align:center">
               ${canEdit && r.ESTADO!=='REALIZADA'
                 ? `<button onclick="markDoneInProj('${r._id}','${esc(proj)}')" title="Marcar como completada" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Completar</button>`
