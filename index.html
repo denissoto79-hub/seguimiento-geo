@@ -694,6 +694,27 @@ tr:hover .act-btns { opacity:1 }
 .bk-modal-title { font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.06em }
 .bk-modal-body { flex:1;overflow-y:auto;padding:18px 20px }
 .bk-modal-footer { padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--bg3) }
+/* ── PIN Modal ──────────────────────────────────── */
+.pin-overlay { position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:9999 }
+.pin-box { background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:min(96vw,380px);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4) }
+.pin-icon { font-size:36px;margin-bottom:10px }
+.pin-title { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:.04em;margin-bottom:4px;color:var(--text) }
+.pin-sub { font-size:12px;color:var(--text2);margin-bottom:20px }
+.pin-dots { display:flex;justify-content:center;gap:10px;margin-bottom:20px }
+.pin-dot { width:12px;height:12px;border-radius:50%;background:var(--border);transition:background .2s }
+.pin-dot.filled { background:var(--accent) }
+.pin-numpad { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto 20px }
+.pin-key { padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;transition:all .15s }
+.pin-key:hover { background:rgba(56,189,248,.15);border-color:var(--accent);color:var(--accent) }
+.pin-key:active { transform:scale(.95) }
+.pin-key.del { font-size:14px;color:var(--text2) }
+.pin-error { color:var(--red);font-size:12px;margin-top:-12px;margin-bottom:12px;min-height:16px }
+.pin-link { font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block }
+/* Cfg PIN row */
+.mod-pin-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px }
+.mod-pin-badge { font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700 }
+.mod-pin-on  { background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3) }
+.mod-pin-off { background:rgba(100,116,139,.12);color:var(--text2);border:1px solid var(--border) }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -701,6 +722,36 @@ tr:hover .act-btns { opacity:1 }
 
 <!-- Mobile overlay -->
 <div id="mobile-overlay" onclick="closeMobileSB()"></div>
+
+<!-- ══ PIN ACCESS MODAL ══ -->
+<div id="pin-overlay" class="pin-overlay" style="display:none">
+  <div class="pin-box">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title" id="pin-mod-name">Módulo Privado</div>
+    <div class="pin-sub" id="pin-sub-text">Ingrese el PIN de acceso</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-numpad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key del" onclick="pinClear()">✕</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <div id="pin-resp-hint" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:none"></div>
+    <span class="pin-link" id="pin-reset-link" style="display:none" onclick="pinRequestReset()">¿Olvidó el PIN? Solicitar reset</span>
+  </div>
+</div>
 
 <!-- ══ LOGIN SCREEN ══ -->
 <div id="login-screen" style="position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'Barlow',sans-serif;padding:16px">
@@ -1108,8 +1159,14 @@ tr:hover .act-btns { opacity:1 }
       <div class="cfg-sec" id="mod-mgmt-section">
         <div class="cfg-title">&#9881; Gesti&#243;n de M&#243;dulos (solo Administrador)</div>
         <div id="mod-mgmt-list"></div>
-        <div style="margin-top:10px">
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-accent btn-sm" onclick="openNewModModal()">+ Nuevo M&#243;dulo</button>
+          <button class="btn btn-sm" id="pin-resp-setup-btn" style="display:none" onclick="pinResponsableSetupPrompt()">🔐 Configurar mi PIN</button>
+        </div>
+        <!-- Reset PIN pendiente (solo developer) -->
+        <div id="pin-reset-pending" style="display:none;margin-top:12px;padding:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:8px">⚠ Solicitudes de Reset de PIN pendientes</div>
+          <div id="pin-reset-list" style="font-size:12px;color:var(--text2)">Cargando…</div>
         </div>
       </div>
       <!-- Import/Export History — admin only -->
@@ -1782,10 +1839,18 @@ function setDD(id, vals, keepFirst = true, addNew = false) {
   if (addNew) {
     const o = document.createElement('option'); o.value = '__new'; o.textContent = '+ Agregar nuevo'; s.appendChild(o);
   }
-  if (cur && [...s.options].some(o => o.value === cur)) s.value = cur;
-  // Update searchable wrapper if exists
-  const wrap = document.getElementById('srch-' + id);
-  if (wrap) { const inp = wrap.querySelector('.srch-inp'); if (inp && s.value) inp.value = s.options[s.selectedIndex]?.textContent || ''; }
+  // Restore previous selection if value still exists, else reset to blank
+  if (cur && [...s.options].some(o => o.value === cur)) {
+    s.value = cur;
+  } else {
+    s.value = '';
+  }
+  // Sync searchable wrapper input to reflect current state
+  const st = window._srchSelectState && window._srchSelectState[id];
+  if (st && st.inp) {
+    const selOpt = [...s.options].find(o => o.value === s.value);
+    st.inp.value = (selOpt && selOpt.value) ? selOpt.textContent : '';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3846,6 +3911,10 @@ function renderCfg() {
     setTimeout(renderIOHistory, 100);
     const bkNav = document.getElementById('cfg-nav-backup');
     if (bkNav) bkNav.style.display = 'inline-flex';
+    // Developer: verificar resets de PIN pendientes
+    if (CURRENT_USER?.role === 'developer') setTimeout(_checkPinResetsPending, 200);
+    // Responsable: mostrar botón de setup de PIN si aplica
+    setTimeout(_checkPinResponsableSetup, 200);
   } else {
     const mm = document.getElementById('mod-mgmt-section');
     if (mm) mm.style.display = 'none';
@@ -3853,6 +3922,8 @@ function renderCfg() {
     if (ioh) ioh.style.display = 'none';
     const bkNav = document.getElementById('cfg-nav-backup');
     if (bkNav) bkNav.style.display = 'none';
+    // No-developer: mostrar sección de módulos activos para responsables que deben configurar PIN
+    setTimeout(_checkPinResponsableSetup, 200);
   }
   cfgShowPage(window._activeCfgPage || 'general');
 }
@@ -6774,10 +6845,9 @@ async function initSession(authUser) {
       modules: p.modules || [], perms: p.perms || {}
     }));
 
-    // 3. Update UI and hide login
+    // 3. Preparar UI (aún sin ocultar login)
     applyUserToUI();
     applyStoredTheme();
-    document.getElementById('login-screen').style.display = 'none';
 
     // 4. Load custom modules FIRST so buttons exist before applyPermissions
     try {
@@ -6810,7 +6880,7 @@ async function initSession(authUser) {
     // 5. Apply permissions after all buttons are in DOM
     applyPermissions();
 
-    // 6. Pick first accessible module and load data
+    // 6. Determinar módulo inicial
     const allModKeys = Object.keys(MOD_LBL);
     const accessibleMods = CURRENT_USER.role === 'developer'
       ? allModKeys
@@ -6818,21 +6888,26 @@ async function initSession(authUser) {
     const initMod = accessibleMods[0] || CURRENT_USER.modules[0] || 'automatizacion';
     ACTIVE = initMod;
 
-    try {
-      await loadModFromDB(initMod);
-    } catch (e) {
-      console.error('Error loading initial module:', e);
-      if (!MS[initMod]) MS[initMod] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
-      if (MS[initMod].acts === null) MS[initMod].acts = [];
-    }
-
-    try { subscribeRealtime(); } catch(e) { console.warn('Realtime subscribe error:', e); }
-    try { await loadUserNotifs(); } catch(e) { console.warn('Notifs load error:', e); }
-    try { await loadIOHistory(); } catch(e) {}
-    setTimeout(checkDueNotifs, 1500);
-
-    notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
-    _navigateToInicio();
+    // 7. Verificar PIN ANTES de mostrar contenido
+    // Si requiere PIN → el modal aparece sobre el login screen todavía visible
+    // Solo cuando el PIN sea correcto se oculta el login y se carga el módulo
+    await pinGuard(initMod, async function() {
+      // ── PIN aprobado (o no requerido): ahora sí ocultar login y cargar ──
+      document.getElementById('login-screen').style.display = 'none';
+      try {
+        await loadModFromDB(initMod);
+      } catch (e) {
+        console.error('Error loading initial module:', e);
+        if (!MS[initMod]) MS[initMod] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
+        if (MS[initMod].acts === null) MS[initMod].acts = [];
+      }
+      try { subscribeRealtime(); } catch(e) { console.warn('Realtime subscribe error:', e); }
+      try { await loadUserNotifs(); } catch(e) {}
+      try { await loadIOHistory(); } catch(e) {}
+      setTimeout(checkDueNotifs, 1500);
+      notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
+      _navigateToInicio();
+    });
 
   } catch(e) {
     console.error('initSession fatal error:', e);
@@ -6862,6 +6937,8 @@ async function doLogout() {
   if (!confirm('¿Cerrar sesión?')) return;
   unsubscribeRealtime();
   await _sb.auth.signOut();
+  // Limpiar PINes desbloqueados de esta sesión
+  _pinClearAll();
   CURRENT_USER = null; SB_PROFILES = [];
   Object.keys(MS).forEach(k => MS[k].acts = null);
   document.getElementById('login-screen').style.display = 'flex';
@@ -6952,21 +7029,23 @@ function applyPermissions() {
 let REALTIME_SUBS = [];
 
 async function loadModFromDB(key) {
+  // Fijar módulo activo al inicio y mantenerlo a lo largo de toda la carga
   ACTIVE = key;
-  if (!MS[key]) MS[key] = { acts: null, sF:'CÓDIGO', sA:true, pg:1 };
-  
+  if (!MS[key]) MS[key] = { acts: null, sF: 'CÓDIGO', sA: true, pg: 1 };
+  MS[key].pg = 1; // resetear paginación al cambiar de módulo
+
   const { data, error } = await _sb
     .from('actividades')
     .select('*')
     .eq('modulo', key)
-    .not('proyecto', 'like', '_deleted_proj_%')   // exclude soft-deleted projects
+    .not('proyecto', 'like', '_deleted_proj_%')
     .order('created_at', { ascending: true });
 
   if (error) {
     notify('⚠ Error cargando actividades: ' + error.message, true);
     MS[key].acts = [];
   } else {
-    MS[key].acts = (data || []).map((r, i) => ({
+    MS[key].acts = (data || []).map((r) => ({
       _id:        r.id,
       _dbid:      r.id,
       'CÓDIGO':   r.codigo,
@@ -6991,27 +7070,61 @@ async function loadModFromDB(key) {
       _history:    [],
       _customFields: r.custom_fields || {},
     }));
-
-    try { await loadCommentsForMod(key); } catch(e) { console.error('Comments load error:', e); }
-    try { await loadHistoryForMod(key); } catch(e) { console.error('History load error:', e); }
   }
 
+  // Confirmar que ACTIVE sigue siendo este módulo (protección race condition)
+  ACTIVE = key;
+
+  // Cargar configs adicionales en paralelo
+  await Promise.all([
+    loadCustomFieldsView().catch(() => {}),
+    loadDisabledProjects().catch(() => {}),
+    loadDashConfig().catch(() => {}),
+    loadAllProjOrders().catch(() => {}),
+  ]);
+
+  // Confirmar ACTIVE de nuevo tras los awaits
+  ACTIVE = key;
+
+  // Limpiar filtros para que no queden valores del módulo anterior
+  ['f-planta','f-proyecto','f-resp','a-planta','a-proj','a-resp2',
+   'p-planta','p-resp','g-planta','g-resp','cal-planta','cal-resp'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el && el.tagName === 'SELECT') el.value = '';
+    // Limpiar también el input del searchable wrapper
+    const st = window._srchSelectState && window._srchSelectState[id];
+    if (st && st.inp) st.inp.value = '';
+  });
+
+  // Renderizar todo con los datos frescos del nuevo módulo
   populateDDs();
-  await Promise.all([loadCustomFieldsView(), loadDisabledProjects(), loadDashConfig(), loadAllProjOrders()]);
-  setTimeout(hydrateAllAttachments, 300); // hydrate image attachments from localStorage
-  // Render everything
-  applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
-  // renderCal() only when on calendar page
+  applyF();
+  renderDash();
+  renderActs();
+  renderProjs();
+  renderGantt();
+  renderCfg();
+  renderRep();
+
   if (document.getElementById('page-calendar')?.classList.contains('active')) renderCal();
-  // Update BOTH topbar labels — always force them to reflect current module
+
   const modLabel = MOD_LBL[key] || key;
   document.getElementById('tb-mod').textContent = modLabel;
-  document.getElementById('rep-mod') && (document.getElementById('rep-mod').textContent = modLabel);
-  // Render page-specific content for whichever page is currently active
+  if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = modLabel;
+
   const activePg = document.querySelector('.page.active');
-  const activePgId = activePg ? activePg.id.replace('page-','') : '';
+  const activePgId = activePg ? activePg.id.replace('page-', '') : '';
   if (activePgId === 'inicio')     renderInicio();
   if (activePgId === 'mis-tareas') renderMisTareas();
+
+  // Comentarios e historial en background (no bloquea UI)
+  setTimeout(hydrateAllAttachments, 300);
+  if (!error && MS[key] && MS[key].acts && MS[key].acts.length) {
+    Promise.all([
+      loadCommentsForMod(key).catch(function(e) { console.error('Comments error:', e); }),
+      loadHistoryForMod(key).catch(function(e) { console.error('History error:', e); }),
+    ]);
+  }
 }
 
 async function loadCommentsForMod(key) {
@@ -7458,7 +7571,46 @@ function subscribeRealtime() {
     })
     .subscribe();
 
-  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub];
+  // Subscribe to notifications for this user — only show if module is accessible
+  const notifSub = _sb.channel('notif-changes-' + (CURRENT_USER?.id || 'anon'))
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notificaciones',
+      filter: 'user_id=eq.' + (CURRENT_USER?.id || '')
+    }, function(payload) {
+      const n = payload.new;
+      if (!n) return;
+      // Filter: only show notification if user has access to that module
+      const userMods = CURRENT_USER?.modules || [];
+      const isDev = CURRENT_USER?.role === 'developer';
+      if (n.modulo_key && !isDev && !userMods.includes(n.modulo_key)) return;
+      // Avoid duplicates (the sender already adds it locally via addNotifForUsers)
+      const alreadyExists = NOTIFICATIONS.some(function(x) {
+        return String(x.actId) === String(n.actividad_id) &&
+               x.type === n.tipo &&
+               Math.abs(new Date(n.created_at) - new Date()) < 5000;
+      });
+      if (alreadyExists) return;
+      const icons = { comment: '💬', mention: '@', task: '📌', due: '⏰', system: '🔧' };
+      const notif = {
+        id: n.id, type: n.tipo, text: n.texto,
+        actId: n.actividad_id, read: false, modulo: n.modulo_key,
+        time: new Date(n.created_at).toLocaleString('es-BO', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        }),
+        icon: icons[n.tipo] || '🔔'
+      };
+      NOTIFICATIONS.unshift(notif);
+      renderNotifBadge();
+      if (!document.hidden) showNotifPopup(notif.text, notif.type, notif.actId, notif.id);
+      // Refresh inicio bandeja if visible
+      if (document.getElementById('page-inicio')?.classList.contains('active')) {
+        setTimeout(renderInicio, 200);
+      }
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub, notifSub];
 
   // Polling fallback: re-check own profile every 30s in case Realtime misses the event
   _startProfilePolling();
@@ -7516,38 +7668,76 @@ let NOTIFICATIONS = [];
 
 async function loadUserNotifs() {
   if (!CURRENT_USER) return;
-  const { data } = await _sb.from('notificaciones').select('*')
+  // Módulos a los que el usuario tiene acceso (developer ve todos)
+  const userMods = CURRENT_USER.role === 'developer'
+    ? null  // null = sin filtro, ve todo
+    : (CURRENT_USER.modules || []);
+
+  let query = _sb.from('notificaciones').select('*')
     .eq('user_id', CURRENT_USER.id).eq('leida', false)
-    .order('created_at', { ascending:false }).limit(50);
-  NOTIFICATIONS = (data || []).map(n => ({
+    .order('created_at', { ascending: false }).limit(80);
+
+  const { data } = await query;
+
+  const rows = (data || []).filter(n => {
+    // Notificaciones de sistema (sin módulo) siempre se muestran
+    if (!n.modulo_key) return true;
+    // Developer ve todo
+    if (!userMods) return true;
+    // Filtrar: solo módulos asignados al usuario
+    return userMods.includes(n.modulo_key);
+  });
+
+  NOTIFICATIONS = rows.slice(0, 50).map(n => ({
     id: n.id, type: n.tipo, text: n.texto,
     actId: n.actividad_id, read: n.leida,
-    time: new Date(n.created_at).toLocaleString('es-BO'),
-    icon: { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧' }[n.tipo] || '🔔'
+    modulo: n.modulo_key,
+    time: new Date(n.created_at).toLocaleString('es-BO', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }),
+    icon: { comment: '💬', mention: '@', task: '📌', due: '⏰', system: '🔧' }[n.tipo] || '🔔'
   }));
   renderNotifBadge();
 }
 
-async function addNotifForUsers(userIds, type, text, actId = null) {
+async function addNotifForUsers(userIds, type, text, actId = null, moduloKey = null) {
   if (!userIds || !userIds.length) return;
-  const rows = userIds.map(uid => ({ user_id:uid, tipo:type, texto:text, actividad_id:actId }));
+  // Inferir moduloKey desde la actividad si no se provee
+  const mKey = moduloKey || ACTIVE || null;
+  const rows = userIds.map(uid => ({
+    user_id: uid, tipo: type, texto: text,
+    actividad_id: actId, modulo_key: mKey
+  }));
   await _sb.from('notificaciones').insert(rows);
-  // Show locally if current user is in list
+  // Mostrar localmente solo si el usuario actual es destinatario
   if (CURRENT_USER && userIds.includes(CURRENT_USER.id)) {
-    const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧' };
-    NOTIFICATIONS.unshift({ id: Date.now(), type, text, icon:icons[type]||'🔔', time:tsNow(), read:false, actId });
+    const icons = { comment: '💬', mention: '@', task: '📌', due: '⏰', system: '🔧' };
+    NOTIFICATIONS.unshift({
+      id: Date.now(), type, text, icon: icons[type] || '🔔',
+      time: tsNow(), read: false, actId, modulo: mKey
+    });
     renderNotifBadge();
   }
 }
 
 function getUsersRelatedToAct(act) {
   // Returns user IDs of people related to this activity
+  // Only includes users that have access to the module of the activity
+  const actModule = act.MODULE || ACTIVE;
   const related = new Set();
-  SB_PROFILES.forEach(p => {
+  SB_PROFILES.forEach(function(p) {
+    // Responsable de la actividad siempre recibe notificación
     if (p.name === act.RESPONSABLE) related.add(p.id);
-    // Admin always gets notified
-    if (p.role === 'admin') related.add(p.id);
+    // Admin/developer: solo si tiene acceso al módulo de la actividad
+    if (p.role === 'admin' || p.role === 'developer') {
+      const hasMod = p.role === 'developer'
+        || (Array.isArray(p.modules) && p.modules.includes(actModule));
+      if (hasMod) related.add(p.id);
+    }
   });
+  // Excluir al usuario que genera la acción (no se notifica a sí mismo)
+  if (window.CURRENT_USER) related.delete(window.CURRENT_USER.id);
   return [...related];
 }
 
@@ -7569,12 +7759,12 @@ function tsNow() {
 // Animal animation counter for cycling
 let _notifAnimalIdx = 0;
 
-function addNotif(type, text, actId = null) {
+function addNotif(type, text, actId = null, moduloKey = null) {
   const icons = { comment:'💬', mention:'@', task:'📌', due:'⏰', system:'🔧', project:'◫' };
   const id = Date.now();
-  NOTIFICATIONS.unshift({ id, type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId });
+  const mKey = moduloKey || ACTIVE || null;
+  NOTIFICATIONS.unshift({ id, type, text, icon: icons[type]||'🔔', time: tsNow(), read: false, actId, modulo: mKey });
   renderNotifBadge();
-  // Show animated popup if page is visible
   if (!document.hidden) showNotifPopup(text, type, actId, id);
 }
 
@@ -7984,51 +8174,103 @@ async function addDrawerComment(actId) {
 
 // switchMod — load from DB
 async function switchMod(key, el) {
+  // ── PIN Guard: verificar acceso antes de cambiar al módulo ──
+  await pinGuard(key, async () => {
+    await _doSwitchMod(key, el);
+  });
+}
+
+async function _doSwitchMod(key, el) {
+  // Marcar botón activo inmediatamente
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  // Update module label IMMEDIATELY — don't wait for async load
+
+  // Fijar módulo y actualizar UI de inmediato
   ACTIVE = key;
   const label = MOD_LBL[key] || key;
   document.getElementById('tb-mod').textContent = label;
   if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
-  // Clear all filters
-  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2','p-srch','p-planta','p-resp','p-est','rep-plan-from','rep-plan-to','rep-plan-planta','rep-plan-proj'].forEach(id => {
-    const e = document.getElementById(id); if (e) { if (e.tagName==='SELECT') e.value=''; else e.value=''; }
+
+  // Limpiar filtros (selects + searchable inputs)
+  const filterIds = ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp',
+    'a-srch','a-est','a-planta','a-proj','a-resp2',
+    'p-srch','p-planta','p-resp','p-est',
+    'g-planta','g-resp','cal-planta','cal-resp',
+    'rep-plan-from','rep-plan-to','rep-plan-planta','rep-plan-proj'];
+  filterIds.forEach(function(id) {
+    const e = document.getElementById(id);
+    if (e) e.value = '';
+    // Limpiar también el input visible del searchable wrapper
+    const st = window._srchSelectState && window._srchSelectState[id];
+    if (st && st.inp) st.inp.value = '';
   });
+
   try {
     await loadModFromDB(key);
   } catch (err) {
     console.error('Error loading module:', err);
-    if (!MS[key]) MS[key] = { acts: [], sF:'CÓDIGO', sA:true, pg:1 };
+    if (!MS[key]) MS[key] = { acts: [], sF: 'CÓDIGO', sA: true, pg: 1 };
     if (MS[key].acts === null) MS[key].acts = [];
-    // Force render even on error so UI shows empty state not stale data
+    ACTIVE = key;
     populateDDs(); applyF(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCfg(); renderRep();
     const activePgId = document.querySelector('.page.active')?.id?.replace('page-','') || '';
     if (activePgId === 'inicio') renderInicio();
     if (activePgId === 'mis-tareas') renderMisTareas();
     notify('⚠ Error al cargar módulo', true);
   }
-  // Ensure label is correct after load
+
+  // Confirmar labels tras la carga
   document.getElementById('tb-mod').textContent = MOD_LBL[key] || key;
   const activePage = document.querySelector('.page.active');
   if (activePage) {
     const pageId = (activePage.id||'').replace('page-','');
-    const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
+    const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos',
+      activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
     if (T[pageId]) document.getElementById('tb-title').textContent = T[pageId];
   }
   notify('Módulo: ' + (MOD_LBL[key] || key));
 }
 
-// populateDDs — use SB_PROFILES for responsables and mentions
+// ── titleCase: normaliza "NOMBRE APELLIDO" → "Nombre Apellido" ──────
+function titleCase(str) {
+  if (!str) return '';
+  return String(str).trim().split(/\s+/).map(function(w) {
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+// populateDDs — filtra responsables al módulo activo, normaliza Title Case
 function populateDDs() {
   const a = get();
   const plantas = uniq(a, 'PLANTA');
   const projs   = uniq(a, 'PROYECTO');
-  // Responsable: merge from activity data + all registered user profiles (USERS + SB_PROFILES)
-  const actResps  = uniq(a, 'RESPONSABLE').filter(Boolean);
-  const profResps = (USERS||[]).map(p=>p.name).filter(Boolean);
-  const sbResps   = (SB_PROFILES||[]).map(p=>p.name).filter(Boolean);
-  const resps = [...new Set([...actResps, ...profResps, ...sbResps])].sort();
+
+  // ── Responsables: solo perfiles que tienen acceso al módulo activo ──
+  const activeModKey = ACTIVE || '';
+  let resps = [];
+
+  if (SB_PROFILES && SB_PROFILES.length > 0) {
+    // Perfiles con acceso al módulo actual
+    const modProfiles = SB_PROFILES.filter(p => {
+      if (!p || !p.name) return false;
+      if (p.role === 'developer') return true;
+      return Array.isArray(p.modules) && p.modules.includes(activeModKey);
+    });
+
+    // Nombres de perfiles del módulo (Title Case)
+    const modRespNames = modProfiles.map(p => titleCase(p.name)).filter(Boolean);
+
+    // Responsables que aparecen en actividades del módulo (por si hay datos sin perfil)
+    const actResps = uniq(a, 'RESPONSABLE').filter(Boolean).map(titleCase);
+
+    resps = [...new Set([...modRespNames, ...actResps])].sort();
+  } else {
+    // SB_PROFILES aún no cargado — usar solo los que aparecen en actividades
+    resps = uniq(a, 'RESPONSABLE').filter(Boolean).map(titleCase).sort();
+  }
+
+  // Para el modal de actividad: misma lista
+  const modalResps = resps.length ? resps : [];
 
   ['f-planta','a-planta','g-planta','cal-planta','rep-planta','p-planta','rep-plan-planta'].forEach(id => setDD(id, plantas));
   ['f-resp','a-resp2','g-resp','cal-resp','p-resp'].forEach(id => setDD(id, resps));
@@ -8036,16 +8278,22 @@ function populateDDs() {
   if (typeof _gProjSetup === 'function') _gProjSetup(projs);
 
   setDD('m-planta', plantas, true, true);
-  setDD('m-resp',   resps,   true, true);
+  setDD('m-resp', modalResps, true, true);
+
   const mp = document.getElementById('m-proj'); if (mp) {
     while(mp.options.length>1) mp.remove(1);
     projs.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; mp.appendChild(o); });
     const o=document.createElement('option'); o.value='__new'; o.textContent='+ Agregar nuevo proyecto'; mp.appendChild(o);
   }
   setDD('np-planta', plantas, true, false);
-  // Subtask responsible — all users
-  setDD('st-resp', SB_PROFILES.length ? SB_PROFILES.map(p=>p.name).sort() : resps, true, false);
-  // Initialize searchable selects (only once)
+
+  // Subtask responsible — todos los perfiles normalizados
+  const allNorm = SB_PROFILES.length
+    ? SB_PROFILES.map(p=>p.name).filter(Boolean).map(titleCase).sort()
+    : resps;
+  setDD('st-resp', allNorm, true, false);
+
+  // Inicializar searchable selects solo una vez
   if (!window._searchableInited) { window._searchableInited = true; setTimeout(initSearchableFilters, 100); }
 }
 
@@ -9661,23 +9909,384 @@ const DELETED_MODS = [];
 const _PAPELERA = {};
 const DELETED_PROJS = [];
 
+// ── Verificar resets de PIN pendientes (solo developer) ────────────
+async function _checkPinResetsPending() {
+  if (CURRENT_USER?.role !== 'developer') return;
+  const { data } = await _sb.from('modulos')
+    .select('key,nombre,pin_reset_token,pin_reset_exp,pin_responsable')
+    .eq('activo',true).not('pin_reset_token','is',null);
+  const el = document.getElementById('pin-reset-pending');
+  const listEl = document.getElementById('pin-reset-list');
+  if (!el || !listEl) return;
+  const pending = (data||[]).filter(m => m.pin_reset_token && new Date(m.pin_reset_exp) > new Date());
+  if (!pending.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  listEl.innerHTML = pending.map(m => {
+    const resp = (SB_PROFILES||[]).find(p=>p.id===m.pin_responsable);
+    const exp  = m.pin_reset_exp ? new Date(m.pin_reset_exp).toLocaleString('es-BO') : '—';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1"><strong>${m.nombre||m.key}</strong>${resp?' — '+titleCase(resp.name):''} <span style="font-size:10px;color:var(--text2)">(exp: ${exp})</span></span>
+      <button onclick="modApplyReset('${m.key}')" style="padding:3px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;font-size:11px;cursor:pointer">Aprobar Reset</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Verificar si el usuario actual es responsable de algún PIN sin configurar ─
+async function _checkPinResponsableSetup() {
+  if (!CURRENT_USER) return;
+  const { data } = await _sb.from('modulos')
+    .select('key,nombre,requiere_pin,pin_hash,pin_responsable')
+    .eq('activo',true).eq('requiere_pin',true).eq('pin_responsable',CURRENT_USER.id).is('pin_hash',null);
+  const btn = document.getElementById('pin-resp-setup-btn');
+  const mm  = document.getElementById('mod-mgmt-section');
+  if (!btn) return;
+  if ((data||[]).length) {
+    btn.style.display = 'inline-flex';
+    btn.onclick = () => {
+      const mod = data[0];
+      modResponsableSetPin(mod.key);
+    };
+    // Mostrar sección aunque no sea admin/developer
+    if (mm) mm.style.display = 'block';
+    renderModMgmt(); // para que muestre el hint
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ── SISTEMA DE PIN POR MÓDULO ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
+// sessionStorage key prefix — se limpia al cerrar la pestaña
+const _PIN_SS_PREFIX = 'sg_pin_ok_';
+
+// _PIN_UNLOCKED: verifica si el módulo fue desbloqueado en esta sesión de navegador
+function _pinIsUnlocked(key) {
+  try { return sessionStorage.getItem(_PIN_SS_PREFIX + key) === '1'; } catch(e) { return false; }
+}
+function _pinMarkUnlocked(key) {
+  try { sessionStorage.setItem(_PIN_SS_PREFIX + key, '1'); } catch(e) {}
+}
+function _pinMarkLocked(key) {
+  try { sessionStorage.removeItem(_PIN_SS_PREFIX + key); } catch(e) {}
+}
+function _pinClearAll() {
+  // Limpiar todos los PINes al hacer logout
+  try {
+    Object.keys(sessionStorage).filter(k => k.startsWith(_PIN_SS_PREFIX)).forEach(k => sessionStorage.removeItem(k));
+  } catch(e) {}
+}
+
+let _PIN_CURRENT_KEY  = null;
+let _PIN_CURRENT_VAL  = '';
+let _PIN_CALLBACK     = null;
+const PIN_LENGTH = 4;
+
+// ── Hash SHA-256 del PIN ─────────────────────────────────────────
+async function _pinHash(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('geo_pin_v1:' + pin));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── pinGuard: punto de entrada único para verificar acceso a módulo protegido ──
+// Uso: await pinGuard(moduleKey, callbackSiAprobado)
+// - Si no requiere PIN o ya fue desbloqueado en la sesión → ejecuta callback directo
+// - Si requiere PIN y no fue desbloqueado → muestra modal, bloquea UI
+// - Fail-safe: en error de red, muestra modal igualmente (NO deja pasar)
+async function pinGuard(moduleKey, callback) {
+  if (_pinIsUnlocked(moduleKey)) { callback(); return; }
+  try {
+    const { data: mod } = await _sb.from('modulos')
+      .select('requiere_pin,pin_hash,pin_responsable')
+      .eq('key', moduleKey).maybeSingle();
+
+    if (!mod || !mod.requiere_pin || !mod.pin_hash) {
+      // No requiere PIN o aún no está configurado → acceso libre
+      _pinMarkUnlocked(moduleKey);
+      callback();
+      return;
+    }
+
+    // Requiere PIN → mostrar modal bloqueante (NO ejecutar callback todavía)
+    _pinShowModal(moduleKey, mod, callback);
+
+  } catch(e) {
+    // Error de red: mostramos el modal de todas formas (fail-secure)
+    console.warn('pinGuard network error:', e);
+    _pinShowModal(moduleKey, null, callback);
+  }
+}
+
+// ── Muestra el modal PIN y bloquea el contenido ──────────────────
+function _pinShowModal(moduleKey, mod, callback) {
+  _PIN_CURRENT_KEY = moduleKey;
+  _PIN_CURRENT_VAL = '';
+  _PIN_CALLBACK    = callback;
+  _pinUpdateDots();
+
+  document.getElementById('pin-mod-name').textContent = MOD_LBL[moduleKey] || moduleKey;
+  document.getElementById('pin-sub-text').textContent = 'Ingrese el PIN de acceso';
+  document.getElementById('pin-error').textContent = '';
+
+  const respId   = mod ? mod.pin_responsable : null;
+  const respProf = respId ? (SB_PROFILES || []).find(function(p) { return p.id === respId; }) : null;
+  const hintEl   = document.getElementById('pin-resp-hint');
+  if (respProf) {
+    hintEl.textContent = 'Administrado por: ' + titleCase(respProf.name);
+    hintEl.style.display = 'block';
+  } else {
+    hintEl.style.display = 'none';
+  }
+  document.getElementById('pin-reset-link').style.display = respProf ? 'inline-block' : 'none';
+  document.getElementById('pin-overlay').style.display = 'flex';
+}
+
+function _pinUpdateDots() {
+  for (var i = 0; i < PIN_LENGTH; i++) {
+    var d = document.getElementById('pd' + i);
+    if (d) d.className = 'pin-dot' + (i < _PIN_CURRENT_VAL.length ? ' filled' : '');
+  }
+}
+
+async function pinKey(digit) {
+  if (_PIN_CURRENT_VAL.length >= PIN_LENGTH) return;
+  _PIN_CURRENT_VAL += digit;
+  _pinUpdateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (_PIN_CURRENT_VAL.length === PIN_LENGTH) await _pinVerify();
+}
+function pinDel()   { _PIN_CURRENT_VAL = _PIN_CURRENT_VAL.slice(0, -1); _pinUpdateDots(); }
+function pinClear() { _PIN_CURRENT_VAL = ''; _pinUpdateDots(); }
+
+async function _pinVerify() {
+  const entered = _PIN_CURRENT_VAL;
+  const errEl   = document.getElementById('pin-error');
+  try {
+    const hash = await _pinHash(entered);
+    const { data: mod } = await _sb.from('modulos')
+      .select('pin_hash').eq('key', _PIN_CURRENT_KEY).maybeSingle();
+
+    if (mod && mod.pin_hash === hash) {
+      // ✅ PIN correcto
+      _pinMarkUnlocked(_PIN_CURRENT_KEY);
+      document.getElementById('pin-overlay').style.display = 'none';
+      _PIN_CURRENT_VAL = '';
+      _pinUpdateDots();
+      if (_PIN_CALLBACK) { var cb = _PIN_CALLBACK; _PIN_CALLBACK = null; cb(); }
+    } else {
+      // ❌ PIN incorrecto
+      errEl.textContent = 'PIN incorrecto. Intente de nuevo.';
+      _PIN_CURRENT_VAL = '';
+      _pinUpdateDots();
+      if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de conexión. Intente de nuevo.';
+    _PIN_CURRENT_VAL = '';
+    _pinUpdateDots();
+  }
+}
+
+// ── El responsable establece el PIN de su módulo ─────────────────
+async function modResponsableSetPin(moduleKey) {
+  if (!CURRENT_USER) return;
+  const { data: mod } = await _sb.from('modulos')
+    .select('pin_responsable,nombre').eq('key', moduleKey).maybeSingle();
+  if (!mod) { notify('⚠ Módulo no encontrado', true); return; }
+  if (mod.pin_responsable !== CURRENT_USER.id && CURRENT_USER.role !== 'developer') {
+    notify('⚠ Solo el responsable asignado puede configurar el PIN', true); return;
+  }
+  const p1 = await _promptPinInput('Nuevo PIN de ' + PIN_LENGTH + ' dígitos para "' + (mod.nombre || moduleKey) + '"');
+  if (!p1) return;
+  if (p1.length !== PIN_LENGTH || !/^\d+$/.test(p1)) {
+    notify('⚠ El PIN debe ser exactamente ' + PIN_LENGTH + ' dígitos numéricos', true); return;
+  }
+  const p2 = await _promptPinInput('Confirme el PIN');
+  if (!p2) return;
+  if (p1 !== p2) { notify('⚠ Los PINes no coinciden', true); return; }
+  const hash = await _pinHash(p1);
+  const { error } = await _sb.from('modulos').update({ pin_hash: hash }).eq('key', moduleKey);
+  if (error) { notify('⚠ Error guardando PIN: ' + error.message, true); return; }
+  _pinMarkLocked(moduleKey); // forzar re-verificación la próxima vez
+  notify('✅ PIN establecido para "' + (mod.nombre || moduleKey) + '"');
+  renderModMgmt();
+}
+
+// ── Developer borra el PIN ───────────────────────────────────────
+async function modClearPin(moduleKey) {
+  if (CURRENT_USER?.role !== 'developer') { notify('⚠ Solo el desarrollador puede borrar el PIN', true); return; }
+  if (!confirm('¿Borrar el PIN del módulo "' + MOD_LBL[moduleKey] + '"?')) return;
+  await _sb.from('modulos').update({ pin_hash: null, pin_reset_token: null, pin_reset_exp: null }).eq('key', moduleKey);
+  _pinMarkUnlocked(moduleKey); // sin PIN → acceso libre
+  notify('🗑 PIN borrado. El responsable deberá configurar uno nuevo.');
+  renderModMgmt();
+}
+
+// ── Developer activa/desactiva PIN ───────────────────────────────
+async function modTogglePin(moduleKey, val) {
+  if (CURRENT_USER?.role !== 'developer') { notify('⚠ Solo el desarrollador puede cambiar esta configuración', true); return; }
+  const requires = val === '1';
+  await _sb.from('modulos').update({ requiere_pin: requires }).eq('key', moduleKey);
+  if (!requires) _pinMarkUnlocked(moduleKey); else _pinMarkLocked(moduleKey);
+  renderModMgmt();
+  notify(requires ? '🔐 Módulo marcado como privado (requiere PIN)' : '🔓 Módulo sin PIN');
+}
+
+// ── Developer asigna responsable del PIN ────────────────────────
+async function modSetPinResp(moduleKey, userId) {
+  if (CURRENT_USER?.role !== 'developer') return;
+  await _sb.from('modulos').update({ pin_responsable: userId || null, pin_hash: null }).eq('key', moduleKey);
+  _pinMarkLocked(moduleKey); // reset de acceso al cambiar responsable
+  renderModMgmt();
+  const resp = (SB_PROFILES || []).find(function(p) { return p.id === userId; });
+  notify(resp
+    ? '✅ Responsable del PIN: ' + titleCase(resp.name) + '. Debe ir a Configuración para establecer el PIN.'
+    : '✅ Responsable eliminado');
+}
+
+// ── Usuario solicita reset de PIN ────────────────────────────────
+async function pinRequestReset() {
+  if (!_PIN_CURRENT_KEY) return;
+  if (!confirm('¿Solicitar reset del PIN?\nEl desarrollador deberá aprobarlo en Configuración.')) return;
+  const token = crypto.randomUUID();
+  const exp   = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  await _sb.from('modulos').update({ pin_reset_token: token, pin_reset_exp: exp }).eq('key', _PIN_CURRENT_KEY);
+  await _sb.from('audit_log').insert({
+    tabla: 'modulos', operacion: 'UPDATE', registro_id: _PIN_CURRENT_KEY,
+    usuario_id: CURRENT_USER?.id, datos_antes: {}, datos_despues: { pin_reset_requested: true }
+  }).catch(function() {});
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-sub-text').textContent = 'Reset solicitado. Espere aprobación del desarrollador.';
+  notify('📧 Reset solicitado. El desarrollador debe ir a Configuración → Módulos para aprobarlo.');
+}
+
+// ── Developer aprueba reset de PIN ──────────────────────────────
+async function modApplyReset(moduleKey) {
+  if (CURRENT_USER?.role !== 'developer') return;
+  const { data: mod } = await _sb.from('modulos')
+    .select('pin_reset_token,pin_reset_exp,nombre').eq('key', moduleKey).maybeSingle();
+  if (!mod?.pin_reset_token) { notify('⚠ No hay reset pendiente para este módulo', true); return; }
+  if (new Date(mod.pin_reset_exp) < new Date()) { notify('⚠ El token de reset expiró (más de 24h)', true); return; }
+  if (!confirm('¿Aprobar reset de PIN para "' + (mod.nombre || moduleKey) + '"?')) return;
+  await _sb.from('modulos').update({ pin_hash: null, pin_reset_token: null, pin_reset_exp: null }).eq('key', moduleKey);
+  _pinMarkLocked(moduleKey);
+  notify('✅ PIN reseteado. El responsable debe ir a Configuración para establecer un nuevo PIN.');
+  renderModMgmt();
+}
+
+// ── Prompt auxiliar para setup de PIN ───────────────────────────
+function _promptPinInput(msg) {
+  return new Promise(function(resolve) {
+    var val = prompt(msg + '\n(Solo números, ' + PIN_LENGTH + ' dígitos)');
+    resolve(val ? val.trim() : null);
+  });
+}
+
 function renderModMgmt() {
   const el = document.getElementById('mod-mgmt-list'); if (!el) return;
   if (!['developer','admin'].includes(CURRENT_USER?.role)) { el.innerHTML = '<div style="font-size:12px;color:var(--text2)">Solo disponible para administradores.</div>'; return; }
+  const isDev = CURRENT_USER?.role === 'developer';
   const mods = Object.entries(MOD_LBL).filter(([k]) => !['automatizacion','investigaciones','cambios'].includes(k) || true);
-  el.innerHTML = mods.map(([key, name]) => {
-    const cnt = (MS[key]?.acts||[]).length;
-    const isBuiltin = ['automatizacion','investigaciones','cambios'].includes(key);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;margin-bottom:6px">
-      <span class="mod-dot" style="background:${COLORS_ALL[key]?Object.values(COLORS_ALL[key])[0]||'#38bdf8':'#38bdf8'}"></span>
-      <span style="flex:1;font-size:12px;font-weight:600">${name}</span>
-      <span style="font-size:10px;color:var(--text2)">${cnt} actividades</span>
-      ${!isBuiltin?`<button onclick="editModName('${key}')" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer">✏️ Editar</button>
-      <button onclick="deleteMod('${key}')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:var(--red);font-size:10px;cursor:pointer">🗑 Eliminar</button>`:'<span style="font-size:10px;color:var(--text2);font-style:italic">módulo base</span>'}
-    </div>`;
-  }).join('');
-  const recSection = document.getElementById('recovery-section');
-  if (recSection) recSection.style.display = ['developer','admin'].includes(CURRENT_USER?.role) ? 'block' : 'none';
+
+  el.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:10px;text-align:center">Cargando...</div>';
+
+  _sb.from('modulos').select('key,requiere_pin,pin_responsable,pin_hash').eq('activo',true).then(function(res) {
+    const pinData = res.data || [];
+    const pinMap = {};
+    pinData.forEach(function(m) { pinMap[m.key] = m; });
+
+    const rows = mods.map(function(entry) {
+      const key = entry[0], name = entry[1];
+      const cnt = (MS[key] && MS[key].acts) ? MS[key].acts.length : 0;
+      const isBuiltin = ['automatizacion','investigaciones','cambios'].includes(key);
+      const pm = pinMap[key] || {};
+      const hasPIN  = pm.requiere_pin === true;
+      const hasHash = !!pm.pin_hash;
+      const respId  = pm.pin_responsable || '';
+      const respProf = (SB_PROFILES||[]).find(function(p){ return p.id === respId; });
+      const respName = respProf ? titleCase(respProf.name) : (respId ? '(asignado)' : '');
+
+      // Botones de módulo
+      let modBtns = '';
+      if (isBuiltin) {
+        modBtns = '<span style="font-size:10px;color:var(--text2);font-style:italic">módulo base</span>';
+      } else {
+        modBtns = '<button onclick="editModName(\'' + key + '\')" style="padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer">✏️ Editar</button> '
+          + '<button onclick="deleteMod(\'' + key + '\')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:var(--red);font-size:10px;cursor:pointer">🗑 Eliminar</button>';
+      }
+
+      // Control PIN (solo developer)
+      let pinCtrl = '';
+      if (isDev) {
+        const badge = '<span class="mod-pin-badge ' + (hasPIN ? 'mod-pin-on' : 'mod-pin-off') + '">' + (hasPIN ? '🔐 PIN activo' : 'Sin PIN') + '</span>';
+        const toggleSel = '<select onchange="modTogglePin(\'' + key + '\',this.value)" style="font-size:10px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text)">'
+          + '<option value="0"' + (!hasPIN ? ' selected' : '') + '>Sin PIN</option>'
+          + '<option value="1"' + (hasPIN ? ' selected' : '') + '>Requiere PIN</option>'
+          + '</select>';
+
+        let respBlock = '';
+        if (hasPIN) {
+          const respOpts = (SB_PROFILES||[]).filter(function(p){ return p.role !== 'viewer'; }).map(function(p) {
+            return '<option value="' + p.id + '"' + (p.id === respId ? ' selected' : '') + '>' + titleCase(p.name) + '</option>';
+          }).join('');
+          const respSel = '<select onchange="modSetPinResp(\'' + key + '\',this.value)" title="Responsable del PIN" style="font-size:10px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text)">'
+            + '<option value="">— Asignar responsable del PIN —</option>'
+            + respOpts + '</select>';
+
+          const pinStatus = hasHash
+            ? '<button onclick="modClearPin(\'' + key + '\')" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:var(--red);cursor:pointer">🗑 Borrar PIN</button>'
+            : '<span style="font-size:10px;color:#f97316">⚠ Sin PIN — el responsable debe configurarlo en Configuración</span>';
+
+          const respInfo = respId
+            ? '<span style="font-size:10px;color:var(--text2)">Resp actual: ' + respName + '</span>'
+            : '<span style="font-size:10px;color:#ef4444">⚠ Sin responsable asignado</span>';
+
+          respBlock = respSel + ' ' + pinStatus + ' ' + respInfo;
+        }
+
+        pinCtrl = '<div class="mod-pin-row" style="margin-top:6px">' + badge + ' ' + toggleSel + ' ' + respBlock + '</div>';
+      }
+
+      const dotColor = (COLORS_ALL[key] && Object.values(COLORS_ALL[key]).length) ? Object.values(COLORS_ALL[key])[0] : '#38bdf8';
+      return '<div style="padding:10px 12px;background:var(--bg3);border-radius:8px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+        + '<span class="mod-dot" style="background:' + dotColor + '"></span>'
+        + '<span style="flex:1;font-size:12px;font-weight:600">' + name + '</span>'
+        + '<span style="font-size:10px;color:var(--text2)">' + cnt + ' actividades</span>'
+        + modBtns
+        + '</div>'
+        + pinCtrl
+        + '</div>';
+    });
+
+    el.innerHTML = rows.join('');
+
+    // Hint para responsables no-developer que deben configurar su PIN
+    if (!isDev) {
+      const myMods = mods.filter(function(entry) {
+        const pm = pinMap[entry[0]];
+        return pm && pm.requiere_pin === true && pm.pin_responsable === (CURRENT_USER && CURRENT_USER.id) && !pm.pin_hash;
+      });
+      if (myMods.length) {
+        const items = myMods.map(function(entry) {
+          return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+            + '<span style="font-size:12px;flex:1">' + entry[1] + '</span>'
+            + '<button onclick="modResponsableSetPin(\'' + entry[0] + '\')" style="padding:4px 12px;border-radius:6px;background:var(--accent);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer">Establecer PIN</button>'
+            + '</div>';
+        }).join('');
+        el.insertAdjacentHTML('beforeend',
+          '<div style="margin-top:16px;padding:12px 14px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px">'
+          + '<div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:8px">🔐 Debes configurar el PIN para:</div>'
+          + items + '</div>');
+      }
+    }
+
+    const recSection = document.getElementById('recovery-section');
+    if (recSection) recSection.style.display = ['developer','admin'].includes(CURRENT_USER && CURRENT_USER.role) ? 'block' : 'none';
+  }).catch(function(err) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--red);padding:10px">Error: ' + (err.message || err) + '</div>';
+  });
 }
 
 function editModName(key) {
@@ -10287,12 +10896,12 @@ function renderInicio() {
           </div>
           ${unread.length?`<button onclick="markAllRead();renderInicio()" style="font-size:9px;color:var(--accent);background:transparent;border:none;cursor:pointer">Limpiar</button>`:''}
         </div>
-        <div style="max-height:220px;overflow-y:auto">
+        <div style="max-height:260px;overflow-y:auto">
           ${unread.length ? unread.slice(0,10).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(56,189,248,.05)'" onmouseout="this.style.background=''">
             <span style="font-size:15px;flex-shrink:0;margin-top:1px">${n.icon}</span>
             <div style="flex:1;min-width:0">
-              <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
-              <div style="font-size:9px;color:var(--text2);margin-top:2px">${n.time}</div>
+              <div style="font-size:11px;color:var(--text);word-break:break-word;white-space:normal;line-height:1.4">${n.text}</div>
+              <div style="font-size:9px;color:var(--text2);margin-top:3px">${n.time}</div>
             </div>
             <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>
           </div>`).join('') : `<div style="padding:24px;text-align:center;font-size:11px;color:var(--text2)">
@@ -10314,8 +10923,8 @@ function renderInicio() {
           ${mentions.length ? mentions.slice(0,6).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(168,85,247,.05)'" onmouseout="this.style.background=''">
             <span style="font-size:12px;flex-shrink:0;margin-top:1px">@</span>
             <div style="flex:1;min-width:0">
-              <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.text}</div>
-              <div style="font-size:9px;color:var(--text2);margin-top:2px">${n.time}</div>
+              <div style="font-size:11px;color:var(--text);word-break:break-word;white-space:normal;line-height:1.4">${n.text}</div>
+              <div style="font-size:9px;color:var(--text2);margin-top:3px">${n.time}</div>
             </div>
           </div>`).join('') : `<div style="padding:20px;text-align:center;font-size:11px;color:var(--text2)">Sin menciones</div>`}
         </div>
