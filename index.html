@@ -1750,6 +1750,11 @@ const MESES    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
 const MESES_F  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const S_COL    = { REALIZADA:'#22c55e', 'EN CURSO':'#38bdf8', PLANIFICADA:'#8b949e', REPROGRAMADA:'#f97316' };
 const MOD_LBL  = { automatizacion:'Plan de Automatización', investigaciones:'Investigaciones de Ing.', cambios:'Gestión de Cambios' };
+// Remove legacy alias keys from COLORS_ALL ('auto','inv') — only keep real module keys
+(function() {
+  const _realKeys = new Set(Object.keys(MOD_LBL));
+  Object.keys(COLORS_ALL).forEach(k => { if (!_realKeys.has(k)) delete COLORS_ALL[k]; });
+})();
 const PERM_K   = ['Dashboard','Proyectos','Actividades','Timeline','Calendario','Reportes','Configuración'];
 const MOD_K    = ['automatizacion','investigaciones','cambios'];
 const PAGE_SZ  = 20;
@@ -7547,8 +7552,12 @@ function subscribeRealtime() {
         await loadDashConfig();
         renderDash();
       } else if (key.includes('_custom_fields')) {
-        await loadCustomFieldsView();
-        renderActs();
+        // Extract which module's custom fields changed from the key
+        // key format: '{modKey}_custom_fields'
+        const cfModKey = key.replace('_custom_fields', '');
+        await loadCustomFieldsView(cfModKey);
+        // Only re-render acts if it affects the currently active module
+        if (cfModKey === ACTIVE) renderActs();
       } else if (key.includes('_proj_order_')) {
         // Another user saved a new order — reload all orders and re-render
         await loadAllProjOrders();
@@ -11156,25 +11165,32 @@ async function saveCustomFieldsView() {
   } catch(e) { notify('⚠ Error guardando columnas', true); }
 }
 
-async function loadCustomFieldsView() {
+async function loadCustomFieldsView(modKey) {
+  // modKey: which module to load. Defaults to ACTIVE if not specified.
+  const mk = modKey || ACTIVE;
   try {
-    // Try Supabase first (shared across all users)
+    // Supabase is the source of truth — always prefer it
     const { data } = await _sb.from('modulos')
       .select('config_json')
-      .eq('key', ACTIVE + '_custom_fields')
+      .eq('key', mk + '_custom_fields')
       .maybeSingle();
     if (data?.config_json) {
-      CUSTOM_FIELDS[ACTIVE] = JSON.parse(data.config_json);
-      // Also update localStorage for faster subsequent loads
-      localStorage.setItem('sg_custom_fields_' + ACTIVE, data.config_json);
-      return;
+      CUSTOM_FIELDS[mk] = JSON.parse(data.config_json);
+      localStorage.setItem('sg_custom_fields_' + mk, data.config_json);
+    } else {
+      // No custom fields in Supabase for this module — clear any stale local cache
+      // This prevents cross-module contamination from previous buggy realtime events
+      CUSTOM_FIELDS[mk] = [];
+      localStorage.removeItem('sg_custom_fields_' + mk);
     }
+    return;
   } catch(e) {}
-  // Fallback to localStorage
+  // Network error — fallback to localStorage only if Supabase unreachable
   try {
-    const cf = localStorage.getItem('sg_custom_fields_' + ACTIVE);
-    if (cf) CUSTOM_FIELDS[ACTIVE] = JSON.parse(cf);
-  } catch(e) {}
+    const cf = localStorage.getItem('sg_custom_fields_' + mk);
+    if (cf) CUSTOM_FIELDS[mk] = JSON.parse(cf);
+    else CUSTOM_FIELDS[mk] = [];
+  } catch(e) { CUSTOM_FIELDS[mk] = []; }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -11557,25 +11573,105 @@ function bkTab(id, btn) {
 }
 
 // ── Stats computation ─────────────────────────────────────────────────
-async function bkRefreshStats() {
-  // Load ALL modules from Supabase so stats and backup are complete
-  const modKeys = Object.keys(MOD_LBL);
-  const unloaded = modKeys.filter(k => !MS[k] || MS[k].acts === null);
+// Lightweight module loader for backup — does NOT touch ACTIVE or render UI
+// Loads actividades + comentarios + historial_cambios from Supabase
+async function _bkFetchModData(key) {
+  try {
+    // Fetch actividades, comentarios and historial in parallel
+    const [actsRes, cmtsRes, histRes] = await Promise.all([
+      _sb.from('actividades').select('*')
+        .eq('modulo', key)
+        .not('proyecto', 'like', '_deleted_proj_%')
+        .order('created_at', { ascending: true }),
+      _sb.from('comentarios').select('*, actividades!inner(modulo)')
+        .eq('actividades.modulo', key)
+        .order('created_at', { ascending: true }),
+      _sb.from('historial_cambios').select('*, actividades!inner(modulo)')
+        .eq('actividades.modulo', key)
+        .order('created_at', { ascending: true }),
+    ]);
 
-  if (unloaded.length > 0) {
-    document.getElementById('bk-stat-acts').textContent = '⏳';
-    document.getElementById('bk-stat-size').textContent = 'Cargando…';
-    // Load unloaded modules in parallel
-    await Promise.all(unloaded.map(k => loadModFromDB(k).catch(e => console.warn('bk load error', k, e))));
+    if (actsRes.error) return [];
+
+    // Index comments and history by actividad_id for fast lookup
+    const cmtsByAct = {};
+    (cmtsRes.data || []).forEach(c => {
+      if (!cmtsByAct[c.actividad_id]) cmtsByAct[c.actividad_id] = [];
+      cmtsByAct[c.actividad_id].push({
+        id: c.id, user: c.user_name, text: c.texto,
+        ts: c.created_at, attachments: c.attachments_meta || []
+      });
+    });
+
+    const histByAct = {};
+    (histRes.data || []).forEach(h => {
+      if (!histByAct[h.actividad_id]) histByAct[h.actividad_id] = [];
+      histByAct[h.actividad_id].push({
+        id: h.id, user: h.user_name, campo: h.campo,
+        antes: h.valor_antes, despues: h.valor_despues, ts: h.created_at
+      });
+    });
+
+    return (actsRes.data || []).map(r => ({
+      _id: r.id, _dbid: r.id,
+      'CÓDIGO': r.codigo, 'AÑO': r.anio,
+      'ACTIVIDAD': r.actividad, 'PLANTA': r.planta,
+      'PROYECTO': r.proyecto, 'RESPONSABLE': r.responsable,
+      'FECHA INICIO': r.fecha_inicio, 'FECHA FIN': r.fecha_fin,
+      'FECHA COMPLETADA': r.fecha_completada,
+      'ESTADO': r.estado, 'AVANCE': Number(r.avance) || 0,
+      'OBSERVACIONES': r.observaciones,
+      'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
+      'DETALLE DE REPROGRAMACION': r.detalle_reprog,
+      'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
+      MODULE: key,
+      subtasks:    r.subtasks    || [],
+      attachments: r.attachments || [],
+      comments:    cmtsByAct[r.id]  || [],
+      _history:    histByAct[r.id]  || [],
+      _customFields: r.custom_fields || {},
+    }));
+  } catch(e) { console.warn('_bkFetchModData error', key, e); return []; }
+}
+
+async function bkRefreshStats() {
+  const modKeys = Object.keys(MOD_LBL);
+
+  // Show spinners immediately
+  document.getElementById('bk-stat-size').textContent = 'Calculando…';
+  document.getElementById('bk-stat-acts').textContent = '⏳';
+
+  // Always fetch ALL modules fresh from DB in parallel (no side effects on ACTIVE/UI)
+  const savedActive = ACTIVE;
+  const results = await Promise.all(modKeys.map(k => _bkFetchModData(k)));
+
+  // Update MS[] only for modules not currently active (to avoid disrupting the active module)
+  modKeys.forEach((k, i) => {
+    if (k !== savedActive) {
+      if (!MS[k]) MS[k] = { acts: null, sF: 'CÓDIGO', sA: true, pg: 1 };
+      MS[k].acts = results[i];
+    }
+  });
+  // Also update active module acts (safe since we have fresh data)
+  const activeIdx = modKeys.indexOf(savedActive);
+  if (activeIdx >= 0 && results[activeIdx].length > 0) {
+    if (!MS[savedActive]) MS[savedActive] = { acts: null, sF: 'CÓDIGO', sA: true, pg: 1 };
+    MS[savedActive].acts = results[activeIdx];
   }
 
-  let totalActs = 0, allPlants = new Set(), allProjs = new Set();
+  // Compute stats with guaranteed-fresh data
+  let totalActs = 0;
+  const allPlants = new Set(), allProjs = new Set();
   modKeys.forEach(k => {
-    const acts = (MS[k] && MS[k].acts) ? MS[k].acts.filter(a => !String(a.PROYECTO||'').startsWith('_deleted_proj_')) : [];
+    const acts = (MS[k] && MS[k].acts) ? MS[k].acts : [];
     totalActs += acts.length;
     acts.forEach(a => { if(a.PLANTA) allPlants.add(a.PLANTA); if(a.PROYECTO) allProjs.add(a.PROYECTO); });
   });
-  const estimatedSize = (JSON.stringify(buildBackupPayload()).length / 1024).toFixed(1) + ' KB';
+
+  // Compute size from payload (sizeOnly=true skips storage manifest)
+  const payloadForSize = buildBackupPayload(null, true);
+  const estimatedSize  = (JSON.stringify(payloadForSize).length / 1024).toFixed(1) + ' KB';
+
   document.getElementById('bk-stat-mods').textContent   = modKeys.length;
   document.getElementById('bk-stat-acts').textContent   = totalActs;
   document.getElementById('bk-stat-projs').textContent  = allProjs.size;
@@ -11603,7 +11699,7 @@ function bkRenderModSelector() {
 }
 
 // ── Build backup payload ───────────────────────────────────────────────
-function buildBackupPayload(selectedMods) {
+function buildBackupPayload(selectedMods, sizeOnly) {
   const now = new Date().toISOString();
   const mods = selectedMods || Object.keys(MOD_LBL);
   const modulesData = {};
@@ -11624,12 +11720,21 @@ function buildBackupPayload(selectedMods) {
     },
     modules:          modulesData,
     users:            document.getElementById('bk-inc-users')?.checked  !== false ? USERS : [],
-    colors:           document.getElementById('bk-inc-colors')?.checked !== false ? COLORS_ALL : {},
+    colors:           document.getElementById('bk-inc-colors')?.checked !== false
+      ? (function() {
+          // Export only real module keys (strip legacy aliases like 'auto','inv')
+          const realKeys = Object.keys(MOD_LBL);
+          const cleaned = {};
+          realKeys.forEach(k => { if (COLORS_ALL[k]) cleaned[k] = COLORS_ALL[k]; });
+          return cleaned;
+        })()
+      : {},
     custom_fields:    document.getElementById('bk-inc-cf')?.checked     !== false ? (window.CUSTOM_FIELDS || {}) : {},
     disabled_projects:document.getElementById('bk-inc-dp')?.checked     !== false ? (window.DISABLED_PROJECTS || {}) : {},
     mod_labels:       MOD_LBL,
     // Storage manifest: keys of all attachments referenced in comments (no binary data)
-    storage_manifest: document.getElementById('bk-inc-attachments')?.checked !== false
+    // Skip when sizeOnly=true (called from stats display — saves time and avoids null DOM)
+    storage_manifest: (!sizeOnly && document.getElementById('bk-inc-attachments')?.checked !== false)
       ? _buildStorageManifest(mods, modulesData)
       : null
   };
@@ -12153,28 +12258,45 @@ function bkConnectOneDrive() {
 (function bkCheckAutoBackup() {
   try {
     const cfg = JSON.parse(localStorage.getItem(BK_SCHEDULE_KEY) || '{}');
-    if (!cfg.freq || cfg.freq === 'manual') return;
+    // Check LOCAL backup schedule — independent of cloud (cfg.freq)
+    const lfreq = cfg.lfreq || 'manual';
+    if (!lfreq || lfreq === 'manual') return;
     const last = cfg.last_local ? new Date(cfg.last_local) : null;
     const now  = new Date();
     let shouldRun = false;
-    if (cfg.lfreq === 'daily')  shouldRun = !last || (now - last) > 23*3600*1000;
-    if (cfg.lfreq === 'weekly') shouldRun = !last || (now - last) > 6*24*3600*1000;
+    if (lfreq === 'daily')  shouldRun = !last || (now - last) > 23*3600*1000;
+    if (lfreq === 'weekly') {
+      // Run on Mondays OR if more than 6 days have passed since last run
+      const isMonday = now.getDay() === 1;
+      shouldRun = !last || (now - last) > 6*24*3600*1000 && isMonday || (now - last) > 7*24*3600*1000;
+    }
     if (!shouldRun) return;
-    // Run after app is initialized — delay to ensure login + initial module load complete
-    setTimeout(async () => {
+    // Run after app is fully initialized — wait for login + initial module load
+    const _runAutoBackup = async function() {
+      // Wait until user is logged in (up to 30s)
+      let waited = 0;
+      while (!CURRENT_USER && waited < 30000) {
+        await new Promise(r => setTimeout(r, 500));
+        waited += 500;
+      }
+      if (!CURRENT_USER) return; // Not logged in, skip
       try {
-        // Load ALL modules before the scheduled backup
+        // Load ALL modules fresh from DB before the scheduled backup (no UI side effects)
         const modKeys = Object.keys(MOD_LBL);
-        const unloaded = modKeys.filter(k => !MS[k] || MS[k].acts === null);
-        if (unloaded.length > 0) {
-          await Promise.all(unloaded.map(k => loadModFromDB(k).catch(() => {})));
-        }
+        const _results = await Promise.all(modKeys.map(k => _bkFetchModData(k)));
+        modKeys.forEach((k, i) => {
+          if (!MS[k]) MS[k] = { acts: null, sF: 'CÓDIGO', sA: true, pg: 1 };
+          if (_results[i].length > 0) MS[k].acts = _results[i];
+        });
         await bkExport(true);
-        cfg.last_local = now.toISOString();
-        localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfg));
+        // Persist last run timestamp
+        const cfgSaved = JSON.parse(localStorage.getItem(BK_SCHEDULE_KEY) || '{}');
+        cfgSaved.last_local = now.toISOString();
+        localStorage.setItem(BK_SCHEDULE_KEY, JSON.stringify(cfgSaved));
         notify('🔄 Backup automático ejecutado correctamente');
       } catch(e) { console.warn('Auto backup error:', e); }
-    }, 5000); // 5s delay to let app fully initialize
+    };
+    setTimeout(_runAutoBackup, 3000); // 3s initial delay, then waits for login
   } catch(e) {}
 })();
 
@@ -12202,7 +12324,13 @@ function cfgShowPage(id, btn) {
   }
   // Init backup stats when entering backup page
   if (id === 'backup') {
-    setTimeout(bkRefreshStats, 50);
+    // Ensure exportar tab is active and refresh stats immediately
+    bkTab('exportar');
+    const exportBtn = document.querySelector('.bk-tab');
+    if (exportBtn && !exportBtn.classList.contains('active')) {
+      exportBtn.classList.add('active');
+    }
+    bkRefreshStats(); // async — will update UI when done
     bkRenderHistory();
     bkLoadScheduleUI();
   }
