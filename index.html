@@ -762,18 +762,20 @@ tr:hover .act-btns { opacity:1 }
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;opacity:.65">de Gesti&#243;n</div>
     </div>
     <div id="login-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#ef4444;margin-bottom:14px;line-height:1.5"></div>
+    <form id="lg-form" onsubmit="doLogin();return false;" autocomplete="on">
     <div style="margin-bottom:13px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Email</div>
-      <input id="lg-email" type="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
+      <input id="lg-email" type="email" name="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
     </div>
     <div style="margin-bottom:8px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Contrase&#241;a</div>
-      <input id="lg-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')doLogin()">
+      <input id="lg-pass" type="password" name="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'">
     </div>
     <div style="text-align:right;margin-bottom:20px">
-      <button onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
+      <button type="button" onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
     </div>
-    <button id="lg-btn" onclick="doLogin()" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
+    <button id="lg-btn" type="submit" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
+    </form>
     <div style="text-align:center;margin-top:20px;font-size:10px;color:#6e7681">GEO Automotriz &middot; Sistema de Seguimiento de Gesti&#243;n</div>
   </div>
 </div>
@@ -1627,10 +1629,11 @@ tr:hover .act-btns { opacity:1 }
 <div class="mo-overlay" id="mo-user" onclick="if(event.target===this)closeUserMo()">
   <div class="modal modal-sm">
     <div class="mo-title">Nuevo Usuario</div>
+    <form id="nu-form" onsubmit="return false;" autocomplete="off">
     <div class="fg2">
-      <div class="fg fg-full"><span class="fl">Nombre completo *</span><input class="fi" id="nu-name" placeholder="Nombre completo"></div>
-      <div class="fg fg-full"><span class="fl">Email *</span><input class="fi" id="nu-email" type="email" placeholder="usuario@empresa.com"></div>
-      <div class="fg"><span class="fl">Contrase&#241;a *</span><input class="fi" id="nu-pass" type="password" placeholder="M&#237;nimo 6 caracteres"></div>
+      <div class="fg fg-full"><span class="fl">Nombre completo *</span><input class="fi" id="nu-name" placeholder="Nombre completo" autocomplete="off"></div>
+      <div class="fg fg-full"><span class="fl">Email *</span><input class="fi" id="nu-email" type="email" placeholder="usuario@empresa.com" autocomplete="off"></div>
+      <div class="fg"><span class="fl">Contrase&#241;a *</span><input class="fi" id="nu-pass" type="password" placeholder="M&#237;nimo 6 caracteres" autocomplete="new-password"></div>
       <div class="fg"><span class="fl">Rol</span>
         <select class="fi" id="nu-role" onchange="renderNUPerms()">
           <option value="developer">Desarrollador</option>
@@ -1653,6 +1656,7 @@ tr:hover .act-btns { opacity:1 }
         <span>Permitir eliminar proyectos, actividades, subtareas y comentarios</span>
       </label>
     </div>
+    </form>
     <div class="mo-footer">
       <button class="btn btn-sm" onclick="closeUserMo()">Cancelar</button>
       <button class="btn btn-accent btn-sm" onclick="saveUser()">Crear Usuario</button>
