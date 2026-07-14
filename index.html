@@ -1771,6 +1771,10 @@ const MS = {
 };
 
 let ACTIVE = 'automatizacion';
+// Track which project/activity drawer is currently open, so realtime updates
+// from other users can refresh it in place instead of leaving it stale.
+let _openProjDrawer = null;
+let _openActDrawer = null;
 let editingId = null;
 let tmpST = [], tmpCmt = [], tmpAtt = [];
 let calY = 2026, calM = 3;
@@ -4959,10 +4963,17 @@ async function _saveSTModal(stId, mode) {
       );
       actRecord.subtasks = finalSubtasks; // update in-memory store
 
-      // Single targeted update — ONLY subtasks + updated_at
+      // Recalculate AVANCE from subtask completion ratio — previously this only
+      // happened in the checkbox toggle (togDrST), so closing/reprogramming a
+      // subtask via this modal left AVANCE stale until a refresh or re-toggle.
+      const totalST = finalSubtasks.length;
+      const doneST  = finalSubtasks.filter(x => x.done).length;
+      if (totalST > 0) actRecord.AVANCE = Math.round(doneST/totalST*100);
+
+      // Single targeted update — subtasks + avance + updated_at
       const { error } = await _sb
         .from('actividades')
-        .update({ subtasks: finalSubtasks, updated_at: new Date().toISOString() })
+        .update({ subtasks: finalSubtasks, avance: actRecord.AVANCE, updated_at: new Date().toISOString() })
         .eq('id', actRecord._dbid);
 
       if (error) {
@@ -4982,6 +4993,7 @@ async function _saveSTModal(stId, mode) {
   if (typeof renderSTs === 'function') renderSTs();
   if (actId !== null && actId !== undefined) {
     openActDr(actId);
+    try { renderActs(); renderDash(); renderProjs(); } catch(e) {}
   }
   if (typeof window._afterSTSave === 'function') {
     const cb = window._afterSTSave;
@@ -5219,6 +5231,7 @@ function openDr()  { document.getElementById('drawer').classList.add('open');   
 function closeDr() {
   document.getElementById('drawer').classList.remove('open');
   document.getElementById('dr-ov').classList.remove('open');
+  _openProjDrawer = null; _openActDrawer = null;
   // Reset drawer width and expand button
   const dr = document.getElementById('drawer');
   if (dr) dr.style.width = '';
@@ -7647,11 +7660,6 @@ function subscribeRealtime() {
       const mod = payload.new?.modulo || payload.old?.modulo;
       if (mod !== ACTIVE) return;
 
-      // Skip realtime reload if the activity modal is open — prevents race condition
-      // where reload overwrites tmpST/editingId while user is editing
-      const modalOpen = document.getElementById('mo-act')?.classList.contains('open');
-      if (modalOpen) return;
-
       // For UPDATE events: do a surgical in-memory patch instead of full reload
       // This prevents the store from being rebuilt while other operations are in flight
       if (payload.eventType === 'UPDATE' && payload.new) {
@@ -7659,11 +7667,28 @@ function subscribeRealtime() {
         const acts = MS[ACTIVE]?.acts || [];
         const idx = acts.findIndex(a => a._dbid === updated.id);
         if (idx >= 0) {
-          // Only update fields that changed — preserve in-memory state for open drawers
           const a = acts[idx];
-          a['ESTADO']   = updated.estado;
-          a['AVANCE']   = Number(updated.avance) || 0;
-          a['FECHA FIN'] = updated.fecha_fin;
+
+          // Skip only if THIS specific activity is open in the edit modal for the
+          // current user — prevents clobbering an in-progress edit. Other activities'
+          // updates still apply normally even while the modal is open.
+          const modalOpen = document.getElementById('mo-act')?.classList.contains('open');
+          if (modalOpen && editingId !== null && editingId === a._id) return;
+
+          // Patch every field that can be changed from the UI (inline edits, modal,
+          // drag/reorder, reprogramación, etc.) so realtime stays fully in sync —
+          // previously several fields (F.Inicio, nombre, responsable, etc.) were
+          // missing here and silently never propagated to other users.
+          a['CÓDIGO']    = updated.codigo    ?? a['CÓDIGO'];
+          a['ACTIVIDAD'] = updated.actividad ?? a['ACTIVIDAD'];
+          a['RESPONSABLE'] = updated.responsable ?? a['RESPONSABLE'];
+          a['PROYECTO']  = updated.proyecto  ?? a['PROYECTO'];
+          a['PLANTA']    = updated.planta    ?? a['PLANTA'];
+          a['AÑO']       = updated.anio      ?? a['AÑO'];
+          a['ESTADO']    = updated.estado;
+          a['AVANCE']    = Number(updated.avance) || 0;
+          a['FECHA INICIO'] = updated.fecha_inicio;
+          a['FECHA FIN']    = updated.fecha_fin;
           a['FECHA COMPLETADA'] = updated.fecha_completada;
           a['OBSERVACIONES'] = updated.observaciones;
           a['CANTIDAD DE REPROGRAMACIONES'] = updated.cant_reprog;
@@ -7672,15 +7697,30 @@ function subscribeRealtime() {
           a.subtasks    = updated.subtasks    || a.subtasks;
           a.attachments = updated.attachments || a.attachments;
           a._customFields = updated.custom_fields || a._customFields || {};
-          // Re-render without full reload
+
+          // Re-render list/dashboard/project views
           renderActs(); renderDash(); renderProjs(); renderGantt();
+
+          // If another user has this exact activity's or project's drawer open
+          // right now, refresh it in place instead of leaving it stale.
+          if (_openActDrawer !== null && _openActDrawer === a._id) {
+            openActDr(a._id);
+          } else if (_openProjDrawer !== null && _openProjDrawer === a.PROYECTO) {
+            openProjDr(a.PROYECTO);
+          }
           return;
         }
       }
 
       // For INSERT/DELETE or unknown records: do full reload
+      // (skip only while the user is actively creating/editing in the modal)
+      const modalOpenAny = document.getElementById('mo-act')?.classList.contains('open');
+      if (modalOpenAny) return;
       await loadModFromDB(ACTIVE);
       notify('🔄 Datos actualizados');
+      // Re-open whichever drawer was showing before the reload, with fresh data
+      if (_openProjDrawer !== null) openProjDr(_openProjDrawer);
+      else if (_openActDrawer !== null) { const still = get().find(x=>x._id===_openActDrawer); if (still) openActDr(_openActDrawer); }
     })
     .subscribe();
 
@@ -7718,6 +7758,21 @@ function subscribeRealtime() {
         await loadAllProjOrders();
         renderProjs();
       }
+    })
+    .subscribe();
+
+  // Listen for manual "reload" broadcasts (used after bulk operations like duplicating
+  // a project, where individual row events could be numerous/slow) — previously this
+  // channel was only ever sent to, with no listener, so other users never got the signal.
+  const globalSub = _sb.channel('global')
+    .on('broadcast', { event: 'reload' }, async payload => {
+      const { module, by } = payload.payload || {};
+      if (module && module !== ACTIVE) return;
+      if (by && by === CURRENT_USER?.name) return; // ignore our own broadcast
+      await loadModFromDB(ACTIVE);
+      notify('🔄 Datos actualizados' + (by ? ' por ' + by : ''));
+      if (_openProjDrawer !== null) openProjDr(_openProjDrawer);
+      else if (_openActDrawer !== null) { const still = get().find(x=>x._id===_openActDrawer); if (still) openActDr(_openActDrawer); }
     })
     .subscribe();
 
@@ -8615,6 +8670,7 @@ function togDrST(aId, sId) {
   // Save subtasks update to DB
   _sb.from('actividades').update({ subtasks: r.subtasks, avance: r.AVANCE }).eq('id', r._dbid).then(()=>{});
   openActDr(aId);
+  try { renderActs(); renderDash(); renderProjs(); } catch(e) {}
 }
 
 function _DISABLED_openProjDr_v2(proj) {
@@ -10064,6 +10120,7 @@ function toggleProjList(id) {
 // IMPROVED openProjDr — bigger text, full obs, back button, mark done
 // ════════════════════════════════════════════════════════════════
 function openProjDr(proj) {
+  _openProjDrawer = proj; _openActDrawer = null;
   const acts = get().filter(r => r.PROYECTO === proj);
   const avg  = acts.length?Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length):0;
   const cum  = acts.length?Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100):0;
@@ -10233,6 +10290,7 @@ async function drSaveName(actId, stId, el) {
 const _baseOpenActDr = openActDr;
 function openActDr(id) {
   const r = get().find(a => a._id === id); if (!r) return;
+  _openActDrawer = id; _openProjDrawer = null;
   const fromProj = r.PROYECTO;
   document.getElementById('dr-title').textContent = 'Detalle de Actividad';
   // Hide expand button (only for project view)
