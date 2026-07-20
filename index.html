@@ -1597,7 +1597,7 @@ tr:hover .act-btns { opacity:1 }
       <div id="st-list"></div>
       <div style="display:flex;gap:7px;margin-bottom:10px">
         <button class="btn btn-sm" onclick="autoGenST()" style="background:rgba(56,189,248,.1);color:var(--accent);border-color:rgba(56,189,248,.3)">⚡ Generar subtareas por mes</button>
-        <button class="btn btn-sm btn-ghost" onclick="tmpST=[];renderSTs()">🗑 Limpiar</button>
+        <button class="btn btn-sm btn-ghost" onclick="tmpST=[];window._CURRENT_ACT_SUBTASKS=tmpST;renderSTs()">🗑 Limpiar</button>
       </div>
       <div class="new-st">
         <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Nueva subtarea</div>
@@ -4618,6 +4618,7 @@ function autoGenST() {
     if (!confirm('¿Regenerar subtareas automáticas por mes? Se eliminarán las subtareas actuales.')) return;
   }
   tmpST = [];
+  window._CURRENT_ACT_SUBTASKS = tmpST;
   // Iterate months: start = month of dIni, end = month of dFin
   // Each subtask covers one calendar month, last day = last day of that month
   // IMPORTANT: if dIni is day 1, that month IS included
@@ -4648,6 +4649,20 @@ function autoGenST() {
 }
 function openModal(id = null) {
   window._CURRENT_ACT_ID = null; // clear drawer context
+  // Remember the screen to return to after Guardar. Editing an existing activity
+  // always happens right after clicking "Editar" inside its drawer (the caller does
+  // `openModal(id); closeDr()`), so _openActDrawer is STILL set at this point —
+  // capture it now, before closeDr() clears it a moment later.
+  if (id !== null && _openActDrawer !== null) {
+    window._modalReturnCtx = { type: 'activity', id: _openActDrawer };
+  } else if (window._nextModalReturnCtx) {
+    // Set explicitly by callers like openModalFromProject, which already closed
+    // the drawer themselves before this function runs.
+    window._modalReturnCtx = window._nextModalReturnCtx;
+    window._nextModalReturnCtx = null;
+  } else {
+    window._modalReturnCtx = null;
+  }
   editingId = id;
   const r = (id !== null ? get().find(a => a._id === id) : null) || {};
   // Guard: if editing but record not found, abort and show error
@@ -4763,7 +4778,35 @@ function addST() {
   document.getElementById('st-desc').value=''; document.getElementById('st-dt').value=''; document.getElementById('st-resp').value='';
   renderSTs();
 }
-function delST(id) { tmpST = tmpST.filter(s => s.id !== id); renderSTs(); }
+async function delST(id) {
+  tmpST = tmpST.filter(s => s.id !== id);
+  window._CURRENT_ACT_SUBTASKS = tmpST;
+  renderSTs();
+  // Persist the deletion immediately when we're editing an activity that already
+  // exists in the DB — otherwise it only lives in tmpST and is lost (the subtask
+  // "reappears") if the modal is closed without clicking Guardar, or a realtime
+  // update/refresh reloads the record from the DB before Guardar is clicked.
+  if (typeof editingId !== 'undefined' && editingId !== null) {
+    const actRecord = get().find(a => a._id === editingId);
+    if (actRecord && actRecord._dbid) {
+      const finalSubtasks = (actRecord.subtasks || []).filter(x => x.id !== id);
+      actRecord.subtasks = finalSubtasks;
+      const totalST = finalSubtasks.length;
+      const doneST  = finalSubtasks.filter(x => x.done).length;
+      if (totalST > 0) actRecord.AVANCE = Math.round(doneST/totalST*100);
+      const { error } = await _sb
+        .from('actividades')
+        .update({ subtasks: finalSubtasks, avance: actRecord.AVANCE, updated_at: new Date().toISOString() })
+        .eq('id', actRecord._dbid);
+      if (error) {
+        notify('⚠ Error eliminando subtarea: ' + error.message, true);
+        console.error('delST DB error:', error);
+        return;
+      }
+      try { renderActs(); renderDash(); renderProjs(); } catch(e) {}
+    }
+  }
+}
 function togST(id) { const s = tmpST.find(x => x.id === id); if (s) s.done = !s.done; renderSTs(); }
 function renderSTs() {
   const el = document.getElementById('st-list');
@@ -4822,7 +4865,15 @@ function openSTModal(stId, mode) {
     mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9800;display:flex;align-items:center;justify-content:center';
     document.body.appendChild(mo);
   }
-  const s = window._CURRENT_ACT_SUBTASKS?.find?.(x => x.id === stId);
+  // Resolve against the LIVE array: when acting from the activity drawer use
+  // window._CURRENT_ACT_SUBTASKS (kept fresh by drSTAction on every call); otherwise
+  // (inside the Nueva/Editar Actividad modal) use tmpST directly, since tmpST can be
+  // reassigned (autoGenST, Limpiar, delST) which would make a cached snapshot stale.
+  const _fromDrawerLookup = !!window._CURRENT_ACT_ID;
+  const _stSourceArr = _fromDrawerLookup
+    ? (window._CURRENT_ACT_SUBTASKS || [])
+    : (typeof tmpST !== 'undefined' ? tmpST : []);
+  const s = _stSourceArr.find(x => x.id === stId);
   if (!s) return;
 
   const isClose  = mode === 'close';
@@ -4956,11 +5007,16 @@ async function _saveSTModal(stId, mode) {
     // Get the live activity record to read its _dbid and full subtasks array
     const actRecord = get().find(a => a._id === actId);
     if (actRecord && actRecord._dbid) {
-      // Make sure the mutated subtask is reflected in actRecord.subtasks
-      // (when fromDrawer, _CURRENT_ACT_SUBTASKS IS actRecord.subtasks by reference — but be safe)
-      const finalSubtasks = (actRecord.subtasks || []).map(x =>
-        x.id === stId ? { ...x, ...s } : x
-      );
+      // IMPORTANT: when acting from inside the Nueva/Editar Actividad modal, the
+      // source of truth is tmpST (subtaskArr) — it may already contain subtasks
+      // added or removed locally that were never reflected in actRecord.subtasks.
+      // Using actRecord.subtasks as the base here silently dropped those changes
+      // (a newly-added subtask would never be found/persisted; a locally-deleted
+      // one would come back). When acting from the drawer, actRecord.subtasks IS
+      // the live array (same reference as window._CURRENT_ACT_SUBTASKS).
+      const finalSubtasks = fromDrawer
+        ? (actRecord.subtasks || []).map(x => x.id === stId ? { ...x, ...s } : x)
+        : subtaskArr.map(x => x.id === stId ? { ...x, ...s } : x);
       actRecord.subtasks = finalSubtasks; // update in-memory store
 
       // Recalculate AVANCE from subtask completion ratio — previously this only
@@ -4992,7 +5048,10 @@ async function _saveSTModal(stId, mode) {
   document.getElementById('_st-modal').style.display = 'none';
   if (typeof renderSTs === 'function') renderSTs();
   if (actId !== null && actId !== undefined) {
-    openActDr(actId);
+    // Only reopen/refresh the drawer when the action actually came from the drawer.
+    // When acting on a subtask from inside the Nueva/Editar Actividad modal, the
+    // drawer should NOT pop open underneath — just keep the modal as-is.
+    if (fromDrawer) openActDr(actId);
     try { renderActs(); renderDash(); renderProjs(); } catch(e) {}
   }
   if (typeof window._afterSTSave === 'function') {
@@ -7427,6 +7486,7 @@ async function saveHistoryToDB(dbActId, campo, antes, despues) {
 }
 
 function openModalFromProject(proj) {
+  window._nextModalReturnCtx = { type: 'project', proj };
   closeDr();
   setTimeout(() => {
     openModal();
@@ -8116,10 +8176,12 @@ async function saveAct() {
     console.error('saveAct: editingId set but record missing _dbid', { editingId, existing });
     return;
   }
-  // SAFETY: if tmpST is empty but activity has subtasks, restore from DB record
+  // NOTE: subtask deletions are now persisted immediately by delST(), so tmpST and
+  // existing.subtasks should already be in agreement here. We no longer auto-restore
+  // tmpST from existing.subtasks when tmpST is empty — doing so silently undid an
+  // intentional "delete all subtasks" action. Just log if a mismatch is detected.
   if (existing && (existing.subtasks||[]).length > 0 && tmpST.length === 0) {
-    console.warn('saveAct: tmpST empty but existing has subtasks — restoring to prevent subtask loss');
-    tmpST = JSON.parse(JSON.stringify(existing.subtasks));
+    console.warn('saveAct: tmpST empty but existing.subtasks is not — proceeding with tmpST (intentional deletion assumed)');
   }
 
   let detRep = existing?.['DETALLE DE REPROGRAMACION'] || '';
@@ -8228,6 +8290,20 @@ async function saveAct() {
   }
   renderActs(); renderDash(); renderProjs(); renderGantt();
   notify(existing ? '✏️ Actividad actualizada' : '✅ Actividad creada');
+
+  // Return to the previous screen (drawer) instead of leaving the user on the
+  // bare list underneath — e.g. editing an activity from its drawer, or creating
+  // a new activity from within a project drawer, should land back there.
+  const returnCtx = window._modalReturnCtx;
+  window._modalReturnCtx = null;
+  if (returnCtx) {
+    if (returnCtx.type === 'activity') {
+      const stillExists = get().find(a => a._id === returnCtx.id);
+      if (stillExists) openActDr(returnCtx.id); else openActDr(saved.id);
+    } else if (returnCtx.type === 'project' && returnCtx.proj) {
+      openProjDr(returnCtx.proj);
+    }
+  }
 }
 
 // markDone — persist to Supabase
@@ -9333,12 +9409,14 @@ function generateQuickMonthPDF() {
     return all.length ? Math.round(all.reduce((s,r)=>s+r.AVANCE,0)/all.length) : 0;
   }
 
-  function obsLine(text) {
+  // Full (untruncated) observation text — used for both activity-level observations
+  // and subtask observations, so the complete note is always visible in the Reporte
+  // Rápido instead of being cut off with "…".
+  function obsLineFull(text) {
     if (!text) return '';
     const clean = String(text).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if (!clean) return '';
-    const short = clean.length > 160 ? clean.slice(0,160) + '…' : clean;
-    return `<div style="font-size:8px;color:#94a3b8;font-style:italic;padding:1px 8px 3px 20px;word-wrap:break-word">📝 ${short}</div>`;
+    return `<div style="font-size:8px;color:#94a3b8;font-style:italic;padding:1px 8px 3px 20px;word-wrap:break-word;white-space:pre-wrap">📝 ${clean}</div>`;
   }
 
   function buildDetailRows(ap) {
@@ -9359,7 +9437,7 @@ function generateQuickMonthPDF() {
         <td style="padding:4px 8px;font-size:9px;text-align:center;color:#0ea5e9;font-weight:700">${r.AVANCE}%</td>
         <td style="padding:4px 8px;font-size:9px;text-align:center;font-weight:700;color:${cumplida?'#16a34a':'#dc2626'}">${cumplida?'✔':'✖'}</td>
       </tr>`;
-      const obsRow = r.OBSERVACIONES ? `<tr><td colspan="5" style="padding:0;border:none">${obsLine(r.OBSERVACIONES)}</td></tr>` : '';
+      const obsRow = r.OBSERVACIONES ? `<tr><td colspan="5" style="padding:0;border:none">${obsLineFull(r.OBSERVACIONES)}</td></tr>` : '';
       const stRows = stInRange.map(s => {
         let stIsJ = null;
         if (s.reprogramada) {
@@ -9376,7 +9454,7 @@ function generateQuickMonthPDF() {
           <td style="padding:3px 8px;font-size:8px;text-align:center;color:#0ea5e9">${s.done?100:(s.reprogramada&&stIsJ?100:0)}%</td>
           <td style="padding:3px 8px;font-size:8px;text-align:center;font-weight:700;color:${stCumplida?'#16a34a':'#dc2626'}">${stCumplida?'✔':'✖'}</td>
         </tr>`;
-        const stObsRow = s.stComment ? `<tr style="background:#f8fafc"><td colspan="5" style="padding:0;border:none">${obsLine(s.stComment)}</td></tr>` : '';
+        const stObsRow = s.stComment ? `<tr style="background:#f8fafc"><td colspan="5" style="padding:0;border:none">${obsLineFull(s.stComment)}</td></tr>` : '';
         return stRow + stObsRow;
       }).join('');
       return mainRow + obsRow + stRows;
