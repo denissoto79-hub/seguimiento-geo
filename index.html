@@ -991,12 +991,31 @@ tr:hover .act-btns { opacity:1 }
             <option value="completados">Completados</option>
           </select>
         </div>
+        <div class="fg"><label>A&#241;o / Gesti&#243;n</label>
+          <select id="p-anio" onchange="renderProjs()">
+            <option value="">Todos</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+          </select>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="clearPF()">&#10005; Limpiar</button>
         <div style="flex:1"></div>
+        <!-- Cumplimiento "hasta hoy" toggle — ON by default -->
+        <button id="p-todate-btn" onclick="toggleProjCumToDate()" title="Calcular Cumplimiento solo con lo planificado hasta hoy (excluye actividades futuras aún no vencidas)"
+          style="display:flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;border-radius:99px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.12);color:var(--accent);cursor:pointer;transition:all .2s;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.03em">
+          <span id="p-todate-dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
+          📅 Hasta hoy
+        </button>
         <!-- Sort buttons -->
         <div style="display:flex;gap:4px">
           <button id="psort-avg" onclick="setProjSort('avg')" title="Ordenar por avance" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Avance</button>
           <button id="psort-cum" onclick="setProjSort('cum')" title="Ordenar por cumplimiento" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Cumpl.</button>
+        </div>
+        <!-- Group-by toggle (Planta / Año) — Planta is the default -->
+        <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px" title="Agrupar tarjetas por">
+          <button id="pgroup-planta" onclick="setProjGroup('planta')" style="padding:4px 9px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">🏭 Planta</button>
+          <button id="pgroup-anio"   onclick="setProjGroup('anio')"   style="padding:4px 9px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">📅 Año</button>
         </div>
         <!-- View toggle -->
         <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
@@ -1007,7 +1026,7 @@ tr:hover .act-btns { opacity:1 }
         <button class="btn btn-accent btn-sm" onclick="openNewProj()">+ Nuevo Proyecto</button>
       </div>
       <div style="font-size:9.5px;color:var(--text3,var(--text2));margin:-8px 0 10px 2px;line-height:1.4">
-        ℹ️ <strong>Avance</strong> = promedio del campo AVANCE de todas las actividades del proyecto · <strong>Cumplimiento</strong> = % de actividades en estado REALIZADA sobre el total de actividades del proyecto.
+        ℹ️ <strong>Avance</strong> = promedio del campo AVANCE de todas las actividades del proyecto · <strong>Cumplimiento</strong> = actividades/subtareas Realizadas (o Reprogramadas Justificadas) sobre el total planificado — mismo cálculo que Reporte Rápido y Reporte de Gestión · con <strong>📅 Hasta hoy</strong> activo (por defecto), solo considera lo planificado hasta la fecha actual.
       </div>
       <div id="projs-container"></div>
     </div>
@@ -1844,6 +1863,34 @@ function notify(msg, err = false) {
   n.style.borderColor = err ? 'var(--red)' : 'var(--green)'; n.textContent = msg;
   document.body.appendChild(n);
   setTimeout(() => n.style.opacity = '0', 2700); setTimeout(() => n.remove(), 3200);
+}
+
+// ── Themed alert popup (blocking, dismiss-to-close) ──────────────────────────
+// For messages important enough that a fading toast risks being missed — e.g.
+// validation errors that require the user to go do something before retrying.
+// Reuses the same visual language as the app's other popups (subtask modal, etc).
+function showAlertModal(opts) {
+  const { title = '⚠ Atención', message = '', color = 'var(--orange)', icon = '⚠' } = opts || {};
+  let mo = document.getElementById('_alert-modal');
+  if (!mo) {
+    mo = document.createElement('div');
+    mo.id = '_alert-modal';
+    mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9900;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(mo);
+  }
+  mo.onclick = (e) => { if (e.target === mo) mo.style.display = 'none'; };
+  mo.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:320px;max-width:460px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+      <div style="width:34px;height:34px;border-radius:9px;background:${color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">${icon}</div>
+      <div style="font-size:15px;font-weight:700;color:${color};padding-top:6px">${title}</div>
+    </div>
+    <div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:20px">${message}</div>
+    <div style="display:flex;justify-content:flex-end">
+      <button onclick="document.getElementById('_alert-modal').style.display='none'"
+        style="padding:8px 20px;border-radius:8px;border:1px solid ${color};background:${color}18;color:${color};font-size:12px;font-weight:700;cursor:pointer">Entendido</button>
+    </div>
+  </div>`;
+  mo.style.display = 'flex';
 }
 
 // ── Init module ──────────────────────────────────────────────────
@@ -2977,7 +3024,7 @@ function clearActF() {
 }
 
 function clearPF() {
-  ['p-srch','p-planta','p-resp','p-est'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
+  ['p-srch','p-planta','p-resp','p-est','p-anio'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
   renderProjs();
 }
 function _old_renderProjs_UNUSED() {
@@ -3122,6 +3169,10 @@ function calcCumplimiento(acts, from, to) {
   return { cum, effPlanned, effDone, effAvanceSum };
 }
 
+// NOTE: Proyectos module (cards, list, project detail) now calls the shared
+// calcCumplimiento() directly (see below) instead of a separate formula, so its
+// Cumplimiento % always matches what's shown in Reporte Rápido / Reporte de Gestión.
+
 // Count subtasks in range using _originalDate (so reprogrammed subtasks appear in original month)
 function countSubtasksInRange(acts, from, to) {
   let total = 0, done = 0, justificadas = 0, noJustificadas = 0;
@@ -3204,10 +3255,6 @@ function renderRep() {
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
             <div style="font-size:22px;font-weight:700;color:var(--purple);font-family:'Barlow Condensed',sans-serif">${totalSubtasks}</div>
             <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total Subtareas</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
-            <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:'Barlow Condensed',sans-serif">${n + totalSubtasks}</div>
-            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total General</div>
           </div>
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
             <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'Barlow Condensed',sans-serif">${real}</div>
@@ -3546,7 +3593,6 @@ function exportPDF() {
       ${[
         {l:'Total Actividades',v:n,c:'#1e293b'},
         {l:'Total Subtareas',v:totalSubtasks,c:'#7c3aed'},
-        {l:'Total General',v:n+totalSubtasks,c:'#0891b2'},
         {l:'Realizadas',v:real,c:'#16a34a'},
         {l:'T. Reprog.',v:tRep,c:'#ea580c'},
       ].map(k=>`<div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px">
@@ -7307,6 +7353,7 @@ async function loadModFromDB(key) {
     loadDisabledProjects().catch(() => {}),
     loadDashConfig().catch(() => {}),
     loadAllProjOrders().catch(() => {}),
+    loadProjCardOrder().catch(() => {}),
   ]);
 
   // Confirmar ACTIVE de nuevo tras los awaits
@@ -7817,6 +7864,10 @@ function subscribeRealtime() {
         // Another user saved a new order — reload all orders and re-render
         await loadAllProjOrders();
         renderProjs();
+      } else if (key.includes('_projcard_order')) {
+        // Another user reordered the project cards — reload and re-render
+        await loadProjCardOrder();
+        renderProjs();
       }
     })
     .subscribe();
@@ -8308,18 +8359,40 @@ async function saveAct() {
 
 // markDone — persist to Supabase
 async function markDone(id) {
-  const r = get().find(a => a._id === id); if (!r) return;
+  const r = get().find(a => a._id === id); if (!r) return false;
+  // Guard: don't allow completing the activity while it still has open subtasks —
+  // this was silently leaving subtasks "pending" forever, which distorted %
+  // Cumplimiento in reports (the activity shows REALIZADA but its subtasks don't).
+  const openSubtasks = (r.subtasks || []).filter(s => !s.done);
+  if (openSubtasks.length > 0) {
+    const listHtml = openSubtasks.slice(0, 6).map(s =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--orange);font-size:11px;flex-shrink:0">${s.reprogramada?'🔄':'○'}</span>
+        <span style="font-size:11.5px;color:var(--text)">${(s.desc||'—')}</span>
+      </div>`
+    ).join('');
+    const moreHtml = openSubtasks.length > 6 ? `<div style="font-size:10.5px;color:var(--text3);margin-top:4px">+ ${openSubtasks.length - 6} más…</div>` : '';
+    showAlertModal({
+      title: 'No se puede completar la actividad',
+      icon: '⚠',
+      color: 'var(--orange)',
+      message: `Esta actividad tiene <strong style="color:var(--text)">${openSubtasks.length} subtarea(s) sin cerrar</strong>. Ciérralas (o márcalas como reprogramadas) antes de marcar la actividad completa como Realizada — de lo contrario quedan "colgadas" y distorsionan el % de Cumplimiento en los reportes.
+        <div style="margin-top:12px;max-height:180px;overflow-y:auto">${listHtml}${moreHtml}</div>`
+    });
+    return false;
+  }
   const today = tds();
   const { error } = await _sb.from('actividades').update({
     estado: 'REALIZADA', avance: 100, fecha_completada: today, updated_at: new Date().toISOString()
   }).eq('id', r._dbid);
-  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  if (error) { notify('⚠ Error: ' + error.message, true); return false; }
   await saveHistoryToDB(r._dbid, 'ESTADO', r.ESTADO, 'REALIZADA');
   const relUsers = getUsersRelatedToAct(r);
   await addNotifForUsers(relUsers, 'task',
     `${CURRENT_USER.name} marcó como realizada: "${(r.ACTIVIDAD||'').substring(0,30)}…"`, r._dbid);
   await loadModFromDB(ACTIVE);
   notify('✅ ' + r['CÓDIGO'] + ' marcada como realizada · ' + today);
+  return true;
 }
 
 // delAct — admin only, persist to Supabase
@@ -9066,7 +9139,90 @@ function getActive() {
 }
 
 let PROJ_SORT = null; // null=default, 'avg', 'cum'
+
+// ── Group-by toggle (Planta / Año) — Planta stays the default ────────────────
+let PROJ_GROUP_BY = 'planta';
+
+function setProjGroup(mode) {
+  PROJ_GROUP_BY = mode;
+  ['planta','anio'].forEach(m => {
+    const btn = document.getElementById('pgroup-' + m);
+    if (!btn) return;
+    const active = PROJ_GROUP_BY === m;
+    btn.style.background = active ? 'var(--accent)' : 'transparent';
+    btn.style.color      = active ? '#000' : 'var(--text2)';
+  });
+  renderProjs();
+}
+
+// Determines which "Año/Gestión" a project belongs to for grouping purposes:
+// the most common AÑO among its activities (falling back to the year of
+// FECHA INICIO when AÑO isn't set). A project can span multiple years, so we
+// group it under whichever year most of its activities actually belong to.
+function getProjGroupYear(acts) {
+  const counts = {};
+  acts.forEach(r => {
+    let y = r['AÑO'];
+    if (!y && r['FECHA INICIO']) y = new Date(r['FECHA INICIO']).getFullYear();
+    if (!y) return;
+    y = String(y);
+    counts[y] = (counts[y] || 0) + 1;
+  });
+  const years = Object.keys(counts);
+  if (!years.length) return 'Sin Año';
+  years.sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+  return years[0];
+}
 let PROJ_SORT_ASC = false;
+
+// ── "Cumplimiento hasta hoy" toggle (ON by default) ──────────────────────────
+// When active, Cumplimiento only considers what was PLANNED to be done by today
+// (FECHA FIN <= hoy, or subtasks with date <= hoy) — activities/subtasks planned
+// for the future that legitimately haven't come due yet are excluded, so they
+// don't drag the % down. When off, it considers the project's full planned scope
+// regardless of date (same as Reporte Rápido/Gestión with no date filter).
+let PROJ_CUM_TO_DATE = true;
+
+function toggleProjCumToDate() {
+  PROJ_CUM_TO_DATE = !PROJ_CUM_TO_DATE;
+  const btn = document.getElementById('p-todate-btn');
+  const dot = document.getElementById('p-todate-dot');
+  if (btn) {
+    btn.style.background = PROJ_CUM_TO_DATE ? 'rgba(56,189,248,.12)' : 'var(--bg3)';
+    btn.style.borderColor = PROJ_CUM_TO_DATE ? 'rgba(56,189,248,.4)' : 'var(--border)';
+    btn.style.color = PROJ_CUM_TO_DATE ? 'var(--accent)' : 'var(--text2)';
+  }
+  if (dot) dot.style.background = PROJ_CUM_TO_DATE ? 'var(--accent)' : 'var(--text3)';
+  renderProjs();
+}
+
+// Same "planned-in-range" filter used by Reporte de Gestión (renderRep) — kept
+// here as a reusable helper so the Proyectos module's "hasta hoy" toggle applies
+// the identical rule: an activity/subtask counts if its (original) planned close
+// date falls on/before `to`, or it's a reprogrammed item with a subtask due by then.
+function filterActsUpTo(acts, to) {
+  if (!to) return acts;
+  return acts.filter(r => {
+    const origFin = r._originalFin || r['FECHA FIN'];
+    const actInRange = origFin && origFin <= to;
+    const isReprog = r.ESTADO === 'REPROGRAMADA' || !!r._originalFin;
+    const stInRange = (r.subtasks||[]).some(s => {
+      const sd = s._originalDate || s.date;
+      return sd && sd <= to;
+    });
+    return actInRange || (isReprog && stInRange) || stInRange;
+  });
+}
+
+// Single entry point for Cumplimiento in the Proyectos module — respects the
+// "hasta hoy" toggle and always defers to the shared calcCumplimiento() engine,
+// so results stay consistent with Reporte Rápido / Reporte de Gestión.
+function getProjCumResult(acts) {
+  if (PROJ_CUM_TO_DATE) {
+    return calcCumplimiento(filterActsUpTo(acts, TODAY_S), null, TODAY_S);
+  }
+  return calcCumplimiento(acts, null, null);
+}
 
 function setProjSort(field) {
   if (PROJ_SORT === field) { PROJ_SORT_ASC = !PROJ_SORT_ASC; }
@@ -9081,6 +9237,19 @@ function setProjSort(field) {
     btn.textContent      = (f==='avg'?'↕ Avance':'↕ Cumpl.').replace('↕', active?(PROJ_SORT_ASC?'↑':'↓'):'↕');
   });
   renderProjs();
+}
+// Reset any active metric sort (Avance/Cumplimiento) back to manual/default order —
+// used when the user drags a project card, since the drag itself expresses an
+// explicit manual ordering that a lingering metric sort would otherwise undo.
+function clearProjSort() {
+  PROJ_SORT = null; PROJ_SORT_ASC = false;
+  ['avg','cum'].forEach(f => {
+    const btn = document.getElementById('psort-'+f);
+    if (!btn) return;
+    btn.style.background = 'var(--bg3)';
+    btn.style.color      = 'var(--text2)';
+    btn.textContent      = (f==='avg'?'↕ Avance':'↕ Cumpl.');
+  });
 }
 
 function setProjView(v) {
@@ -9104,11 +9273,13 @@ function renderProjs() {
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
   const est   = document.getElementById('p-est')?.value     || '';
+  const anio  = document.getElementById('p-anio')?.value    || '';
 
   let projs = uniq(get(), 'PROYECTO');
   if (srch)  projs = projs.filter(p => p.toLowerCase().includes(srch));
   if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.PLANTA||'').trim().toUpperCase()===pla.trim().toUpperCase()));
   if (res)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.RESPONSABLE||'').trim().toUpperCase()===res.trim().toUpperCase()));
+  if (anio)  projs = projs.filter(p => get().some(r => r.PROYECTO===p && String(r['AÑO']||'')===anio));
   if (est === 'con_retraso')     projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO!=='REALIZADA' && r['FECHA FIN'] && new Date(r['FECHA FIN'])<TODAY));
   if (est === 'reprogramados')   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r['CANTIDAD DE REPROGRAMACIONES']||0)>0));
   if (est === 'en_curso')        projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO==='EN CURSO'));
@@ -9119,21 +9290,23 @@ function renderProjs() {
       const ga = get().filter(r=>r.PROYECTO===a), gb = get().filter(r=>r.PROYECTO===b);
       const va = PROJ_SORT==='avg'
         ? (ga.length?Math.round(ga.reduce((s,r)=>s+r.AVANCE,0)/ga.length):0)
-        : (ga.length?Math.round(ga.filter(r=>r.ESTADO==='REALIZADA').length/ga.length*100):0);
+        : getProjCumResult(ga).cum;
       const vb = PROJ_SORT==='avg'
         ? (gb.length?Math.round(gb.reduce((s,r)=>s+r.AVANCE,0)/gb.length):0)
-        : (gb.length?Math.round(gb.filter(r=>r.ESTADO==='REALIZADA').length/gb.length*100):0);
+        : getProjCumResult(gb).cum;
       return PROJ_SORT_ASC ? va - vb : vb - va;
     });
   }
 
-  // Group by plant
+  // Group by plant or by año/gestión, depending on PROJ_GROUP_BY
   const plantGroups = {};
   projs.forEach(p => {
     const acts = get().filter(r => r.PROYECTO===p);
-    const plant = acts.length ? (acts[0].PLANTA || 'Sin Planta') : 'Sin Planta';
-    if (!plantGroups[plant]) plantGroups[plant] = [];
-    plantGroups[plant].push(p);
+    const groupKey = PROJ_GROUP_BY === 'anio'
+      ? getProjGroupYear(acts)
+      : (acts.length ? (acts[0].PLANTA || 'Sin Planta') : 'Sin Planta');
+    if (!plantGroups[groupKey]) plantGroups[groupKey] = [];
+    plantGroups[groupKey].push(p);
   });
 
   const container = document.getElementById('projs-container');
@@ -9145,20 +9318,32 @@ function renderProjs() {
   }
 
   let html = '';
-  Object.entries(plantGroups).forEach(([plant, plantProjs]) => {
+  const cardGridIds = []; // track for post-render sortable wiring
+  let groupEntries = Object.entries(plantGroups);
+  if (PROJ_GROUP_BY === 'anio') {
+    groupEntries.sort(([a], [b]) => {
+      if (a === 'Sin Año') return 1;
+      if (b === 'Sin Año') return -1;
+      return Number(b) - Number(a); // most recent year first
+    });
+  }
+  groupEntries.forEach(([plant, plantProjsRaw]) => {
+    // Respect the saved manual drag order, unless the user explicitly picked a
+    // metric sort (Avance/Cumplimiento) — an explicit sort takes precedence.
+    const plantProjs = PROJ_SORT ? plantProjsRaw : getOrderedProjs(plantProjsRaw);
     // Plant header with cumulative stats
     // Only count active projects in plant header stats
     const plantActs = get().filter(r => plantProjs.includes(r.PROYECTO) && isProjectActive(r.PROYECTO));
     const plantAvg = plantActs.length?Math.round(plantActs.reduce((s,r)=>s+r.AVANCE,0)/plantActs.length):0;
-    const plantCum = plantActs.length?Math.round(plantActs.filter(r=>r.ESTADO==='REALIZADA').length/plantActs.length*100):0;
+    const plantCum = getProjCumResult(plantActs).cum;
     const cc = plantCum>=70?'var(--green)':plantCum>=40?'var(--orange)':'var(--red)';
 
     html += `<div style="margin-bottom:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:2px solid var(--accent)">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:16px">🏭</span>
+          <span style="font-size:16px">${PROJ_GROUP_BY === 'anio' ? '📅' : '🏭'}</span>
           <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em">${plant}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em">${PROJ_GROUP_BY === 'anio' && plant !== 'Sin Año' ? 'Gestión ' + plant : plant}</div>
             <div style="font-size:10px;color:var(--text2)">${plantProjs.length} proyectos · ${plantActs.length} actividades</div>
           </div>
         </div>
@@ -9169,7 +9354,9 @@ function renderProjs() {
       </div>`;
 
     if (PROJ_VIEW === 'card') {
-      html += `<div class="projs-grid" style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
+      const gridId = 'projs-grid-' + plant.replace(/[^a-zA-Z0-9]/g,'_');
+      cardGridIds.push(gridId);
+      html += `<div class="projs-grid" id="${gridId}" style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px">`;
       html += plantProjs.map(p => buildProjCard(p, isAdmin, canDelete)).join('');
       html += '</div>';
     } else if (PROJ_VIEW === 'list') {
@@ -9184,12 +9371,29 @@ function renderProjs() {
   });
 
   container.innerHTML = html;
+
+  // Wire up drag-to-reorder for project cards — admin only, card view only.
+  // Dragging always switches to manual order (an active metric sort would
+  // otherwise immediately re-sort the cards back on the next render).
+  if (isAdmin && PROJ_VIEW === 'card') {
+    cardGridIds.forEach(gridId => {
+      _makeProjCardSortable(gridId, newOrder => {
+        if (PROJ_SORT) clearProjSort();
+        const decoded = newOrder.map(x => decodeURIComponent(x));
+        // Merge this grid's new order into the global order, preserving the
+        // relative order of projects not in this particular plant group.
+        const others = (window._projCardOrder || []).filter(p => !decoded.includes(p));
+        window._projCardOrder = [...others, ...decoded];
+        saveProjCardOrder();
+      });
+    });
+  }
 }
 
 function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURRENT_USER?.perms?.can_delete===true);
   const a = get().filter(r => r.PROYECTO === p);
   const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-  const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+  const { cum } = getProjCumResult(a);
   const enc  = a.filter(r=>r.ESTADO==='EN CURSO').length;
   const rep  = a.filter(r=>r.ESTADO==='REPROGRAMADA').length;
   const tRep = a.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
@@ -9200,16 +9404,17 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
   const datesF = a.map(r=>r['FECHA FIN']).filter(Boolean).sort();
   const projIni = datesI.length ? datesI[0] : null;
   const projFin = datesF.length ? datesF[datesF.length-1] : null;
-  return `<div class="proj-card" onclick="openProjDr('${esc(p)}')">
+  return `<div class="proj-card" data-proj-id="${encodeURIComponent(p)}" onclick="openProjDr('${esc(p)}')">
+    ${isAdmin?`<div data-drag-handle title="Arrastrar para reordenar" onclick="event.stopPropagation()" style="position:absolute;top:4px;right:4px;width:20px;height:16px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:12px;user-select:none;touch-action:none;z-index:2;border-radius:4px" onmouseover="this.style.color='var(--accent)';this.style.background='rgba(56,189,248,.1)'" onmouseout="this.style.color='var(--text3)';this.style.background='transparent'">⋮⋮</div>`:''}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0">
         <div style="width:30px;height:30px;border-radius:7px;background:${col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:14px">◫</span></div>
-        <div style="min-width:0"><div style="font-weight:600;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p}</div>
+        <div style="min-width:0"><div class="proj-card-name" style="font-weight:600;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p}</div>
         <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div>
         ${projIni||projFin?`<div style="font-size:9px;color:var(--text3);margin-top:1px">${projIni?fmtD(projIni):''} ${projFin?'→ '+fmtD(projFin):''}</div>`:''}
         </div>
       </div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:${col};flex-shrink:0;margin-left:6px">${avg}%</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:6px">${avg}%</div>
     </div>
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px"><span>Cumplimiento</span><span style="color:${cc};font-weight:600">${cum}%</span></div>
@@ -9241,7 +9446,7 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
 function buildProjListRow(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURRENT_USER?.perms?.can_delete===true);
   const a = get().filter(r => r.PROYECTO === p);
   const avg  = a.length?Math.round(a.reduce((s,r)=>s+r.AVANCE,0)/a.length):0;
-  const cum  = a.length?Math.round(a.filter(r=>r.ESTADO==='REALIZADA').length/a.length*100):0;
+  const { cum } = getProjCumResult(a);
   const col  = pcol(p), cc = cum>=70?'var(--green)':cum>=40?'var(--orange)':'var(--red)';
   const id   = 'prl-' + p.replace(/[^a-zA-Z0-9]/g,'_');
   const canEdit = CURRENT_USER?.role !== 'viewer';
@@ -9648,7 +9853,7 @@ async function generateProjSummaryPDF(proj) {
         <td style="padding:5px 10px;font-size:10px;color:#374151;border:1px solid #e2e8f0;padding-left:28px">${s.desc||'—'}</td>
         <td style="padding:5px 10px;font-size:10px;color:${stCol};font-weight:600;border:1px solid #e2e8f0;white-space:nowrap">${stStat}</td>
         <td style="padding:5px 10px;font-size:10px;color:#6b7280;border:1px solid #e2e8f0;white-space:nowrap">${s.resp||'—'}</td>
-        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border:1px solid #e2e8f0;white-space:nowrap">${s.date||'—'}${s.reprogramada&&s.newDate?` → ${s.newDate}`:''}</td>
+        <td style="padding:5px 10px;font-size:10px;color:#6b7280;border:1px solid #e2e8f0;white-space:nowrap">${(s.reprogramada && s._originalDate) ? s._originalDate : (s.date||'—')}${s.reprogramada&&s.newDate?` → ${s.newDate}`:''}</td>
         <td style="padding:5px 10px;font-size:10px;color:#374151;border:1px solid #e2e8f0;white-space:pre-wrap;word-break:break-word">${(s.stComment||s.reprogDetail||'—').replace(/\n/g,'<br>')}</td>
       </tr>`;
     }).join('');
@@ -10133,6 +10338,146 @@ function getOrderedActs(proj) {
   return ordered;
 }
 
+// ── Manual project-card ordering (Módulo de Proyectos) ──────────────────────
+// A single order array per module (ACTIVE), listing project names in the order
+// the user dragged them into. Persisted to Supabase 'modulos' the same way
+// per-project activity order already is, so it's shared across every user/device.
+window._projCardOrder = window._projCardOrder || null;
+
+function getOrderedProjs(list) {
+  const order = window._projCardOrder;
+  if (!order || !order.length) return list;
+  const ordered = [];
+  order.forEach(p => { if (list.includes(p)) ordered.push(p); });
+  list.forEach(p => { if (!ordered.includes(p)) ordered.push(p); });
+  return ordered;
+}
+
+async function saveProjCardOrder() {
+  const json = JSON.stringify(window._projCardOrder || []);
+  try { localStorage.setItem('projCardOrder_' + ACTIVE, json); } catch(e) {}
+  try {
+    const key = ACTIVE + '_projcard_order';
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_projcard_order', activo: false, config_json: json });
+    }
+  } catch(e) { console.warn('ProjCardOrder save error:', e); }
+}
+
+async function loadProjCardOrder() {
+  try {
+    const key = ACTIVE + '_projcard_order';
+    const { data } = await _sb.from('modulos').select('config_json').eq('key', key).maybeSingle();
+    if (data && data.config_json) {
+      window._projCardOrder = JSON.parse(data.config_json);
+      try { localStorage.setItem('projCardOrder_' + ACTIVE, data.config_json); } catch(e) {}
+    } else {
+      window._projCardOrder = [];
+    }
+  } catch(e) {
+    // Fallback: load whatever is in localStorage
+    try {
+      const saved = localStorage.getItem('projCardOrder_' + ACTIVE);
+      window._projCardOrder = saved ? JSON.parse(saved) : [];
+    } catch(e2) { window._projCardOrder = []; }
+  }
+}
+
+// Sortable helper for project cards (grid layout) — analogous to _makeSortable
+// (used for activity rows), but matches by nearest card center since cards wrap
+// into a grid rather than a single vertical list.
+function _makeProjCardSortable(containerId, onReorder) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const fresh = container.cloneNode(true);
+  container.parentNode.replaceChild(fresh, container);
+  const c = fresh;
+
+  let dragEl = null, ghostEl = null, placeholder = null;
+  const getCards = () => [...c.querySelectorAll('[data-proj-id]')];
+
+  function createGhost(el, cx, cy) {
+    const g = document.createElement('div');
+    const nameEl = el.querySelector('.proj-card-name');
+    g.textContent = '⋮⋮  ' + (nameEl ? nameEl.textContent.trim().slice(0,45) : 'Proyecto');
+    g.style.cssText = `position:fixed;z-index:99999;pointer-events:none;background:var(--bg2);border:1.5px solid var(--accent);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;left:${cx+14}px;top:${cy-12}px`;
+    document.body.appendChild(g);
+    return g;
+  }
+  function createPH(el) {
+    const ph = document.createElement('div');
+    ph.className = 'proj-card';
+    ph.style.cssText = `height:${el.offsetHeight}px;background:rgba(56,189,248,.08);border:2px dashed rgba(56,189,248,.5);box-shadow:none`;
+    ph.id = '_projsort_ph';
+    return ph;
+  }
+  function nearestCard(clientX, clientY) {
+    const cards = getCards().filter(x => x !== dragEl);
+    let best = null, bestDist = Infinity, insertBefore = true;
+    cards.forEach(card => {
+      const r = card.getBoundingClientRect();
+      const cx = r.left + r.width/2, cy = r.top + r.height/2;
+      const dist = Math.hypot(clientX-cx, clientY-cy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = card;
+        insertBefore = clientX < cx;
+      }
+    });
+    return { card: best, insertBefore };
+  }
+
+  c.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('[data-drag-handle]');
+    if (!handle) return;
+    const card = handle.closest('[data-proj-id]');
+    if (!card) return;
+    e.preventDefault();
+    dragEl = card;
+    dragEl.style.opacity = '0.3';
+    ghostEl = createGhost(dragEl, e.clientX, e.clientY);
+    placeholder = createPH(dragEl);
+    dragEl.parentNode.insertBefore(placeholder, dragEl.nextSibling);
+    c.setPointerCapture(e.pointerId);
+  });
+
+  c.addEventListener('pointermove', e => {
+    if (!dragEl || !ghostEl) return;
+    e.preventDefault();
+    ghostEl.style.left = (e.clientX + 14) + 'px';
+    ghostEl.style.top  = (e.clientY - 12) + 'px';
+    const { card, insertBefore } = nearestCard(e.clientX, e.clientY);
+    if (card) {
+      if (insertBefore) c.insertBefore(placeholder, card);
+      else c.insertBefore(placeholder, card.nextSibling);
+    }
+  });
+
+  c.addEventListener('pointerup', e => {
+    if (!dragEl) return;
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    dragEl.style.opacity = '';
+    if (placeholder?.parentNode) {
+      placeholder.parentNode.insertBefore(dragEl, placeholder);
+      placeholder.remove();
+    }
+    placeholder = null;
+    dragEl = null;
+    const newOrder = getCards().map(x => x.dataset.projId);
+    if (onReorder) onReorder(newOrder);
+  });
+
+  c.addEventListener('pointercancel', () => {
+    if (dragEl) dragEl.style.opacity = '';
+    ghostEl?.remove(); ghostEl = null;
+    placeholder?.remove(); placeholder = null;
+    dragEl = null;
+  });
+}
+
 // ── Old inline drag stubs (kept for backward compat, no-ops) ────────────
 function projTblDragStart(e,a,p){} function projTblDragEnd(e){}
 function projTblDragOver(e,a,p){ e.preventDefault(); } function projTblDrop(e,a,p){ e.preventDefault(); }
@@ -10201,7 +10546,7 @@ function openProjDr(proj) {
   _openProjDrawer = proj; _openActDrawer = null;
   const acts = get().filter(r => r.PROYECTO === proj);
   const avg  = acts.length?Math.round(acts.reduce((s,r)=>s+r.AVANCE,0)/acts.length):0;
-  const cum  = acts.length?Math.round(acts.filter(r=>r.ESTADO==='REALIZADA').length/acts.length*100):0;
+  const { cum } = getProjCumResult(acts);
   const rep  = acts.filter(r=>r.ESTADO==='REPROGRAMADA').length;
   const tRep = acts.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
   const delayed = acts.filter(r=>r.ESTADO!=='REALIZADA'&&r['FECHA FIN']&&new Date(r['FECHA FIN'])<TODAY);
@@ -10258,8 +10603,8 @@ function openProjDr(proj) {
       </div>
     </div>
     <div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>Avance promedio</span><span style="color:${col};font-weight:700">${avg}%</span></div>
-      <div style="height:7px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:${col};width:${avg}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>Avance promedio</span><span style="color:var(--accent);font-weight:700">${avg}%</span></div>
+      <div style="height:7px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:var(--accent);width:${avg}%"></div></div>
     </div>
     <div class="d-meta">
       <div class="d-mb"><div class="d-ml">Cumplimiento</div><div class="d-mv" style="color:${cc};font-size:14px">${cum}%</div></div>
@@ -10272,6 +10617,9 @@ function openProjDr(proj) {
       <div class="d-mb"><div class="d-ml">% Pendiente</div><div class="d-mv" style="color:${(100-cum)>30?'var(--red)':'var(--text2)'};font-size:14px">${100-cum}%</div></div>
       ${projDateIni?`<div class="d-mb"><div class="d-ml">F. Inicio</div><div class="d-mv" style="font-size:12px">${fmtD(projDateIni)}</div></div>`:''}
       ${projDateFin?`<div class="d-mb"><div class="d-ml">F. Fin</div><div class="d-mv" style="font-size:12px">${fmtD(projDateFin)}</div></div>`:''}
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin:-6px 0 12px;line-height:1.4">
+      ℹ️ Cumplimiento = actividades/subtareas Realizadas (o Reprogramadas Justificadas) sobre el total planificado${PROJ_CUM_TO_DATE ? ' hasta hoy' : ' del proyecto completo'} · mismo cálculo que en Reporte Rápido y Reporte de Gestión.
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em">Actividades del Proyecto</div>
@@ -10376,6 +10724,7 @@ function openActDr(id) {
   if (expBtn) expBtn.style.display = 'none';
   const col = S_COL[r.ESTADO] || 'var(--accent)', rn = r['CANTIDAD DE REPROGRAMACIONES'] || 0;
   const stD = r.subtasks?.filter(s => s.done).length || 0, stT = r.subtasks?.length || 0;
+  const stRepr = r.subtasks?.filter(s => !s.done && s.reprogramada).length || 0;
   const isAdmin = ['developer','admin'].includes(CURRENT_USER?.role);
   const canDelete = (CURRENT_USER?.perms?.can_delete === true);
   const canEdit = CURRENT_USER?.role !== 'viewer';
@@ -10412,7 +10761,7 @@ function openActDr(id) {
       ${r['NUEVA FECHA DE CIERRE']?`<div style="font-size:12px;color:var(--text2);margin-top:4px">Nueva fecha cierre: <span style="color:var(--orange);font-weight:600">${r['NUEVA FECHA DE CIERRE']}</span></div>`:''}
       ${r['DETALLE DE REPROGRAMACION']?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5;white-space:pre-line">${r['DETALLE DE REPROGRAMACION']}</div>`:''}
     </div>`:''}
-    ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT})</div>
+    ${stT>0?`<div class="d-sec">Subtareas (${stD}/${stT}${stRepr>0?' · '+stRepr+' reprog.':''})</div>
       ${[...(r.subtasks||[])].sort((a,b)=>(a.date||'') > (b.date||'') ? 1:-1).map(s=>{
         const stEst = s.done?'REALIZADA':(s.reprogramada?'REPROGRAMADA':'ABIERTA');
         const stCol = s.done?'var(--green)':(s.reprogramada?'var(--orange)':'var(--accent)');
@@ -10424,7 +10773,7 @@ function openActDr(id) {
         </div>
         <div style="display:flex;gap:8px;font-size:10px;color:var(--text2);margin-top:4px;padding-left:20px">
           <span>👤 ${s.resp||''}</span>
-          <span>📅 ${s.date||''}</span>
+          <span>📅 ${(s.reprogramada && s._originalDate) ? s._originalDate : (s.date||'')}</span>
           ${s.reprogramada&&s.newDate?'<span style="color:var(--orange)">→ '+s.newDate+'</span>':''}
         </div>
         ${s.stComment?'<div style="font-size:11px;color:var(--text);margin-top:4px;padding-left:20px;font-style:italic;white-space:pre-line">💬 '+s.stComment+'</div>':''}
@@ -10463,7 +10812,7 @@ function openActDr(id) {
     <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;max-height:160px;overflow-y:auto;margin-bottom:12px">
       ${renderHistory(r)}
     </div>
-    ${canEdit&&r.ESTADO!=='REALIZADA'?`<button class="d-done-btn" onclick="markDone('${r._id}');closeDr()">✓ Marcar como Realizada</button>`:''}
+    ${canEdit&&r.ESTADO!=='REALIZADA'?`<button class="d-done-btn" onclick="markDone('${r._id}').then(ok=>{if(ok)closeDr();})">✓ Marcar como Realizada</button>`:''}
     <div style="display:flex;gap:7px;margin-top:10px">
       ${canEdit?`<button class="btn btn-sm" style="flex:1" onclick="openModal('${r._id}');closeDr()">✏️ Editar</button>`:''}
       ${canDelete?`<button class="btn btn-danger btn-sm" onclick="delAct('${r._id}');closeDr()">🗑️</button>`:''}
