@@ -1204,7 +1204,10 @@ tr:hover .act-btns { opacity:1 }
 
       <div class="cfg-sec">
         <div class="cfg-title">&#128101; Usuarios y Permisos</div>
-        <div style="margin-bottom:12px"><button class="btn btn-accent btn-sm" onclick="openNewUser()">+ Nuevo Usuario</button></div>
+        <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-accent btn-sm" onclick="openNewUser()">+ Nuevo Usuario</button>
+          <button class="btn btn-sm" onclick="openBulkUser()">&#128218; Crear usuarios en lote</button>
+        </div>
         <div id="users-by-role"></div>
       </div>
       <div class="cfg-sec" id="mod-mgmt-section">
@@ -1709,6 +1712,49 @@ tr:hover .act-btns { opacity:1 }
     <div class="mo-footer">
       <button class="btn btn-sm" onclick="closeUserMo()">Cancelar</button>
       <button class="btn btn-accent btn-sm" onclick="saveUser()">Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div class="mo-overlay" id="mo-bulk-user" onclick="if(event.target===this)closeBulkUser()">
+  <div class="modal modal-sm">
+    <div class="mo-title">&#128218; Crear usuarios en lote</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
+      Una fila por persona: <code>Nombre completo;email@empresa.com</code>. Usa el MISMO nombre que aparece en el campo
+      "Responsable" de las actividades para que el direccionamiento funcione. Todos se crean con el mismo rol,
+      contraseña y permisos elegidos abajo.
+    </div>
+    <div class="fg fg-full" style="margin-bottom:10px">
+      <span class="fl">Lista (Nombre;email) &#8212; una por l&#237;nea</span>
+      <textarea class="fi" id="bu-list" rows="8" style="font-family:monospace;font-size:12px;resize:vertical" placeholder="Bertty Gutierrez;bgutierrez@geoautomotriz.com.bo&#10;Cristina Ruiz;cruiz@geoautomotriz.com.bo"></textarea>
+    </div>
+    <div class="fg2">
+      <div class="fg"><span class="fl">Contrase&#241;a para todos *</span><input class="fi" id="bu-pass" type="password" placeholder="M&#237;nimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="fg"><span class="fl">Rol</span>
+        <select class="fi" id="bu-role">
+          <option value="viewer">Visualizador</option>
+          <option value="collaborator" selected>Colaborador</option>
+          <option value="admin">Administrador</option>
+          <option value="developer">Desarrollador</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin:10px 0">
+      <span class="fl" style="margin-bottom:7px;display:block">M&#243;dulos con acceso</span>
+      <div id="bu-mods" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      <span class="fl" style="margin-bottom:7px;display:block">Permisos de secci&#243;n</span>
+      <div class="nu-perm-grid" id="bu-perms"></div>
+    </div>
+    <div style="margin:10px 0;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
+        <input type="checkbox" id="bu-can-delete" style="accent-color:var(--red);width:14px;height:14px">
+        <span>Permitir eliminar proyectos, actividades, subtareas y comentarios</span>
+      </label>
+    </div>
+    <div id="bu-progress" style="font-size:12px;color:var(--text2);white-space:pre-wrap;max-height:160px;overflow-y:auto;margin-bottom:8px"></div>
+    <div class="mo-footer">
+      <button class="btn btn-sm" onclick="closeBulkUser()">Cancelar</button>
+      <button class="btn btn-accent btn-sm" id="bu-go-btn" onclick="runBulkCreateUsers()">Crear todos</button>
     </div>
   </div>
 </div>
@@ -4242,6 +4288,98 @@ async function saveUser() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Crear Usuario'; }
   }
+}
+
+// ── Bulk user creation ────────────────────────────────────────────
+// Reuses the exact same signUp + profile-upsert pattern as saveUser(),
+// looping over a pasted "Nombre;email" list. Password is typed by the
+// admin each time (never hardcoded), and the list is pasted by the
+// admin (never embedded in this file) — nothing sensitive is stored in code.
+//
+// IMPORTANT: each auth.signUp() call switches the browser's active Supabase
+// session to the newly created user (this is how the existing single-user
+// "Nuevo Usuario" flow already behaves — not something new introduced here).
+// After a batch run finishes, YOU (the admin) will be logged in as the LAST
+// user created. Log out and log back in with your own account afterward.
+function openBulkUser() {
+  const allMods = Object.keys(MOD_LBL);
+  document.getElementById('bu-mods').innerHTML = allMods.map(m =>
+    `<label class="nu-mod-item"><input type="checkbox" id="bu-m-${m}" checked style="accent-color:var(--accent)">${MOD_LBL[m]}</label>`
+  ).join('');
+  document.getElementById('bu-perms').innerHTML = PERM_K.map(p =>
+    `<label class="nu-perm-item"><input type="checkbox" id="bu-p-${p}" ${p!=='Configuración'?'checked':''} style="accent-color:var(--accent)">${p}</label>`
+  ).join('');
+  document.getElementById('bu-can-delete').checked = false;
+  document.getElementById('bu-progress').textContent = '';
+  document.getElementById('mo-bulk-user').classList.add('open');
+}
+function closeBulkUser() { document.getElementById('mo-bulk-user').classList.remove('open'); }
+
+function _parseBulkList(raw) {
+  return raw.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const [name, email] = line.split(';').map(s => (s || '').trim());
+    return { name, email };
+  }).filter(r => r.name && r.email);
+}
+
+async function runBulkCreateUsers() {
+  const raw = document.getElementById('bu-list')?.value || '';
+  const rows = _parseBulkList(raw);
+  const pass = document.getElementById('bu-pass')?.value?.trim();
+  const role = document.getElementById('bu-role')?.value || 'collaborator';
+  const progressEl = document.getElementById('bu-progress');
+  const goBtn = document.getElementById('bu-go-btn');
+
+  if (!rows.length) { notify('⚠ Pega al menos una fila "Nombre;email"', true); return; }
+  if (!pass || pass.length < 6) { notify('⚠ La contraseña debe tener al menos 6 caracteres', true); return; }
+
+  const isDev = role === 'developer';
+  const mods  = isDev ? Object.keys(MOD_LBL) : Object.keys(MOD_LBL).filter(m => document.getElementById('bu-m-'+m)?.checked);
+  const perms = {};
+  if (isDev) { PERM_K.forEach(p => perms[p] = true); perms.can_delete = true; }
+  else {
+    PERM_K.forEach(p => perms[p] = document.getElementById('bu-p-'+p)?.checked || false);
+    perms.can_delete = document.getElementById('bu-can-delete')?.checked || false;
+  }
+  const cls = ['#38bdf8','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899'];
+
+  if (!confirm(`Se crearán ${rows.length} usuarios con rol "${role}". Al terminar quedarás con la sesión del ÚLTIMO usuario creado y deberás volver a iniciar sesión con tu cuenta. ¿Continuar?`)) return;
+
+  goBtn.disabled = true; goBtn.textContent = 'Creando…';
+  let ok = 0, fail = 0;
+  const log = [];
+  const paint = () => { progressEl.textContent = log.join('\n'); progressEl.scrollTop = progressEl.scrollHeight; };
+
+  for (const { name, email } of rows) {
+    try {
+      const { data: signUpData, error: signUpErr } = await _sb.auth.signUp({
+        email, password: pass, options: { data: { name } }
+      });
+      let authUserId = null;
+      if (!signUpErr && signUpData?.user?.id) {
+        authUserId = signUpData.user.id;
+      } else if (signUpErr) {
+        const { data: existingProf } = await _sb.from('profiles').select('id,email').eq('email', email).maybeSingle();
+        if (existingProf?.id) { authUserId = existingProf.id; }
+        else { log.push(`✗ ${name} (${email}): ${signUpErr.message}`); fail++; paint(); continue; }
+      }
+      const color = cls[(USERS.length + ok) % cls.length];
+      const profileData = { id: authUserId, email, name, role, modules: mods, perms, avatar_color: color };
+      const { error: profErr } = await _sb.from('profiles').upsert(profileData, { onConflict: 'id' });
+      if (profErr) { log.push(`✗ ${name} (${email}): perfil — ${profErr.message}`); fail++; paint(); continue; }
+      log.push(`✓ ${name} (${email})`);
+      ok++;
+    } catch (e) {
+      log.push(`✗ ${name} (${email}): ${e.message}`);
+      fail++;
+    }
+    paint();
+  }
+
+  await _reloadAllProfiles();
+  renderCfg();
+  goBtn.disabled = false; goBtn.textContent = 'Crear todos';
+  notify(`✅ Lote terminado: ${ok} creados, ${fail} con error. Vuelve a iniciar sesión con tu cuenta.`);
 }
 
 // ── Edit existing user modules/perms from Configuración ─────────────
@@ -8950,6 +9088,36 @@ function renderIOHistory() {
     </div>`).join('');
 }
 
+// ── Responsable normalization helpers (used by handleImport) ──────────
+// Strips accents/diacritics for tolerant name comparison (Marcelo Mejía == Marcelo Mejia)
+function _stripAccents(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function _normName(s) {
+  return _stripAccents(s).toLowerCase().trim().replace(/\s+/g, ' ');
+}
+// A cell like "Luis Saavedra/Mariela Aliaga/CARMONA" or "Angela Rojas - Miguel Valverde"
+// must resolve to exactly ONE responsable so routing to a single user works correctly.
+// We take the first name listed, splitting on the common separators found in these exports.
+function _firstResponsable(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  const parts = s.split(/\s*[\/\-,;&\n\+]\s*|\s+y\s+/i).map(p => p.trim()).filter(Boolean);
+  return (parts[0] || s).trim();
+}
+// Matches a name against the app's existing user list (accent/case-insensitive) so that
+// e.g. "Marcelo Mejía" and "Bernado Moreno" (typo) map to the ALREADY-CREATED user instead
+// of creating a duplicate/near-duplicate identity. Falls back to the cleaned input name
+// (title-cased) if no existing user matches — that case is reported to the admin as "new".
+function _canonResponsable(raw) {
+  const first = _firstResponsable(raw);
+  if (!first) return { name: '', isNew: false };
+  const n = _normName(first);
+  const existing = (USERS || []).find(u => _normName(u.name) === n);
+  if (existing) return { name: existing.name, isNew: false };
+  return { name: first, isNew: true };
+}
+
 async function handleImport(e) {
   const file = e.target.files[0]; if (!file) return;
   if (typeof XLSX === 'undefined') { notify('⚠ SheetJS no disponible', true); return; }
@@ -8985,17 +9153,16 @@ async function handleImport(e) {
 
       notify('⏳ Procesando ' + rows.length + ' registros...', false);
 
-      if (mode === 'replace') {
-        if (!confirm('¿Reemplazar TODOS los datos del módulo "' + MOD_LBL[ACTIVE] + '"?\nEsta acción no se puede deshacer.')) return;
-        const { error: delErr } = await _sb.from('actividades').delete().eq('modulo', ACTIVE);
-        if (delErr) { notify('⚠ Error al limpiar: ' + delErr.message, true); return; }
-      }
-
-      // Build batch rows
+      // Build batch rows first (before touching the DB) so we can preview
+      // new/unmatched responsables and let the admin confirm before writing anything.
       const batch = [];
+      const newNames = new Map(); // name -> count
       for (const row of rows) {
         const activ = String(row['ACTIVIDAD'] || row['actividad'] || '').trim();
         if (!activ) continue;
+        const respRaw = row['RESPONSABLE'] || row['responsable'] || '';
+        const { name: respName, isNew } = _canonResponsable(respRaw);
+        if (isNew && respName) newNames.set(respName, (newNames.get(respName) || 0) + 1);
         batch.push({
           modulo:      ACTIVE,
           codigo:      String(row['CÓDIGO'] || row['CODIGO'] || '').trim(),
@@ -9003,7 +9170,7 @@ async function handleImport(e) {
           actividad:   activ,
           planta:      String(row['PLANTA'] || '').trim(),
           proyecto:    String(row['PROYECTO'] || row['PROYECTO DE INVESTIGACION'] || '').trim(),
-          responsable: String(row['RESPONSABLE'] || '').trim(),
+          responsable: respName,
           fecha_inicio:      parseDate(row['FECHA INICIO']),
           fecha_fin:         parseDate(row['FECHA FIN']),
           fecha_completada:  parseDate(row['FECHA COMPLETADA']),
@@ -9020,6 +9187,41 @@ async function handleImport(e) {
       }
 
       if (!batch.length) { notify('⚠ No se encontraron filas válidas con columna ACTIVIDAD', true); return; }
+
+      if (newNames.size) {
+        const list = [...newNames.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
+          .map(([n,c]) => `• ${n} (${c} actividad${c>1?'es':''})`).join('\n');
+        const okNew = confirm(
+          `${newNames.size} responsable(s) en el Excel no coinciden con ningún usuario existente ` +
+          `en la app (se tomó solo el primer nombre de cada celda):\n\n${list}\n\n` +
+          `Las actividades se importarán igual con ese nombre, pero esas personas no podrán ` +
+          `ver/filtrar sus actividades hasta que se les cree un usuario con el MISMO nombre. ` +
+          `¿Continuar con la importación?`
+        );
+        if (!okNew) return;
+      }
+
+      if (mode === 'replace') {
+        if (!confirm('¿Reemplazar TODOS los datos del módulo "' + MOD_LBL[ACTIVE] + '"?\nEsta acción no se puede deshacer.')) return;
+
+        // Count existing rows first so we can VERIFY the delete actually worked.
+        // (RLS can silently block a DELETE — Supabase returns success with 0 rows
+        // affected and NO error — which previously caused imports to duplicate
+        // instead of replace. We now explicitly check the before/after count.)
+        const { count: beforeCount } = await _sb.from('actividades')
+          .select('id', { count: 'exact', head: true }).eq('modulo', ACTIVE);
+
+        const { error: delErr } = await _sb.from('actividades').delete().eq('modulo', ACTIVE);
+        if (delErr) { notify('⚠ Error al limpiar: ' + delErr.message, true); return; }
+
+        const { count: afterCount } = await _sb.from('actividades')
+          .select('id', { count: 'exact', head: true }).eq('modulo', ACTIVE);
+
+        if ((beforeCount || 0) > 0 && (afterCount || 0) > 0) {
+          notify('⚠ No se pudo borrar la data existente (permiso insuficiente). Importación cancelada para evitar duplicados. Contacta a un administrador.', true);
+          return;
+        }
+      }
 
       // Insert in chunks of 50 to avoid payload limits
       const CHUNK = 50;
