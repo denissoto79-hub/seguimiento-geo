@@ -1869,6 +1869,19 @@ function get() {
   );
 }
 function pcol(p)          { return (COLORS_ALL[ACTIVE] || {})[p] || '#8b949e'; }
+// Small avatar + name for the Responsable column in project detail table.
+// Looks up the matching user (for initials/color); falls back to a neutral
+// gray circle for names that don't have an app account yet.
+function respCell(name) {
+  if (!name) return '<span style="font-size:10px;color:var(--text3)">Sin asignar</span>';
+  const u = (USERS||[]).find(x => x.name === name);
+  const initials = u ? u.initials : String(name).split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+  const color = u ? u.color : '#64748b';
+  return `<div style="display:flex;align-items:center;gap:6px;min-width:0">
+    <div style="width:20px;height:20px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#000;flex-shrink:0">${initials}</div>
+    <span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(name)}">${name}</span>
+  </div>`;
+}
 function uniq(arr, k)     { return [...new Set(arr.map(r => r[k]).filter(Boolean))].sort(); }
 // Convert newlines to <br> for HTML display
 // Render HTML obs content cleanly (no double-spacing from pre-wrap + <p> tags)
@@ -7747,6 +7760,12 @@ function inlineEditField(cell, field, actId, proj) {
     inputEl.type = 'text';
     inputEl.value = r.ACTIVIDAD || '';
     inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+  } else if (field === 'responsable') {
+    inputEl = document.createElement('select');
+    inputEl.style.cssText = 'width:100%;background:var(--bg3);border:1px solid var(--accent);color:var(--text);padding:3px;font-size:11px;border-radius:4px';
+    const blank = document.createElement('option'); blank.value = ''; blank.textContent = '— Sin asignar —'; inputEl.appendChild(blank);
+    const names = [...new Set([...(USERS||[]).map(u=>u.name), r.RESPONSABLE].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; if (r.RESPONSABLE === n) o.selected = true; inputEl.appendChild(o); });
   } else if (field === 'observaciones') {
     // Use a contenteditable div so HTML content renders correctly (not as raw code)
     inputEl = document.createElement('div');
@@ -7772,6 +7791,7 @@ function inlineEditField(cell, field, actId, proj) {
     if (field === 'fecha_fin')    { update.fecha_fin = newVal||null; r['FECHA FIN'] = newVal||null; }
     if (field === 'fecha_inicio') { update.fecha_inicio = newVal||null; r['FECHA INICIO'] = newVal||null; }
     if (field === 'actividad')    { update.actividad = newVal; r.ACTIVIDAD = newVal; }
+    if (field === 'responsable')  { update.responsable = newVal || null; r.RESPONSABLE = newVal || null; }
     if (field === 'observaciones'){ update.observaciones = newVal; r.OBSERVACIONES = newVal; }
     if (Object.keys(update).length) {
       update.updated_at = new Date().toISOString();
@@ -9286,21 +9306,26 @@ let DISABLED_PROJECTS = {};
 // Load from Supabase (shared across all users)
 async function loadDisabledProjects() {
   try {
-    // Try Supabase first — stored as a single JSON row per module
-    const { data } = await _sb.from('modulos')
+    // Try Supabase first — stored as a single JSON row per module.
+    // Supabase is the single source of truth here (shared across all users/devices).
+    const { data, error } = await _sb.from('modulos')
       .select('config_json')
       .eq('key', ACTIVE + '_proj_status')
       .maybeSingle();
-    if (data?.config_json) {
-      DISABLED_PROJECTS = JSON.parse(data.config_json);
-      return;
-    }
+    if (error) throw error;
+    // A successful query with NO row means "nothing is paused" for this module —
+    // that is a valid, final answer. Falling back to localStorage in that case
+    // (as the code used to do) could resurrect a stale per-browser pause state
+    // from a previous session and hide/miscount real activities. Only an actual
+    // failure to reach Supabase (network/error, caught below) should fall back.
+    DISABLED_PROJECTS = data?.config_json ? JSON.parse(data.config_json) : {};
+    return;
   } catch(e) {}
-  // Fallback to localStorage
+  // Fallback to localStorage — only reached if the Supabase call itself failed
   try {
     const s = localStorage.getItem('sg_disabled_projs_' + ACTIVE);
-    if (s) DISABLED_PROJECTS = JSON.parse(s);
-  } catch(e) {}
+    DISABLED_PROJECTS = s ? JSON.parse(s) : {};
+  } catch(e) { DISABLED_PROJECTS = {}; }
 }
 
 async function saveDisabledProjects() {
@@ -10525,9 +10550,9 @@ function getOrderedActs(proj) {
   const acts = get().filter(r => r.PROYECTO === proj);
   const order = window._projActOrder[proj];
   if (!order || !order.length) {
-    // Default order: ascending by FECHA INICIO (activities without date go last)
+    // Default order: ascending by FECHA FIN (activities without date go last)
     return [...acts].sort((a, b) => {
-      const da = a['FECHA INICIO'], db = b['FECHA INICIO'];
+      const da = a['FECHA FIN'], db = b['FECHA FIN'];
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
@@ -10538,6 +10563,178 @@ function getOrderedActs(proj) {
   order.forEach(id => { const a = acts.find(r => String(r._id) === String(id)); if (a) ordered.push(a); });
   acts.forEach(a => { if (!order.map(String).includes(String(a._id))) ordered.push(a); });
   return ordered;
+}
+
+// ── Adjuntos en la tabla de Detalle de Proyecto ──────────────────────
+// Diseño pensado para que NUNCA se ralentice con muchos adjuntos/imágenes:
+//  · La celda solo muestra un CONTADOR (ya viene en memoria, sin llamadas a red).
+//  · Las imágenes se comprimen a WebP antes de subir (igual que en el modal de
+//    Actividad), así que el peso en Storage y al visualizar se mantiene bajo.
+//  · La URL firmada de un adjunto solo se pide a Supabase cuando el usuario
+//    hace clic en "Ver" de ESE adjunto puntual — nunca se precargan URLs para
+//    toda la tabla al abrir el proyecto, aunque tenga cientos de actividades.
+function _attIcon(type) {
+  return /pdf/i.test(type||'') ? '📕' : /sheet|excel|xls/i.test(type||'') ? '📗' : /word|doc/i.test(type||'') ? '📘' : '📎';
+}
+function projAttCell(r, proj) {
+  const atts = r.attachments || [];
+  const n = atts.length;
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+  const previewIcon = n > 0 ? (atts[0].isImg ? '🖼️' : _attIcon(atts[0].type)) : '📎';
+  const badge = n > 0
+    ? `<button onclick="event.stopPropagation();toggleProjAttPopover('${r._id}','${esc(proj)}',this)" title="Ver ${n} adjunto(s)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.12);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;transition:background .15s"
+        onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.12)'">
+        <span style="font-size:12px">${previewIcon}</span><span>${n}</span>
+      </button>`
+    : `<span style="font-size:10px;color:var(--text3)">Sin adjuntos</span>`;
+  const addBtn = canEdit
+    ? `<label title="Agregar adjunto (imagen, PDF, Word, Excel)"
+        style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;border:1px dashed var(--border);color:var(--text2);font-size:13px;cursor:pointer;margin-left:6px;flex-shrink:0;transition:all .15s"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">+
+        <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onclick="event.stopPropagation()" onchange="handleProjAttUpload(event,'${r._id}','${esc(proj)}')">
+      </label>`
+    : '';
+  // The whole cell doubles as a drop zone: dragging a file over it highlights
+  // it, and dropping uploads through the same pipeline as the "+" button.
+  const dropAttrs = canEdit
+    ? `ondragover="event.preventDefault();event.stopPropagation();this.style.background='rgba(56,189,248,.14)';this.style.outline='1.5px dashed var(--accent)'"
+       ondragleave="this.style.background='transparent';this.style.outline='none'"
+       ondrop="event.preventDefault();event.stopPropagation();this.style.background='transparent';this.style.outline='none';handleProjAttDrop(event,'${r._id}','${esc(proj)}')"`
+    : '';
+  return `<div data-att-cell="${r._id}" ${dropAttrs} style="display:flex;align-items:center;padding:3px 4px;border-radius:6px;transition:background .15s;outline:none">${badge}${addBtn}</div>`;
+}
+
+const _ATT_ALLOWED_RE = /^image\/|pdf|word|sheet|excel|msword|officedocument/i;
+function _filterAllowedAttFiles(files) {
+  const ok = [], rejected = [];
+  files.forEach(f => {
+    const okType = _ATT_ALLOWED_RE.test(f.type) || /\.(pdf|docx?|xlsx?)$/i.test(f.name);
+    (okType ? ok : rejected).push(f);
+  });
+  return { ok, rejected };
+}
+
+async function _projAttUploadFiles(fileList, actId, proj) {
+  const { ok: files, rejected } = _filterAllowedAttFiles([...fileList]);
+  if (rejected.length) notify('⚠ Se omitieron ' + rejected.length + ' archivo(s) con formato no soportado (solo imagen, PDF, Word, Excel)', true);
+  if (!files.length) return;
+  const r = get().find(x => x._id === actId);
+  if (!r) return;
+  if (!r.attachments) r.attachments = [];
+  notify('⏳ Subiendo ' + files.length + ' adjunto(s)...', false);
+  for (const f of files) {
+    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const isImg = f.type.startsWith('image/');
+    try {
+      // Same compression pipeline used by the activity edit modal — keeps
+      // uploads small and fast regardless of how many attachments accumulate.
+      const blob = isImg ? await _compressImage(f) : f;
+      const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 80);
+      const storageKey = (ACTIVE || 'gen') + '/act/' + (r._dbid || actId) + '/' + uid + '_' + safeName;
+      const { error } = await _sb.storage.from(_ATT_BUCKET).upload(storageKey, blob, {
+        contentType: isImg ? 'image/webp' : f.type, upsert: true
+      });
+      if (error) { console.warn('Upload error:', error.message); continue; }
+      r.attachments.push({ id: uid, name: f.name, size: blob.size, type: isImg ? 'image/webp' : f.type, isImg, storageKey });
+    } catch (err) { console.warn('Attachment upload failed:', err); }
+  }
+  const { error: updErr } = await _sb.from('actividades').update({ attachments: r.attachments }).eq('id', r._dbid);
+  if (updErr) { notify('⚠ Error al guardar adjunto: ' + updErr.message, true); return; }
+  notify('✅ Adjunto(s) guardado(s)');
+  const cellDiv = document.querySelector(`[data-att-cell="${actId}"]`);
+  if (cellDiv) cellDiv.outerHTML = projAttCell(r, proj);
+}
+function handleProjAttUpload(e, actId, proj) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  _projAttUploadFiles(files, actId, proj);
+}
+function handleProjAttDrop(e, actId, proj) {
+  const files = e.dataTransfer?.files ? [...e.dataTransfer.files] : [];
+  if (files.length) _projAttUploadFiles(files, actId, proj);
+}
+
+// z-index 260: must render ABOVE the project drawer (.drawer is z-index:201) —
+// otherwise the drawer visually sits on top of the popover and swallows every
+// click on "Ver"/"Eliminar" even though the popover is technically present in
+// the DOM. This was the root cause of those buttons appearing "dead".
+function toggleProjAttPopover(actId, proj, btnEl) {
+  const existing = document.getElementById('proj-att-pop');
+  const wasOpenForThis = existing && existing.dataset.forId === actId;
+  if (existing) existing.remove();
+  if (wasOpenForThis) return; // acts as a toggle: click again to close
+  const r = get().find(x => x._id === actId);
+  if (!r) return;
+  const atts = r.attachments || [];
+  const canEdit = CURRENT_USER?.role !== 'viewer';
+  const pop = document.createElement('div');
+  pop.id = 'proj-att-pop';
+  pop.dataset.forId = actId;
+  pop.style.cssText = 'position:absolute;z-index:260;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:230px;max-width:290px;max-height:280px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.45);font-size:11px';
+  const rect = btnEl.getBoundingClientRect();
+  const top  = rect.bottom + window.scrollY + 4;
+  // Keep the popover inside the viewport horizontally
+  const left = Math.min(rect.left + window.scrollX, window.scrollX + window.innerWidth - 300);
+  pop.style.top  = top + 'px';
+  pop.style.left = Math.max(8, left) + 'px';
+  const header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;color:var(--text)">📎 ${atts.length} adjunto${atts.length!==1?'s':''}</span>
+  </div>`;
+  const rows = atts.length
+    ? atts.map(a => {
+        const icon = a.isImg ? '🖼️' : _attIcon(a.type);
+        const sz = a.size ? (a.size/1024).toFixed(0) + ' KB' : '';
+        return `<div style="display:flex;align-items:center;gap:7px;padding:6px 3px;border-bottom:1px solid rgba(255,255,255,.06)">
+          <span style="font-size:15px;flex-shrink:0">${icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text)" title="${esc(a.name||'')}">${a.name||'archivo'}</div>
+            ${sz?`<div style="font-size:9px;color:var(--text3)">${sz}</div>`:''}
+          </div>
+          <button type="button" onclick="openProjAttFile('${a.storageKey||''}','${a.url||''}')" title="Ver / Descargar"
+            style="background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);color:var(--accent);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;flex-shrink:0">👁</button>
+          ${canEdit ? `<button type="button" onclick="deleteProjAtt('${actId}','${a.id||''}','${a.storageKey||''}','${esc(proj)}')" title="Eliminar"
+            style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>` : ''}
+        </div>`;
+      }).join('')
+    : '<div style="text-align:center;color:var(--text2);padding:10px 4px">Sin adjuntos</div>';
+  pop.innerHTML = header + rows;
+  document.body.appendChild(pop);
+  setTimeout(() => {
+    document.addEventListener('click', function closePop(ev) {
+      if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('click', closePop); }
+    });
+  }, 0);
+}
+
+// Opens a blank tab SYNCHRONOUSLY (inside the click handler) and fills its
+// location once the signed URL resolves. Calling window.open() only AFTER an
+// "await" — as the previous version did — makes most browsers treat it as a
+// popup that wasn't directly triggered by the user and silently block it,
+// which is why "Ver" previously appeared to do nothing.
+async function openProjAttFile(storageKey, fallbackUrl) {
+  const win = storageKey ? window.open('', '_blank') : null;
+  let url = fallbackUrl;
+  if (storageKey) {
+    const fetched = await _getAttachmentUrl(storageKey);
+    if (fetched) url = fetched;
+  }
+  if (!url) { win?.close(); notify('⚠ No se pudo abrir el adjunto', true); return; }
+  if (win) win.location.href = url; else window.open(url, '_blank');
+}
+
+async function deleteProjAtt(actId, attId, storageKey, proj) {
+  if (!confirm('¿Eliminar este adjunto?')) return;
+  const r = get().find(x => x._id === actId);
+  if (!r) return;
+  r.attachments = (r.attachments || []).filter(a => String(a.id) !== String(attId));
+  if (storageKey) await _deleteAttachmentFromStorage(storageKey);
+  const { error } = await _sb.from('actividades').update({ attachments: r.attachments }).eq('id', r._dbid);
+  if (error) { notify('⚠ Error al eliminar: ' + error.message, true); return; }
+  document.getElementById('proj-att-pop')?.remove();
+  const cellDiv = document.querySelector(`[data-att-cell="${actId}"]`);
+  if (cellDiv) cellDiv.outerHTML = projAttCell(r, proj);
+  notify('✅ Adjunto eliminado');
 }
 
 // ── Manual project-card ordering (Módulo de Proyectos) ──────────────────────
@@ -10831,15 +11028,29 @@ function openProjDr(proj) {
       </div>` : ''}
     </div>
     <div style="overflow-x:auto;margin-bottom:12px">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;min-width:860px;border-collapse:collapse;font-size:12px;table-layout:fixed">
+        <colgroup>
+          ${isAdmin ? '<col style="width:22px">' : ''}
+          <col style="width:18%">
+          <col style="width:12%">
+          <col style="width:11%">
+          <col style="width:6%">
+          <col style="width:8%">
+          <col style="width:8%">
+          <col style="width:17%">
+          <col style="width:11%">
+          <col style="width:9%">
+        </colgroup>
         <thead><tr style="background:var(--bg3)">
-          ${isAdmin ? '<th style="padding:7px 4px;width:20px"></th>' : ''}
+          ${isAdmin ? '<th style="padding:7px 4px;width:22px"></th>' : ''}
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Actividad</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Responsable</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Estado</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Avance</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">F.Inicio</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">F.Fin</th>
-          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase;min-width:220px">Observaciones</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Observaciones</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);text-transform:uppercase">Adjuntos</th>
           <th style="padding:7px 10px;text-align:center;font-size:10px;color:var(--text2);text-transform:uppercase">Acción</th>
         </tr></thead>
         <tbody id="proj-acts-tbody-${proj.replace(/[^a-zA-Z0-9]/g,'_')}">
@@ -10848,11 +11059,13 @@ function openProjDr(proj) {
             const hasOverdueST = (r.subtasks||[]).some(s => !s.done && s.date && new Date(s.date) < TODAY);
             return `<tr data-act-id="${r._id}" id="proj-row-${r._id}" style="border-bottom:1px solid rgba(33,38,45,.5);cursor:default">
             ${isAdmin ? `<td data-drag-handle style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;user-select:none;touch-action:none" title="Arrastrar para reordenar">⋮⋮</td>` : ''}
-            <td style="padding:7px 10px;font-size:12px;cursor:pointer;max-width:180px"
+            <td style="padding:7px 10px;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
               onclick="openActDrFromProj('${r._id}','${esc(proj)}')"
               ondblclick="event.stopPropagation();inlineEditField(this,'actividad','${r._id}','${esc(proj)}')"
               title="Click: ver detalle | Doble-click: editar">${r.ACTIVIDAD||'—'}${isOverdue?'<span title="Actividad vencida" style="color:var(--red);margin-left:4px;font-size:11px">⚠</span>':''}${hasOverdueST?'<span title="Subtarea(s) vencida(s)" style="color:var(--orange);margin-left:4px;font-size:11px">▲</span>':''}</td>
-            <td style="padding:7px 10px;cursor:pointer"
+            <td style="padding:7px 10px;cursor:pointer;overflow:hidden"
+              ondblclick="inlineEditField(this,'responsable','${r._id}','${esc(proj)}')" title="Doble-click: editar">${respCell(r.RESPONSABLE)}</td>
+            <td style="padding:7px 10px;cursor:pointer;overflow:hidden"
               ondblclick="inlineEditField(this,'estado','${r._id}','${esc(proj)}')">${badge(r.ESTADO||'PLANIFICADA')}</td>
             <td style="padding:7px 10px;color:var(--accent);font-weight:700;font-size:12px;cursor:pointer"
               ondblclick="inlineEditField(this,'avance','${r._id}','${esc(proj)}')">${r.AVANCE}%</td>
@@ -10860,9 +11073,10 @@ function openProjDr(proj) {
               ondblclick="inlineEditField(this,'fecha_inicio','${r._id}','${esc(proj)}')">${fmtD(r['FECHA INICIO'])}</td>
             <td style="padding:7px 10px;color:var(--text2);font-size:11px;white-space:nowrap;cursor:pointer"
               ondblclick="inlineEditField(this,'fecha_fin','${r._id}','${esc(proj)}')">${fmtD(r['FECHA FIN'])}</td>
-            <td class="obs-cell-proj" style="padding:7px 10px;font-size:11px;color:var(--text);min-width:220px;max-width:340px;word-break:break-word;cursor:pointer;line-height:1.5"
+            <td class="obs-cell-proj" style="padding:7px 10px;font-size:11px;color:var(--text);word-break:break-word;cursor:pointer;line-height:1.5;overflow:hidden"
               ondblclick="inlineEditField(this,'observaciones','${r._id}','${esc(proj)}')">${obsSnippet(r.OBSERVACIONES)}</td>
-            <td style="padding:7px 10px;text-align:center">
+            <td style="padding:7px 10px;overflow:visible" onclick="event.stopPropagation()">${projAttCell(r, proj)}</td>
+            <td style="padding:7px 10px;text-align:center;overflow:hidden">
               ${canEdit && r.ESTADO!=='REALIZADA'
                 ? `<button onclick="markDoneInProj('${r._id}','${esc(proj)}')" title="Marcar como completada" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Completar</button>`
                 : '<span style="color:var(--green);font-size:12px">✅</span>'}
