@@ -762,7 +762,7 @@ tr:hover .act-btns { opacity:1 }
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;opacity:.65">de Gesti&#243;n</div>
     </div>
     <div id="login-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#ef4444;margin-bottom:14px;line-height:1.5"></div>
-    <form id="lg-form" onsubmit="doLogin();return false;" autocomplete="on">
+    <form id="lg-form" method="post" action="javascript:void(0)" onsubmit="event.preventDefault(); try { doLogin(); } catch(e) { console.error('Login error:', e); document.getElementById('login-err').textContent='Error al cargar la aplicación. Recarga la página (F5) e inténtalo de nuevo.'; document.getElementById('login-err').style.display='block'; } return false;" autocomplete="on">
     <div style="margin-bottom:13px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Email</div>
       <input id="lg-email" type="email" name="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
@@ -2433,7 +2433,14 @@ function renderDash() {
   const moPadj = moAll.length ? Math.round(moRealiz/moDenominator*100) : 0;
   const tRep  = d.reduce((s,r)=>s+(r['CANTIDAD DE REPROGRAMACIONES']||0),0);
   const tRepNJ = d.reduce((s,r)=>s+(r._reprog_no_just||0),0);
-  document.getElementById('tb-badge').textContent = n + ' actividades';
+  // NOTE: the topbar badge must show the TRUE total of activities in the module
+  // (only excluding paused projects), never the dashboard's filtered count (d.length).
+  // Using d.length here was the bug: the "Año" filter defaults to the current year
+  // (see <select id="f-anio">), so activities from other years silently dropped out
+  // of the badge even though they still exist in the module — e.g. 685 real activities
+  // showing as "454" just because ~230 of them didn't match year 2026.
+  const totalActsBadge = get().filter(r => isProjectActive(r.PROYECTO||'')).length;
+  document.getElementById('tb-badge').textContent = totalActsBadge + ' actividades';
 
   // Count all subtasks across filtered activities
   const allST = d.flatMap(r=>r.subtasks||[]);
@@ -8718,7 +8725,7 @@ async function _doSwitchMod(key, el) {
   if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
 
   // Limpiar filtros (selects + searchable inputs)
-  const filterIds = ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp',
+  const filterIds = ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','f-estado',
     'a-srch','a-est','a-planta','a-proj','a-resp2',
     'p-srch','p-planta','p-resp','p-est',
     'g-planta','g-resp','cal-planta','cal-resp',
