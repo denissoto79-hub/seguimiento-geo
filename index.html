@@ -7490,9 +7490,14 @@ async function initSession(authUser) {
       try { subscribeRealtime(); } catch(e) { console.warn('Realtime subscribe error:', e); }
       try { await loadUserNotifs(); } catch(e) {}
       try { await loadIOHistory(); } catch(e) {}
+      // Traer en paralelo los demás módulos asignados al usuario para que el
+      // Inicio (y el popup de bienvenida) reflejen TODO lo suyo, no solo el
+      // módulo activo. No bloquea el resto del arranque.
+      try { await loadAllUserModsInBackground(); } catch(e) { console.warn('Precarga multi-módulo error:', e); }
       setTimeout(checkDueNotifs, 1500);
       notify('👋 Bienvenido/a, ' + CURRENT_USER.name.split(' ')[0]);
       _navigateToInicio();
+      setTimeout(showWelcomePopup, 600);
     });
 
   } catch(e) {
@@ -7614,6 +7619,40 @@ function applyPermissions() {
 // ════════════════════════════════════════════════════════════════
 let REALTIME_SUBS = [];
 
+// Convierte una fila cruda de Supabase (tabla `actividades`) al objeto de
+// actividad que usa toda la UI. Centralizado aquí para que loadModFromDB()
+// y el precargador multi-módulo del Inicio (loadAllUserModsInBackground)
+// nunca queden desincronizados en qué campos mapean.
+function mapActRow(r, key) {
+  return {
+    _id:        r.id,
+    _dbid:      r.id,
+    'CÓDIGO':   r.codigo,
+    'AÑO':      r.anio,
+    'ACTIVIDAD':r.actividad,
+    'PLANTA':   r.planta,
+    'PROYECTO': r.proyecto,
+    'RESPONSABLE': r.responsable,
+    'FECHA INICIO': r.fecha_inicio,
+    'FECHA FIN':    r.fecha_fin,
+    'FECHA COMPLETADA': r.fecha_completada,
+    'ESTADO':   r.estado,
+    'AVANCE':   Number(r.avance) || 0,
+    'OBSERVACIONES': r.observaciones,
+    'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
+    'DETALLE DE REPROGRAMACION': r.detalle_reprog,
+    'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
+    'HISTORIAL REPROGRAMACIONES': r.historial_reprog || [],
+    reprogJustificada: r.reprog_justificada,
+    MODULE: key,
+    subtasks:    r.subtasks    || [],
+    attachments: r.attachments || [],
+    comments:    [],
+    _history:    [],
+    _customFields: r.custom_fields || {},
+  };
+}
+
 async function loadModFromDB(key) {
   // Fijar módulo activo al inicio y mantenerlo a lo largo de toda la carga
   ACTIVE = key;
@@ -7631,33 +7670,7 @@ async function loadModFromDB(key) {
     notify('⚠ Error cargando actividades: ' + error.message, true);
     MS[key].acts = [];
   } else {
-    MS[key].acts = (data || []).map((r) => ({
-      _id:        r.id,
-      _dbid:      r.id,
-      'CÓDIGO':   r.codigo,
-      'AÑO':      r.anio,
-      'ACTIVIDAD':r.actividad,
-      'PLANTA':   r.planta,
-      'PROYECTO': r.proyecto,
-      'RESPONSABLE': r.responsable,
-      'FECHA INICIO': r.fecha_inicio,
-      'FECHA FIN':    r.fecha_fin,
-      'FECHA COMPLETADA': r.fecha_completada,
-      'ESTADO':   r.estado,
-      'AVANCE':   Number(r.avance) || 0,
-      'OBSERVACIONES': r.observaciones,
-      'CANTIDAD DE REPROGRAMACIONES': r.cant_reprog,
-      'DETALLE DE REPROGRAMACION': r.detalle_reprog,
-      'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
-      'HISTORIAL REPROGRAMACIONES': r.historial_reprog || [],
-      reprogJustificada: r.reprog_justificada,
-      MODULE: key,
-      subtasks:    r.subtasks    || [],
-      attachments: r.attachments || [],
-      comments:    [],
-      _history:    [],
-      _customFields: r.custom_fields || {},
-    }));
+    MS[key].acts = (data || []).map((r) => mapActRow(r, key));
   }
 
   // Confirmar que ACTIVE sigue siendo este módulo (protección race condition)
@@ -7715,6 +7728,145 @@ async function loadModFromDB(key) {
       loadHistoryForMod(key).catch(function(e) { console.error('History error:', e); }),
     ]);
   }
+}
+
+// Módulos a los que el usuario actual tiene acceso (developer = todos).
+// Centralizado para que initSession, el precargador de Inicio y Realtime
+// usen siempre el mismo criterio.
+function getAccessibleModKeys() {
+  const allModKeys = Object.keys(MOD_LBL);
+  if (!CURRENT_USER) return allModKeys;
+  return CURRENT_USER.role === 'developer'
+    ? allModKeys
+    : allModKeys.filter(k => (CURRENT_USER.modules || []).includes(k));
+}
+
+// ════════════════════════════════════════════════════════════════
+// PRECARGA MULTI-MÓDULO PARA "INICIO"
+// ════════════════════════════════════════════════════════════════
+// El Inicio debe mostrar TODO lo asignado al usuario, sin importar cuál
+// sea el módulo activo. loadModFromDB() solo carga un módulo a la vez
+// (el activo), así que aquí traemos, en segundo plano y en paralelo, las
+// actividades de los demás módulos a los que el usuario tiene acceso —
+// sin tocar ACTIVE ni disparar los renders propios del módulo activo
+// (renderActs/renderDash/renderProjs/renderGantt), para no alterar nada
+// de su comportamiento actual.
+async function loadAllUserModsInBackground() {
+  const accessibleMods = getAccessibleModKeys();
+  const toLoad = accessibleMods.filter(k => k !== ACTIVE);
+  if (!toLoad.length) return;
+
+  await Promise.all(toLoad.map(async (key) => {
+    if (!MS[key]) MS[key] = { acts: null, sF: 'CÓDIGO', sA: true, pg: 1 };
+    try {
+      const { data, error } = await _sb
+        .from('actividades')
+        .select('*')
+        .eq('modulo', key)
+        .not('proyecto', 'like', '_deleted_proj_%')
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.warn('Precarga Inicio — error módulo ' + key + ':', error.message);
+        if (MS[key].acts === null) MS[key].acts = [];
+      } else {
+        MS[key].acts = (data || []).map((r) => mapActRow(r, key));
+      }
+    } catch (e) {
+      console.warn('Precarga Inicio — excepción módulo ' + key + ':', e.message);
+      if (MS[key].acts === null) MS[key].acts = [];
+    }
+  }));
+
+  // Si el usuario ya está viendo el Inicio, refrescarlo con el set completo
+  if (document.getElementById('page-inicio')?.classList.contains('active')) {
+    renderInicio();
+  }
+}
+
+// Vencidas + por vencer (7 días) del usuario, en TODOS los módulos a los que
+// tiene acceso — mismo criterio que usa renderInicio, factorizado aquí para
+// que el popup de bienvenida use exactamente la misma definición de
+// "pendiente" y nunca se desalinee de lo que el propio Inicio muestra.
+function computeUserPendingSummary() {
+  const user = CURRENT_USER;
+  if (!user) return { overdue: [], upcoming: [] };
+  const allModActs = Object.values(MS).flatMap(m => m.acts || []);
+  const myActs = allModActs.filter(r =>
+    !String(r['PROYECTO']||'').startsWith('_deleted_proj_') &&
+    (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
+  );
+  const overdue = myActs.filter(r => esVencida(r));
+  const upcoming = myActs.filter(r => {
+    const f = fechaEfectiva(r);
+    if (r.ESTADO === 'REALIZADA' || !f) return false;
+    const diff = (new Date(f + 'T00:00:00') - TODAY) / 86400000;
+    return diff >= 0 && diff <= 7;
+  });
+  return { overdue, upcoming };
+}
+
+// ════════════════════════════════════════════════════════════════
+// POPUP DE BIENVENIDA (centrado, modal-sm) — pendientes o saludo
+// ════════════════════════════════════════════════════════════════
+const WELCOME_SUPPORT_MSGS = [
+  'No tienes nada pendiente por ahora. ¡Vas muy bien!',
+  'Todo en orden — buen momento para planear lo que viene.',
+  'Sin vencidas ni próximas a vencer. ¡Sigue así!',
+  'Tu bandeja está despejada. Aprovecha para revisar tus proyectos con calma.',
+  'Nada urgente hoy. Un buen día para avanzar sin apuros.',
+];
+
+function closeWelcomePopup() {
+  document.getElementById('welcome-popup-ov')?.remove();
+}
+
+function showWelcomePopup() {
+  const user = CURRENT_USER; if (!user) return;
+  document.getElementById('welcome-popup-ov')?.remove();
+
+  const { overdue, upcoming } = computeUserPendingSummary();
+  const pending = [...overdue, ...upcoming];
+  const hasPending = pending.length > 0;
+  const firstName = (user.name || '').split(' ')[0];
+
+  const rowsHtml = pending.slice(0, 5).map(r => {
+    const late = esVencida(r);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="width:8px;height:8px;border-radius:50%;background:${late?'var(--red)':'var(--orange)'};flex-shrink:0"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.ACTIVIDAD||'—')}</div>
+        <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(MOD_LBL[r.MODULE]||r.MODULE||'')} · ${esc(r.PROYECTO||'')} · ${late?'Vencida':'Vence'} ${fmtD(fechaEfectiva(r))}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const moreCount = pending.length > 5 ? pending.length - 5 : 0;
+  const msg = WELCOME_SUPPORT_MSGS[Math.floor(Math.random() * WELCOME_SUPPORT_MSGS.length)];
+
+  const ov = document.createElement('div');
+  ov.id = 'welcome-popup-ov';
+  ov.className = 'mo-overlay open';
+  ov.onclick = function(e) { if (e.target === ov) closeWelcomePopup(); };
+
+  ov.innerHTML = `
+    <div class="modal modal-sm" style="width:460px">
+      <div class="mo-title">${hasPending ? '⚠ Tienes pendientes' : '👋 Hola, ' + esc(firstName)}</div>
+      ${hasPending ? `
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
+          ${overdue.length ? overdue.length + ' vencida(s)' : ''}${overdue.length && upcoming.length ? ' · ' : ''}${upcoming.length ? upcoming.length + ' por vencer en 7 días' : ''} en tus módulos asignados.
+        </div>
+        <div style="cursor:pointer" onclick="closeWelcomePopup();_navigateToInicio();">
+          ${rowsHtml}
+          ${moreCount ? `<div style="font-size:11px;color:var(--text2);padding-top:8px">+ ${moreCount} más…</div>` : ''}
+        </div>
+      ` : `
+        <div style="font-size:13px;color:var(--text);line-height:1.5">${esc(msg)}</div>
+      `}
+      <div class="mo-footer">
+        ${hasPending ? '<button class="btn btn-accent btn-sm" onclick="closeWelcomePopup();_navigateToInicio();">Ver mis tareas</button>' : ''}
+        <button class="btn btn-sm" onclick="closeWelcomePopup()">Continuar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
 }
 
 async function loadCommentsForMod(key) {
@@ -8091,7 +8243,26 @@ function subscribeRealtime() {
   const actSub = _sb.channel('actividades-changes')
     .on('postgres_changes', { event:'*', schema:'public', table:'actividades' }, async payload => {
       const mod = payload.new?.modulo || payload.old?.modulo;
-      if (mod !== ACTIVE) return;
+
+      if (mod !== ACTIVE) {
+        // Módulo distinto al activo: no tocar renderActs/renderDash/renderProjs/
+        // renderGantt ni drawers (eso sigue siendo exclusivo del módulo activo,
+        // sin cambios). Solo mantener MS[mod] al día para que el Inicio (que
+        // agrega todos los módulos asignados) no muestre datos viejos — y
+        // únicamente si ese módulo ya fue precargado en segundo plano.
+        if (!MS[mod] || MS[mod].acts === null || !getAccessibleModKeys().includes(mod)) return;
+        try {
+          const { data, error } = await _sb
+            .from('actividades')
+            .select('*')
+            .eq('modulo', mod)
+            .not('proyecto', 'like', '_deleted_proj_%')
+            .order('created_at', { ascending: true });
+          if (!error) MS[mod].acts = (data || []).map((r) => mapActRow(r, mod));
+        } catch (e) { console.warn('Realtime (módulo no activo) error:', e.message); }
+        if (document.getElementById('page-inicio')?.classList.contains('active')) renderInicio();
+        return;
+      }
 
       // For UPDATE events: do a surgical in-memory patch instead of full reload
       // This prevents the store from being rebuilt while other operations are in flight
