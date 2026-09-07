@@ -2875,7 +2875,7 @@ function openKP(type) {
           const stEstado = s.done ? 'REALIZADA' : (s.reprogramada ? 'REPROGRAMADA' : 'PLANIFICADA');
           subtaskRows += `<tr style="border-bottom:1px solid rgba(33,38,45,.4);background:rgba(56,189,248,.04)">
             <td style="padding:6px 10px"><span class="code-lbl" style="background:rgba(168,85,247,.15);color:var(--purple);border-color:rgba(168,85,247,.3)">${r['CÓDIGO']||'—'}</span></td>
-            <td style="padding:6px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:var(--purple);font-size:9px;font-weight:700;margin-right:4px">▪ SUBTAREA</span>${(s.desc||'—').substring(0,30)}</td>
+            <td style="padding:6px 10px;max-width:220px;white-space:normal;word-break:break-word;line-height:1.35"><span style="color:var(--purple);font-size:9px;font-weight:700;margin-right:4px">▪ SUBTAREA</span>${s.desc||'—'}</td>
             <td style="padding:6px 10px">${badge(stEstado)}</td>
             <td style="padding:6px 10px;color:var(--accent)">${s.done?'100':'0'}%</td>
             <td style="padding:6px 10px;color:var(--text2)">${fmtD(s.date)}</td>
@@ -2900,7 +2900,7 @@ function openKP(type) {
         <tbody>${acts.map(r =>
           `<tr style="border-bottom:1px solid rgba(33,38,45,.6);cursor:pointer" onclick="closeKP();openActDr('${r._id}')">
             <td style="padding:6px 10px"><span class="code-lbl">${r['CÓDIGO']}</span></td>
-            <td style="padding:6px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.ACTIVIDAD||'—').substring(0,35)}</td>
+            <td style="padding:6px 10px;max-width:220px;white-space:normal;word-break:break-word;line-height:1.35">${r.ACTIVIDAD||'—'}</td>
             <td style="padding:6px 10px">${badge(r.ESTADO)}</td>
             <td style="padding:6px 10px;color:var(--accent)">${r.AVANCE}%</td>
             <td style="padding:6px 10px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</td>
@@ -3036,7 +3036,7 @@ function renderGantt() {
   const dataYears = [...new Set(data.map(r => { const y=new Date(r['FECHA INICIO']).getFullYear(); return isNaN(y)?0:y; }).filter(y=>y>2000))];
   const yr = dataYears.length===1 ? dataYears[0] : (dataYears.length>1 ? Math.max(...dataYears) : new Date().getFullYear());
   const rs = new Date(yr, fromM, 1), re = new Date(yr, toM + 1, 0);
-  const tMs = re - rs, LW = 235, BW = 680;
+  const tMs = re - rs, LW = 280, BW = 680;
   const mos = []; let cur = new Date(yr, fromM, 1);
   while (cur <= re) { mos.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
   const groups = {};
@@ -3062,7 +3062,7 @@ function renderGantt() {
     // Sort activities within group by start date
     acts.sort((a,b) => new Date(a['FECHA INICIO']) - new Date(b['FECHA INICIO']));
     const col = pcol(proj);
-    html += `<div class="gantt-proj-sep" style="grid-template-columns:${LW}px 1fr"><div class="gantt-proj-lbl" style="color:${col}">${proj.substring(0,40)}${proj.length>40?'…':''}</div><div></div></div>`;
+    html += `<div class="gantt-proj-sep" style="grid-template-columns:${LW}px 1fr"><div class="gantt-proj-lbl" style="color:${col};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(proj||'').replace(/"/g,'&quot;')}">${proj}</div><div></div></div>`;
     acts.forEach(r => {
       const si = new Date(r['FECHA INICIO']), sf = new Date(r['FECHA FIN']);
       const l = Math.max(0, (si - rs) / tMs * 100), w = Math.max(0.4, Math.min((sf - si) / tMs * 100, 100 - l));
@@ -3078,7 +3078,7 @@ function renderGantt() {
           const sl = Math.max(0, (new Date(sd+'T00:00:00') - rs) / tMs * 100);
           const sw = Math.max(0.3, Math.min((new Date((ld||sd)+'T00:00:00') - new Date(sd+'T00:00:00')) / tMs * 100 + 0.8, 100 - sl));
           return `<div class="gantt-row-w" id="gst-${r._id}-${s.id}" style="grid-template-columns:${LW}px 1fr;display:none">
-            <div class="gantt-cell" style="padding-left:20px;font-size:10px;color:var(--text2)">↳ ${(s.desc||'').substring(0,28)}${(s.desc||'').length>28?'…':''}</div>
+            <div class="gantt-cell" style="padding-left:20px;font-size:10px;color:var(--text2)" title="${(s.desc||'').replace(/"/g,'&quot;')}">↳ ${s.desc||''}</div>
             <div class="gantt-bar-area">
               <div class="gantt-today" style="left:${tPct}%"></div>
               <div class="gantt-bar" style="left:${sl}%;width:${Math.max(sw,0.5)}%;height:10px;background:${sc}20;border-color:${sc};color:${sc};cursor:pointer" onclick="openActDr('${r._id}')">
@@ -3088,7 +3088,7 @@ function renderGantt() {
           </div>`;
         }).join('');
       html += `<div class="gantt-row-w" style="grid-template-columns:${LW}px 1fr">
-        <div class="gantt-cell" style="cursor:${hasST?'pointer':'default'}" ${hasST?`onclick="ganttToggleST('${r._id}',this)" title="Ver subtareas"`:''}><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span>${hasST?`<span style="font-size:9px;color:var(--text2);margin-left:3px">▶</span>`:''}${!hasST?`<span style="font-size:11px;color:var(--text2);margin-left:4px">`:`<span style="font-size:11px;color:var(--text2);margin-left:4px">`}${(r.ACTIVIDAD||'').substring(0,20)}${(r.ACTIVIDAD||'').length>20?'…':''}</span></div>
+        <div class="gantt-cell" style="cursor:${hasST?'pointer':'default'}" ${hasST?`onclick="ganttToggleST('${r._id}',this)" title="Ver subtareas: ${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`:`title="${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`}><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span>${hasST?`<span style="font-size:9px;color:var(--text2);margin-left:3px">▶</span>`:''}<span style="font-size:11px;color:var(--text2);margin-left:4px">${r.ACTIVIDAD||''}</span></div>
         <div class="gantt-bar-area">
           <div class="gantt-today" style="left:${tPct}%"></div>
           <div class="gantt-bar" style="left:${l}%;width:${w}%;background:${bc}20;border-color:${bc};color:${bc}" onclick="ganttBarClick(event,'${r._id}')">
@@ -5647,9 +5647,19 @@ function _origHandleImport_DISABLED(e) {
 }
 function exportData() {
   if (typeof XLSX === 'undefined') { notify('⚠ SheetJS no disponible', true); return; }
-  const cols = ['CÓDIGO','ACTIVIDAD','AÑO','PLANTA','PROYECTO','RESPONSABLE','FECHA INICIO','FECHA FIN','FECHA COMPLETADA','ESTADO','AVANCE','CANTIDAD DE REPROGRAMACIONES','DETALLE DE REPROGRAMACION','NUEVA FECHA DE CIERRE','OBSERVACIONES'];
+  const cols = ['CÓDIGO','ACTIVIDAD','AÑO','PLANTA','PROYECTO','CÓDIGO PROYECTO','ESTADO PROYECTO','RESPONSABLE','FECHA INICIO','FECHA FIN','FECHA COMPLETADA','ESTADO','AVANCE','CANTIDAD DE REPROGRAMACIONES','DETALLE DE REPROGRAMACION','NUEVA FECHA DE CIERRE','OBSERVACIONES'];
+  const ESTADO_LBL = { activo:'ACTIVO', pausado:'PAUSADO', finalizado:'FINALIZADO' };
+  const rowVal = (r, c) => {
+    if (c === 'CÓDIGO PROYECTO') return getProjCodigo(r.PROYECTO||'');
+    if (c === 'ESTADO PROYECTO') {
+      const est = getProjEstado(r.PROYECTO||'');
+      const fin = getProjFechaFin(r.PROYECTO||'');
+      return ESTADO_LBL[est] + (est==='finalizado' && fin ? ' (' + fmtD(fin) + ')' : '');
+    }
+    return r[c] ?? '';
+  };
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cols, ...get().map(r => cols.map(c => r[c]??''))]), 'Actividades');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cols, ...get().map(r => cols.map(c => rowVal(r, c)))]), 'Actividades');
   XLSX.writeFile(wb, `${MOD_LBL[ACTIVE]}_${tds()}.xlsx`);
   notify('⬇️ Excel exportado');
 }
@@ -7614,6 +7624,7 @@ async function loadModFromDB(key) {
   await Promise.all([
     loadCustomFieldsView().catch(() => {}),
     loadDisabledProjects().catch(() => {}),
+    loadProjectMeta().catch(() => {}),
     loadDashConfig().catch(() => {}),
     loadAllProjOrders().catch(() => {}),
     loadProjCardOrder().catch(() => {}),
@@ -8124,6 +8135,11 @@ function subscribeRealtime() {
       if (key.includes('_proj_status')) {
         await loadDisabledProjects();
         renderProjs();
+      } else if (key.includes('_proj_meta')) {
+        // Otro usuario cambió código/estado (Activo/Pausado/Finalizado) de un proyecto
+        await loadProjectMeta();
+        renderProjs();
+        renderDash();
       } else if (key === 'global_dash_config') {
         await loadDashConfig();
         renderDash();
@@ -9474,15 +9490,130 @@ async function saveDisabledProjects() {
 
 async function toggleProjectActive(proj, event) {
   if (event) event.stopPropagation();
-  DISABLED_PROJECTS[proj] = !DISABLED_PROJECTS[proj];
-  await saveDisabledProjects();
-  renderProjs();
-  renderDash();
-  notify((DISABLED_PROJECTS[proj] ? '⏸ Pausado: ' : '▶ Activo: ') + proj.substring(0,25));
+  const cur = getProjEstado(proj);
+  const next = cur === 'activo' ? 'pausado' : 'activo';
+  await setProjectEstado(proj, next);
 }
 
 function isProjectActive(proj) {
+  const m = PROJECT_META[proj];
+  if (m && m.estado) return m.estado === 'activo';
   return !DISABLED_PROJECTS[proj];
+}
+
+// ── Project code & estado (Activo/Pausado/Finalizado) ────────────────
+// Stored per-module in Supabase (tabla modulos, misma técnica que
+// DISABLED_PROJECTS) para que el estado se sincronice entre usuarios.
+let PROJECT_META = {}; // { [proyecto]: { codigo, estado:'activo'|'pausado'|'finalizado', fecha_fin } }
+
+async function loadProjectMeta() {
+  try {
+    const { data, error } = await _sb.from('modulos')
+      .select('config_json')
+      .eq('key', ACTIVE + '_proj_meta')
+      .maybeSingle();
+    if (error) throw error;
+    PROJECT_META = data?.config_json ? JSON.parse(data.config_json) : {};
+    return;
+  } catch(e) {}
+  try {
+    const s = localStorage.getItem('sg_proj_meta_' + ACTIVE);
+    PROJECT_META = s ? JSON.parse(s) : {};
+  } catch(e2) { PROJECT_META = {}; }
+}
+
+async function saveProjectMeta() {
+  const json = JSON.stringify(PROJECT_META);
+  try { localStorage.setItem('sg_proj_meta_' + ACTIVE, json); } catch(e) {}
+  try {
+    const key = ACTIVE + '_proj_meta';
+    const { data } = await _sb.from('modulos').select('id').eq('key', key).maybeSingle();
+    if (data) {
+      await _sb.from('modulos').update({ config_json: json }).eq('key', key);
+    } else {
+      await _sb.from('modulos').insert({ key, nombre: '_proj_meta_' + ACTIVE, activo: false, config_json: json });
+    }
+  } catch(e) {}
+}
+
+function getProjEstado(proj) {
+  const m = PROJECT_META[proj];
+  if (m && m.estado) return m.estado;
+  return DISABLED_PROJECTS[proj] ? 'pausado' : 'activo';
+}
+function getProjCodigo(proj) {
+  return (PROJECT_META[proj] && PROJECT_META[proj].codigo) || '';
+}
+function getProjFechaFin(proj) {
+  return (PROJECT_META[proj] && PROJECT_META[proj].fecha_fin) || null;
+}
+
+async function setProjectCodigo(proj, codigo) {
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo Desarrollador/Administrador pueden editar el código', true); return; }
+  if (!PROJECT_META[proj]) PROJECT_META[proj] = { codigo:'', estado:getProjEstado(proj), fecha_fin:getProjFechaFin(proj) };
+  PROJECT_META[proj].codigo = (codigo||'').trim().slice(0,30);
+  await saveProjectMeta();
+  renderProjs();
+  notify('✏ Código de proyecto actualizado');
+}
+
+function promptProjectCodigo(proj) {
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo Desarrollador/Administrador pueden editar el código', true); return; }
+  const val = prompt('Código del proyecto:', getProjCodigo(proj) || '');
+  if (val === null) return; // cancelado
+  setProjectCodigo(proj, val);
+}
+
+// estado: 'activo' | 'pausado' | 'finalizado'. Cambiar a/desde 'finalizado'
+// está restringido a developer/admin; alternar activo/pausado permanece
+// disponible para cualquier usuario (comportamiento previo sin cambios).
+async function setProjectEstado(proj, estado, fechaFin) {
+  if (!['activo','pausado','finalizado'].includes(estado)) return;
+  const wasFinalizado = getProjEstado(proj) === 'finalizado';
+  const isAdminUser = ['developer','admin'].includes(CURRENT_USER?.role);
+  if ((estado === 'finalizado' || wasFinalizado) && !isAdminUser) {
+    notify('⚠ Solo Desarrollador/Administrador pueden finalizar o reabrir un proyecto', true);
+    return;
+  }
+  if (!PROJECT_META[proj]) PROJECT_META[proj] = { codigo:'', estado:'activo', fecha_fin:null };
+  PROJECT_META[proj].estado = estado;
+  PROJECT_META[proj].fecha_fin = estado === 'finalizado' ? (fechaFin || PROJECT_META[proj].fecha_fin || TODAY_S) : null;
+  DISABLED_PROJECTS[proj] = (estado !== 'activo');
+  await saveDisabledProjects();
+  await saveProjectMeta();
+  renderProjs();
+  renderDash();
+  notify(estado==='activo' ? '▶ Activo: ' + proj.substring(0,25)
+    : estado==='pausado' ? '⏸ Pausado: ' + proj.substring(0,25)
+    : '✅ Finalizado: ' + proj.substring(0,25));
+}
+
+function promptProjectFinalizado(proj) {
+  if (!['developer','admin'].includes(CURRENT_USER?.role)) { notify('⚠ Solo Desarrollador/Administrador pueden finalizar un proyecto', true); return; }
+  document.getElementById('proj-fin-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'proj-fin-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  const defDate = getProjFechaFin(proj) || TODAY_S;
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;width:320px;max-width:100%" onclick="event.stopPropagation()">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Finalizar Proyecto</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">${esc(proj)}</div>
+      <label style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Fecha de finalización</label>
+      <input type="date" id="proj-fin-date" class="fi" value="${defDate}" style="width:100%;margin:6px 0 14px">
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('proj-fin-modal').remove()" class="btn btn-sm" style="flex:1">Cancelar</button>
+        <button onclick="confirmProjectFinalizado('${esc(proj)}')" class="btn btn-accent btn-sm" style="flex:1">Confirmar</button>
+      </div>
+    </div>`;
+  modal.onclick = () => modal.remove();
+  document.body.appendChild(modal);
+}
+
+async function confirmProjectFinalizado(proj) {
+  const val = document.getElementById('proj-fin-date')?.value || TODAY_S;
+  document.getElementById('proj-fin-modal')?.remove();
+  await setProjectEstado(proj, 'finalizado', val);
 }
 
 // getActive() — for metrics only (excludes disabled projects)
@@ -9754,6 +9885,15 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
   const datesF = a.map(r=>r['FECHA FIN']).filter(Boolean).sort();
   const projIni = datesI.length ? datesI[0] : null;
   const projFin = datesF.length ? datesF[datesF.length-1] : null;
+  const proyEstado  = getProjEstado(p);
+  const proyCodigo  = getProjCodigo(p);
+  const proyFechaFin = getProjFechaFin(p);
+  const ESTADO_UI = {
+    activo:     { label:'Activo',     color:'var(--green)', bg:'rgba(34,197,94,.1)',   bd:'rgba(34,197,94,.35)' },
+    pausado:    { label:'Pausado',    color:'var(--text3)', bg:'rgba(139,148,158,.08)', bd:'rgba(139,148,158,.3)' },
+    finalizado: { label:'Finalizado', color:'var(--accent)', bg:'rgba(56,189,248,.1)', bd:'rgba(56,189,248,.35)' },
+  };
+  const eUi = ESTADO_UI[proyEstado] || ESTADO_UI.activo;
   return `<div class="proj-card" data-proj-id="${encodeURIComponent(p)}" onclick="openProjDr('${esc(p)}')">
     ${isAdmin?`<div data-drag-handle title="Arrastrar para reordenar" onclick="event.stopPropagation()" style="position:absolute;top:4px;right:4px;width:20px;height:16px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text3);font-size:12px;user-select:none;touch-action:none;z-index:2;border-radius:4px" onmouseover="this.style.color='var(--accent)';this.style.background='rgba(56,189,248,.1)'" onmouseout="this.style.color='var(--text3)';this.style.background='transparent'">⋮⋮</div>`:''}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
@@ -9762,6 +9902,11 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
         <div style="min-width:0"><div class="proj-card-name" style="font-weight:600;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p}</div>
         <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div>
         ${projIni||projFin?`<div style="font-size:9px;color:var(--text3);margin-top:1px">${projIni?fmtD(projIni):''} ${projFin?'→ '+fmtD(projFin):''}</div>`:''}
+        <div style="margin-top:4px" onclick="event.stopPropagation()">
+          ${proyCodigo
+            ? `<span class="code-lbl" style="font-size:10px;${isAdmin?'cursor:pointer':''}" ${isAdmin?`onclick="promptProjectCodigo('${esc(p)}')" title="Click para editar código"`:''}>${esc(proyCodigo)}</span>`
+            : (isAdmin?`<span onclick="promptProjectCodigo('${esc(p)}')" style="font-size:9px;color:var(--text3);cursor:pointer;text-decoration:underline dotted" title="Asignar código de proyecto">+ Código</span>`:'')}
+        </div>
         </div>
       </div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:6px">${avg}%</div>
@@ -9778,18 +9923,27 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
       <div class="ps"><div class="ps-v">${a.length}</div><div class="ps-l">Total</div></div>
     </div>
     ${delayed>0?`<div class="proj-delay">⚠ ${delayed} actividad(es) vencida(s)</div>`:''}
-    <!-- Toggle active/inactive -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;gap:7px">
-        <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Pausar proyecto':'Activar proyecto'}"
-          style="display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:99px;border:1px solid ${isProjectActive(p)?'rgba(34,197,94,.35)':'rgba(139,148,158,.3)'};background:${isProjectActive(p)?'rgba(34,197,94,.1)':'rgba(139,148,158,.08)'};cursor:pointer;transition:all .2s;outline:none">
-          <span style="width:8px;height:8px;border-radius:50%;background:${isProjectActive(p)?'var(--green)':'var(--text3)'};flex-shrink:0;transition:background .2s"></span>
-          <span style="font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;color:${isProjectActive(p)?'var(--green)':'var(--text3)'};text-transform:uppercase">${isProjectActive(p)?'Activo':'Pausado'}</span>
-        </button>
+    <!-- Estado del proyecto: Activo / Pausado / Finalizado -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:6px" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        ${isAdmin ? `
+          <button onclick="setProjectEstado('${esc(p)}','activo')" title="Marcar como Activo"
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='activo'?'rgba(34,197,94,.4)':'var(--border)'};background:${proyEstado==='activo'?'rgba(34,197,94,.15)':'transparent'};color:${proyEstado==='activo'?'var(--green)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Activo</button>
+          <button onclick="setProjectEstado('${esc(p)}','pausado')" title="Marcar como Pausado"
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='pausado'?'rgba(139,148,158,.5)':'var(--border)'};background:${proyEstado==='pausado'?'rgba(139,148,158,.15)':'transparent'};color:${proyEstado==='pausado'?'var(--text2)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Pausado</button>
+          <button onclick="promptProjectFinalizado('${esc(p)}')" title="Marcar como Finalizado (requiere fecha)"
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='finalizado'?'rgba(56,189,248,.45)':'var(--border)'};background:${proyEstado==='finalizado'?'rgba(56,189,248,.15)':'transparent'};color:${proyEstado==='finalizado'?'var(--accent)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Finalizado</button>
+        ` : `
+          <span style="display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:99px;border:1px solid ${eUi.bd};background:${eUi.bg}">
+            <span style="width:8px;height:8px;border-radius:50%;background:${eUi.color};flex-shrink:0"></span>
+            <span style="font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;color:${eUi.color};text-transform:uppercase">${eUi.label}</span>
+          </span>
+        `}
       </div>
-      ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
+      ${isAdmin?`<button onclick="event.stopPropagation();duplicateProject('${esc(p)}')" title="Duplicar proyecto" style="width:26px;height:26px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='rgba(56,189,248,.22)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉</button>`:''}
     </div>
-    ${!isProjectActive(p)?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);border-radius:10px;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em;background:rgba(0,0,0,.4);padding:3px 10px;border-radius:99px">Pausado</span></div>`:''}
+    ${proyEstado==='finalizado' && proyFechaFin ? `<div style="font-size:9px;color:var(--text3);margin-top:5px;text-align:right">✓ Finalizado el ${fmtD(proyFechaFin)}</div>` : ''}
+    ${proyEstado==='pausado'?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.35);border-radius:10px;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em;background:rgba(0,0,0,.4);padding:3px 10px;border-radius:99px">Pausado</span></div>`:''}
   </div>`;
 }
 
@@ -11022,8 +11176,8 @@ function buildActListItem(r, proj, isAdmin, canEdit) {
       ${canEdit&&r.ESTADO!=='REALIZADA'?`onclick="markDoneAndRefreshList('${r._id}','${listId}')" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"`:''}>
       ${r.ESTADO==='REALIZADA'?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>':''}
     </div>
-    <div style="flex:1;padding:6px 0;cursor:pointer;min-width:0" onclick="openActDr('${r._id}')">
-      <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;${r.ESTADO==='REALIZADA'?'text-decoration:line-through;color:var(--text2)':isLate?'color:var(--red)':''}">${r.ACTIVIDAD||'—'}</span>
+    <div style="flex:1;padding:6px 8px 6px 0;cursor:pointer;min-width:0" onclick="openActDr('${r._id}')">
+      <span style="font-size:11px;white-space:normal;word-break:break-word;line-height:1.35;display:block;${r.ESTADO==='REALIZADA'?'text-decoration:line-through;color:var(--text2)':isLate?'color:var(--red)':''}" title="${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}">${r.ACTIVIDAD||'—'}</span>
     </div>
     <span style="font-size:10px;color:var(--text2);padding:0 4px;flex-shrink:0">${r.RESPONSABLE||''}</span>
     <span style="font-size:10px;color:var(--text2);padding:0 4px;flex-shrink:0">${fmtD(r['FECHA FIN'])}</span>
@@ -11181,7 +11335,7 @@ function openProjDr(proj) {
             const hasOverdueST = (r.subtasks||[]).some(s => !s.done && s.date && new Date(s.date) < TODAY);
             return `<tr data-act-id="${r._id}" id="proj-row-${r._id}" style="border-bottom:1px solid rgba(33,38,45,.5);cursor:default">
             ${isAdmin ? `<td data-drag-handle style="padding:4px;color:var(--text3);cursor:grab;font-size:14px;text-align:center;user-select:none;touch-action:none" title="Arrastrar para reordenar">⋮⋮</td>` : ''}
-            <td style="padding:7px 10px;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            <td style="padding:7px 10px;font-size:12px;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.35"
               onclick="openActDrFromProj('${r._id}','${esc(proj)}')"
               ondblclick="event.stopPropagation();inlineEditField(this,'actividad','${r._id}','${esc(proj)}')"
               title="Click: ver detalle | Doble-click: editar">${r.ACTIVIDAD||'—'}${isOverdue?'<span title="Actividad vencida" style="color:var(--red);margin-left:4px;font-size:11px">⚠</span>':''}${hasOverdueST?'<span title="Subtarea(s) vencida(s)" style="color:var(--orange);margin-left:4px;font-size:11px">▲</span>':''}</td>
