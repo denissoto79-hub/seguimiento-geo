@@ -313,6 +313,8 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .srch-select-wrap input.srch-inp:focus { outline:none;border-color:var(--accent) }
 .srch-select-wrap .srch-arrow { position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text2);font-size:10px }
 .srch-dropdown { position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;min-width:180px;max-width:360px;max-height:240px;overflow-y:auto;display:none }
+.srch-dropdown-wide { max-width:640px }
+.srch-dropdown-wide .srch-opt { white-space:normal;overflow:visible;text-overflow:clip;max-width:none;line-height:1.4 }
 .srch-dropdown.open { display:block }
 .srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px }
 .srch-opt:hover,.srch-opt.sel { background:rgba(56,189,248,.12);color:var(--accent) }
@@ -912,7 +914,7 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><label>Planta</label><select id="f-planta" onchange="applyF()"><option value="">Todas</option></select></div>
         <div class="fg"><label>Proyecto</label><select id="f-proyecto" onchange="applyF()"><option value="">Todos</option></select></div>
         <div class="fg"><label>Responsable</label><select id="f-resp" onchange="applyF()"><option value="">Todos</option></select></div>
-        <div class="fg"><label>Estado</label>
+        <div class="fg"><label>Estado de Actividades</label>
           <select id="f-estado" onchange="applyF()">
             <option value="">Todos</option>
             <option value="REALIZADA">Realizada</option>
@@ -921,6 +923,14 @@ tr:hover .act-btns { opacity:1 }
             <option value="REPROGRAMADA">Reprogramada</option>
             <option value="vencidas">⚠ Vencidas</option>
             <option value="proximas">⏳ Próx. a Vencer (7 días)</option>
+          </select>
+        </div>
+        <div class="fg"><label>Estado del Proyecto</label>
+          <select id="f-est-proy" onchange="applyF()">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="pausado">Pausado</option>
+            <option value="finalizado">Finalizado</option>
           </select>
         </div>
         <div class="fg"><label>A&#241;o</label>
@@ -982,13 +992,21 @@ tr:hover .act-btns { opacity:1 }
         <div class="fg"><label>Buscar</label><input type="text" id="p-srch" placeholder="Nombre del proyecto&#8230;" oninput="renderProjs()"></div>
         <div class="fg"><label>Planta</label><select id="p-planta" onchange="renderProjs()"><option value="">Todas</option></select></div>
         <div class="fg"><label>Responsable</label><select id="p-resp" onchange="renderProjs()"><option value="">Todos</option></select></div>
-        <div class="fg"><label>Estado</label>
+        <div class="fg"><label>Estado de Actividades</label>
           <select id="p-est" onchange="renderProjs()">
             <option value="">Todos</option>
             <option value="con_retraso">Con retraso</option>
             <option value="reprogramados">Con reprogramaciones</option>
             <option value="en_curso">En curso</option>
             <option value="completados">Completados</option>
+          </select>
+        </div>
+        <div class="fg"><label>Estado del Proyecto</label>
+          <select id="p-est-proy" onchange="renderProjs()">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="pausado">Pausado</option>
+            <option value="finalizado">Finalizado</option>
           </select>
         </div>
         <div class="fg"><label>A&#241;o / Gesti&#243;n</label>
@@ -1035,8 +1053,16 @@ tr:hover .act-btns { opacity:1 }
     <div class="page" id="page-activities">
       <div class="filter-bar">
         <div class="fg"><label>Buscar</label><input type="text" id="a-srch" placeholder="Actividad, c&#243;digo&#8230;" oninput="renderActs()"></div>
-        <div class="fg"><label>Estado</label>
+        <div class="fg"><label>Estado de Actividades</label>
           <select id="a-est" onchange="renderActs()"><option value="">Todos</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option></select>
+        </div>
+        <div class="fg"><label>Estado del Proyecto</label>
+          <select id="a-est-proy" onchange="renderActs()">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="pausado">Pausado</option>
+            <option value="finalizado">Finalizado</option>
+          </select>
         </div>
         <div class="fg"><label>Planta</label><select id="a-planta" onchange="renderActs()"><option value="">Todas</option></select></div>
         <div class="fg"><label>Proyecto</label><select id="a-proj" onchange="renderActs()"><option value="">Todos</option></select></div>
@@ -1093,8 +1119,16 @@ tr:hover .act-btns { opacity:1 }
           </div>
           <input type="hidden" id="g-proj" value="">
         </div>
-        <div class="fg"><label>Estado</label>
+        <div class="fg"><label>Estado de Actividades</label>
           <select id="g-est" onchange="renderGantt()"><option value="">Todos</option><option>REALIZADA</option><option>EN CURSO</option><option>PLANIFICADA</option><option>REPROGRAMADA</option></select>
+        </div>
+        <div class="fg"><label>Estado del Proyecto</label>
+          <select id="g-est-proy" onchange="renderGantt()">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="pausado">Pausado</option>
+            <option value="finalizado">Finalizado</option>
+          </select>
         </div>
         <div class="fg"><label>Responsable</label><select id="g-resp" onchange="renderGantt()"><option value="">Todos</option></select></div>
       </div>
@@ -2092,7 +2126,7 @@ function setDD(id, vals, keepFirst = true, addNew = false) {
 // SEARCHABLE SELECT — wraps filter <select> elements
 // ═══════════════════════════════════════════════════════════
 const _srchSelectState = {};
-function makeSearchableSelect(selectId, placeholder) {
+function makeSearchableSelect(selectId, placeholder, wide) {
   const origSel = document.getElementById(selectId);
   if (!origSel || origSel._searchable) return;
   origSel._searchable = true;
@@ -2106,6 +2140,7 @@ function makeSearchableSelect(selectId, placeholder) {
   inp.className = 'srch-inp';
   inp.placeholder = placeholder || 'Todos';
   inp.autocomplete = 'off';
+  if (wide) inp.title = ''; // full value is shown via native title on hover once selected (set below)
   const arrow = document.createElement('span');
   arrow.className = 'srch-arrow';
   arrow.textContent = '▾';
@@ -2113,20 +2148,21 @@ function makeSearchableSelect(selectId, placeholder) {
   wrap.appendChild(arrow);
   // Dropdown
   const dd = document.createElement('div');
-  dd.className = 'srch-dropdown';
+  dd.className = 'srch-dropdown' + (wide ? ' srch-dropdown-wide' : '');
   document.body.appendChild(dd);
   _srchSelectState[selectId] = { inp, dd, origSel, open: false };
   function getOpts() { return [...origSel.options].filter(o => o.value !== '__new'); }
   function renderDD(filter) {
     const opts = getOpts().filter(o => !filter || o.textContent.toLowerCase().includes(filter.toLowerCase()));
     dd.innerHTML = opts.map(o =>
-      `<div class="srch-opt${o.value===origSel.value?' sel':''}${!o.value?' placeholder':''}" data-val="${o.value}">${o.textContent}</div>`
+      `<div class="srch-opt${o.value===origSel.value?' sel':''}${!o.value?' placeholder':''}" data-val="${o.value}"${wide?` title="${o.textContent.replace(/"/g,'&quot;')}"`:''}>${o.textContent}</div>`
     ).join('');
     dd.querySelectorAll('.srch-opt').forEach(el => {
       el.addEventListener('mousedown', e => {
         e.preventDefault();
         origSel.value = el.dataset.val;
         inp.value = el.dataset.val ? el.textContent : '';
+        inp.title = inp.value;
         closeDD();
         origSel.dispatchEvent(new Event('change'));
       });
@@ -2136,8 +2172,8 @@ function makeSearchableSelect(selectId, placeholder) {
     const r = inp.getBoundingClientRect();
     dd.style.left = r.left + 'px';
     dd.style.top  = (r.bottom + 2) + 'px';
-    // Width = max of input width, 200px, or content — capped at 360px
-    dd.style.width = Math.min(Math.max(r.width, 200), 360) + 'px';
+    // Width = max of input width, 200px, or content — capped at 360px (640px for "wide" dropdowns with long names)
+    dd.style.width = Math.min(Math.max(r.width, wide ? 320 : 200), wide ? 640 : 360) + 'px';
     // Flip upward if not enough space below
     dd.style.top = '';
     dd.style.bottom = '';
@@ -2157,6 +2193,7 @@ function makeSearchableSelect(selectId, placeholder) {
     // Reset inp to match current select value
     const cur = [...origSel.options].find(o => o.value === origSel.value);
     inp.value = (cur && cur.value) ? cur.textContent : '';
+    inp.title = inp.value;
   }
   inp.addEventListener('focus', () => { inp.value = ''; openDD(); });
   inp.addEventListener('blur', () => setTimeout(closeDD, 200));
@@ -2374,7 +2411,7 @@ function _DISABLED_switchMod_sync(key, el) {
   document.getElementById('tb-mod').textContent  = MOD_LBL[key];
   document.getElementById('rep-mod').textContent = MOD_LBL[key];
   // Clear all filter selects
-  ['f-mes','f-planta','f-proyecto','f-resp','a-srch','a-est','a-planta','a-proj','a-resp2'].forEach(id => {
+  ['f-mes','f-planta','f-proyecto','f-resp','a-srch','a-est','a-est-proy','a-planta','a-proj','a-resp2'].forEach(id => {
     const e = document.getElementById(id); if (e) { if (e.tagName === 'SELECT') e.value = ''; else e.value = ''; }
   });
   loadMod(key);
@@ -2392,6 +2429,7 @@ function getFiltered() {
   const resp   = document.getElementById('f-resp')?.value;
   const anio   = document.getElementById('f-anio')?.value || '';
   const estado = document.getElementById('f-estado')?.value || '';
+  const estProy = document.getElementById('f-est-proy')?.value || '';
   const in7 = new Date(TODAY.getTime() + 7*24*60*60*1000);
   const refYear = anio ? parseInt(anio) : TODAY.getFullYear();
   const TRIM_MONTHS = { '1':[0,1,2], '2':[3,4,5], '3':[6,7,8], '4':[9,10,11] };
@@ -2444,6 +2482,7 @@ function getFiltered() {
     if (hasta && ini && ini > new Date(hasta)) return false;
     if (planta && (r.PLANTA||'').trim().toUpperCase() !== planta.trim().toUpperCase()) return false;
     if (proy   && (r.PROYECTO||'').trim().toUpperCase() !== proy.trim().toUpperCase()) return false;
+    if (estProy && getProjEstado(r.PROYECTO||'') !== estProy) return false;
     if (resp   && (r.RESPONSABLE||'').trim().toUpperCase() !== resp.trim().toUpperCase()) return false;
     if (anio) {
       const rAnio = r['AÑO'] ? String(r['AÑO']) : '';
@@ -2462,7 +2501,7 @@ function getFiltered() {
 }
 function applyF()  { cascadeFilters(); renderDash(); renderActs(); renderProjs(); renderGantt(); renderCal(); }
 function clearF()  {
-  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','f-estado','rep-proj','rep-plan-proj','rep-plan-from','rep-plan-to'].forEach(id => {
+  ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','f-estado','f-est-proy','rep-proj','rep-plan-proj','rep-plan-from','rep-plan-to'].forEach(id => {
     const e = document.getElementById(id); if (e) e.value = '';
   });
   applyF();
@@ -2922,12 +2961,14 @@ function renderActs() {
   let d = [...get()];
   const srch = (document.getElementById('a-srch')?.value || '').toLowerCase();
   const est  = document.getElementById('a-est')?.value   || '';
+  const estProy = document.getElementById('a-est-proy')?.value || '';
   const pla  = document.getElementById('a-planta')?.value|| '';
   const prj  = document.getElementById('a-proj')?.value  || '';
   const res  = document.getElementById('a-resp2')?.value || '';
   d = d.filter(r => {
     if (srch && !((r.ACTIVIDAD||'').toLowerCase().includes(srch) || (r['CÓDIGO']||'').toLowerCase().includes(srch))) return false;
     if (est && r.ESTADO       !== est)  return false;
+    if (estProy && getProjEstado(r.PROYECTO||'') !== estProy) return false;
     if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     if (prj && (r.PROYECTO||'').trim().toUpperCase() !== prj.trim().toUpperCase()) return false;
     if (res && (r.RESPONSABLE||'').trim().toUpperCase() !== res.trim().toUpperCase()) return false;
@@ -3022,12 +3063,14 @@ function renderGantt() {
   const pla   = document.getElementById('g-planta')?.value || '';
   const prj   = document.getElementById('g-proj')?.value   || '';
   const est   = document.getElementById('g-est')?.value    || '';
+  const estProy = document.getElementById('g-est-proy')?.value || '';
   const res   = document.getElementById('g-resp')?.value   || '';
   const data  = get().filter(r => {
     if (!r['FECHA INICIO'] || !r['FECHA FIN']) return false;
     if (pla && (r.PLANTA||'').trim().toUpperCase() !== pla.trim().toUpperCase()) return false;
     if (prj && (r.PROYECTO||'').trim().toUpperCase() !== prj.trim().toUpperCase()) return false;
     if (est && (r.ESTADO||'').toUpperCase() !== est.toUpperCase()) return false;
+    if (estProy && getProjEstado(r.PROYECTO||'') !== estProy) return false;
     if (res && (r.RESPONSABLE||'').trim().toUpperCase() !== res.trim().toUpperCase()) return false;
     const mS = new Date(r['FECHA INICIO']).getMonth(), mE = new Date(r['FECHA FIN']).getMonth();
     return !(mE < fromM || mS > toM);
@@ -3165,14 +3208,14 @@ function renderCal() {
 
 // ── Projects ───────────────────────────────────────────────────────
 function clearActF() {
-  ['a-srch','a-est','a-planta','a-proj','a-resp2'].forEach(id => {
+  ['a-srch','a-est','a-est-proy','a-planta','a-proj','a-resp2'].forEach(id => {
     const e = document.getElementById(id); if (e) e.value = '';
   });
   renderActs();
 }
 
 function clearPF() {
-  ['p-srch','p-planta','p-resp','p-est','p-anio'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
+  ['p-srch','p-planta','p-resp','p-est','p-est-proy','p-anio'].forEach(id => { const e=document.getElementById(id); if(e){if(e.tagName==='SELECT')e.value='';else e.value='';} });
   renderProjs();
 }
 function _old_renderProjs_UNUSED() {
@@ -8862,10 +8905,10 @@ async function _doSwitchMod(key, el) {
   if (document.getElementById('rep-mod')) document.getElementById('rep-mod').textContent = label;
 
   // Limpiar filtros (selects + searchable inputs)
-  const filterIds = ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','f-estado',
-    'a-srch','a-est','a-planta','a-proj','a-resp2',
-    'p-srch','p-planta','p-resp','p-est',
-    'g-planta','g-resp','cal-planta','cal-resp',
+  const filterIds = ['f-mes','f-trim','f-desde','f-hasta','f-planta','f-proyecto','f-resp','f-anio','f-estado','f-est-proy',
+    'a-srch','a-est','a-est-proy','a-planta','a-proj','a-resp2',
+    'p-srch','p-planta','p-resp','p-est','p-est-proy',
+    'g-planta','g-resp','g-est','g-est-proy','cal-planta','cal-resp',
     'rep-plan-from','rep-plan-to','rep-plan-planta','rep-plan-proj'];
   filterIds.forEach(function(id) {
     const e = document.getElementById(id);
@@ -9754,6 +9797,7 @@ function renderProjs() {
   const pla   = document.getElementById('p-planta')?.value  || '';
   const res   = document.getElementById('p-resp')?.value    || '';
   const est   = document.getElementById('p-est')?.value     || '';
+  const estProy = document.getElementById('p-est-proy')?.value || '';
   const anio  = document.getElementById('p-anio')?.value    || '';
 
   let projs = uniq(get(), 'PROYECTO');
@@ -9761,6 +9805,7 @@ function renderProjs() {
   if (pla)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.PLANTA||'').trim().toUpperCase()===pla.trim().toUpperCase()));
   if (res)   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r.RESPONSABLE||'').trim().toUpperCase()===res.trim().toUpperCase()));
   if (anio)  projs = projs.filter(p => get().some(r => r.PROYECTO===p && String(r['AÑO']||'')===anio));
+  if (estProy) projs = projs.filter(p => getProjEstado(p) === estProy);
   if (est === 'con_retraso')     projs = projs.filter(p => get().some(r => r.PROYECTO===p && esVencida(r)));
   if (est === 'reprogramados')   projs = projs.filter(p => get().some(r => r.PROYECTO===p && (r['CANTIDAD DE REPROGRAMACIONES']||0)>0));
   if (est === 'en_curso')        projs = projs.filter(p => get().some(r => r.PROYECTO===p && r.ESTADO==='EN CURSO'));
@@ -10313,6 +10358,11 @@ function openProjSummaryReport() {
     </div>
   </div>`;
   sel.style.display = 'flex';
+  // Buscador que filtra la lista de proyectos mientras se escribe
+  if (_srchSelectState['_psr-sel']) { _srchSelectState['_psr-sel'].dd.remove(); delete _srchSelectState['_psr-sel']; }
+  makeSearchableSelect('_psr-sel', 'Buscar proyecto...', true);
+  const psrWrap = document.getElementById('srch-_psr-sel');
+  if (psrWrap) psrWrap.style.width = '100%';
 }
 
 async function generateProjSummaryPDF(proj) {
@@ -10346,6 +10396,15 @@ async function generateProjSummaryPDF(proj) {
   const modLabel = MOD_LBL?.[ACTIVE] || ACTIVE || '';
   const cumCol = cum>=70?'#16a34a':cum>=40?'#2563eb':'#dc2626';
   const avCol  = avg>=70?'#16a34a':avg>=40?'#0891b2':'#f97316';
+  const projCodigo = getProjCodigo(proj);
+  const projEstadoV = getProjEstado(proj);
+  const projFechaFinV = getProjFechaFin(proj);
+  const ESTADO_LBL_PDF = { activo:'ACTIVO', pausado:'PAUSADO', finalizado:'FINALIZADO' };
+  const projEstadoTxt = ESTADO_LBL_PDF[projEstadoV] || 'ACTIVO';
+  const headerMetaParts = [];
+  if (projCodigo) headerMetaParts.push('Código: ' + projCodigo);
+  headerMetaParts.push('Estado: ' + projEstadoTxt + (projEstadoV==='finalizado' && projFechaFinV ? ' (' + fmtD(projFechaFinV) + ')' : ''));
+  const headerMetaLine = headerMetaParts.join(' &nbsp;·&nbsp; ');
 
   // Build activities section — full detail including subtasks, comments, attachments
   const actsHtml = acts.map((r, idx) => {
@@ -10599,6 +10658,7 @@ async function generateProjSummaryPDF(proj) {
     <div>
       <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Informe Ejecutivo de Proyecto · ${modLabel}</div>
       <h1>${proj}</h1>
+      <div style="font-size:13px;font-weight:700;color:#1e3a5f;margin-top:3px">${headerMetaLine}</div>
       <div style="font-size:10px;color:#64748b;margin-top:6px">🏭 ${plant} &nbsp;·&nbsp; 👤 ${resps} &nbsp;·&nbsp; 📅 ${projIni} → ${projFin}</div>
     </div>
     <div style="text-align:right;flex-shrink:0;margin-left:20px">
@@ -12872,7 +12932,8 @@ function exportDashboardPDF() {
   const fProy   = document.getElementById('f-proyecto')?.value;
   const fResp   = document.getElementById('f-resp')?.value;
   const fEstado = document.getElementById('f-estado')?.value;
-  const filtrosTxt = [fPlanta&&('Planta: '+fPlanta), fProy&&('Proyecto: '+fProy), fResp&&('Responsable: '+fResp), fEstado&&('Estado: '+fEstado)].filter(Boolean).join(' · ') || 'Sin filtros adicionales';
+  const fEstProy = document.getElementById('f-est-proy')?.value;
+  const filtrosTxt = [fPlanta&&('Planta: '+fPlanta), fProy&&('Proyecto: '+fProy), fResp&&('Responsable: '+fResp), fEstado&&('Estado de Actividades: '+fEstado), fEstProy&&('Estado del Proyecto: '+fEstProy)].filter(Boolean).join(' · ') || 'Sin filtros adicionales';
 
   const pls = uniq(d,'PLANTA');
   const plantaRows = pls.map(p => {
