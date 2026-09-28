@@ -8885,7 +8885,27 @@ function subscribeRealtime() {
     })
     .subscribe();
 
-  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub, notifSub, reunSub];
+  // Mi Día — crecimiento profesional: sincroniza en vivo entre pestañas/dispositivos del mismo usuario
+  const crecSub = _sb.channel('crecimiento-changes-' + (CURRENT_USER?.id || 'anon'))
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'notas_crecimiento',
+      filter: 'user_id=eq.' + (CURRENT_USER?.id || '')
+    }, () => {
+      if (MI_DIA_CRECIMIENTO !== null) miDiaLoadCrecimiento();
+    })
+    .subscribe();
+
+  // Mi Día — tareas personales: sincroniza en vivo entre pestañas/dispositivos del mismo usuario
+  const persSub = _sb.channel('tareas-personales-changes-' + (CURRENT_USER?.id || 'anon'))
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'tareas_personales',
+      filter: 'user_id=eq.' + (CURRENT_USER?.id || '')
+    }, () => {
+      if (MI_DIA_PERSONALES !== null) miDiaLoadPersonales();
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub, notifSub, reunSub, crecSub, persSub, globalSub];
 
   // Polling fallback: re-check own profile every 30s in case Realtime misses the event
   _startProfilePolling();
