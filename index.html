@@ -21,6 +21,8 @@
   --green:#5FC98A; --orange:#E6B85C; --red:#FF7A9C; --purple:#B892E8; --yellow:#F5D76E;
   /* Alias de estado de subtareas/actividades (REALIZADA, EN CURSO, PLANIFICADA, REPROGRAMADA) */
   --s-done:#5FC98A; --s-prog:#E6B85C; --s-plan:#8892B5; --s-rep:#FF7A9C;
+  /* Encabezados de tarjetas de módulo (Mi Día: Mañana/Tarde/Noche, Avance, Reuniones, Crecimiento) */
+  --hdr-mod:var(--accent2);
 }
 html.light {
   /* Fondos: base → superficie (cards) → superficie secundaria (inputs) */
@@ -135,6 +137,8 @@ html.bitone {
   --accent:#C81F5B; --accent2:#4C86A8;
   --green:#2E7D4F; --orange:#B3800C; --red:#B3261E; --purple:#7c3aed; --yellow:#a16207;
   --s-done:#2E7D4F; --s-prog:#B3800C; --s-plan:#8B95B3; --s-rep:#B3261E;
+  /* Encabezados de tarjetas de módulo en bitono: navy, como pediste, para que combinen con el sidebar */
+  --hdr-mod:#12213D;
 }
 /* Sidebar stays dark */
 html.bitone #sidebar {
@@ -2570,7 +2574,7 @@ function renderMisTareas() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <!-- Mañana / Tarde / Noche -->
           <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-            <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Mañana, tarde y noche</div>
+            <div style="background:var(--hdr-mod);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Mañana, tarde y noche</div>
             <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
               ${Object.keys(MI_DIA_MOMENTOS).map(mk => {
                 const m = MI_DIA_MOMENTOS[mk];
@@ -2586,7 +2590,7 @@ function renderMisTareas() {
                       <span style="font-size:12.5px;color:${p.completada?'var(--text3)':'var(--text)'};${p.completada?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(p.texto)}</span>
                       <span onclick="miDiaDeletePersonal('${p.id}')" title="Eliminar" style="font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0">✕</span>
                     </div>`).join('')}
-                    <span onclick="miDiaAddPersonal('${mk}')" style="font-size:11px;color:var(--accent2);cursor:pointer;font-weight:600;margin-top:2px">+ Agregar personal</span>
+                    <span onclick="miDiaOpenAddPersonalModal('${mk}')" style="font-size:11px;color:var(--accent2);cursor:pointer;font-weight:600;margin-top:2px">+ Agregar personal</span>
                   </div>
                 </div>`;
               }).join('')}
@@ -2595,7 +2599,7 @@ function renderMisTareas() {
 
           <!-- Avance del día -->
           <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-            <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Avance del día</div>
+            <div style="background:var(--hdr-mod);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Avance del día</div>
             <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div style="font-size:12px;color:var(--text2)">Realizadas hoy</div>
@@ -2651,7 +2655,7 @@ function renderMisTareas() {
 
         <!-- Citas o Reuniones -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-          <div style="background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:11px 16px">
+          <div style="background:var(--hdr-mod);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:11px 16px">
             <span style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Citas o reuniones</span>
             <button onclick="miDiaOpenReunionForm()" title="Nueva reunión" style="background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:6px;width:22px;height:22px;font-size:14px;font-weight:700;cursor:pointer;line-height:1">+</button>
           </div>
@@ -2668,7 +2672,7 @@ function renderMisTareas() {
 
         <!-- Crecimiento Profesional -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-          <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.3px;padding:11px 16px;line-height:1.3">¿Qué haré hoy para mi crecimiento profesional?</div>
+          <div style="background:var(--hdr-mod);color:#fff;font-family:var(--font-head),sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.3px;padding:11px 16px;line-height:1.3">¿Qué haré hoy para mi crecimiento profesional?</div>
           <div style="padding:16px">
             ${(notaHoy && !_miDiaEditingCrec) ? `
               <div style="font-size:13px;color:var(--text);line-height:1.5">${esc(notaHoy.texto||'')}</div>
@@ -2790,9 +2794,42 @@ async function miDiaLoadPersonales() {
   MI_DIA_PERSONALES = data || [];
   renderMisTareas();
 }
-async function miDiaAddPersonal(momento) {
-  const texto = (prompt('Actividad personal (' + (MI_DIA_MOMENTOS[momento]?.label || momento) + '):') || '').trim();
-  if (!texto) return;
+// Modal propio de la app para agregar una tarea personal (en vez del prompt() nativo del navegador)
+function miDiaOpenAddPersonalModal(momento) {
+  let mo = document.getElementById('_personal-modal');
+  if (!mo) {
+    mo = document.createElement('div');
+    mo.id = '_personal-modal';
+    mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9900;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(mo);
+  }
+  const close = () => { mo.style.display = 'none'; };
+  mo.onclick = (e) => { if (e.target === mo) close(); };
+  const label = MI_DIA_MOMENTOS[momento]?.label || momento;
+  const icon  = MI_DIA_MOMENTOS[momento]?.icon || '📝';
+  mo.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;min-width:320px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,.4)">
+    <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">${icon} Actividad personal — ${label}</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:14px">Solo la ves tú. No se comparte con ningún módulo.</div>
+    <input class="fi" id="_personal-input" placeholder="¿Qué necesitas hacer?" style="width:100%" maxlength="200" />
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-sm" onclick="document.getElementById('_personal-modal').style.display='none'">Cancelar</button>
+      <button class="btn btn-accent btn-sm" onclick="miDiaConfirmAddPersonal('${momento}')">Agregar</button>
+    </div>
+  </div>`;
+  mo.style.display = 'flex';
+  setTimeout(() => {
+    const inp = document.getElementById('_personal-input');
+    if (!inp) return;
+    inp.focus();
+    inp.onkeydown = (e) => { if (e.key === 'Enter') miDiaConfirmAddPersonal(momento); if (e.key === 'Escape') close(); };
+  }, 30);
+}
+async function miDiaConfirmAddPersonal(momento) {
+  const inp = document.getElementById('_personal-input');
+  const texto = (inp?.value || '').trim();
+  if (!texto) { if (inp) inp.focus(); return; }
+  const mo = document.getElementById('_personal-modal');
+  if (mo) mo.style.display = 'none';
   const { error } = await _sb.from('tareas_personales').insert({
     user_id: CURRENT_USER.id, fecha: tds(), momento, texto,
   });
