@@ -179,7 +179,7 @@ html.bitone #content .kpi, html.light #content .kpi { background:#ffffff; border
 html.bitone #content .kpi-label, html.light #content .kpi-label { color:#5A6685; }
 html.bitone #content .kpi-sub, html.light #content .kpi-sub   { color:#8B95B3; }
 html.bitone #content .kpi-val, html.light #content .kpi-val   { color:#12213D; }
-html.bitone #content .chart-head, html.light #content .chart-head { color:#5A6685; font-weight:700; }
+/* .chart-head ahora es siempre una barra de color (--hdr-mod) con texto blanco, en los 3 temas */
 html.bitone #content .proj-card, html.light #content .proj-card { background:#ffffff; border-color:#E1E6F0; box-shadow:0 1px 3px rgba(0,0,0,.06); }
 html.bitone #content .proj-card:hover, html.light #content .proj-card:hover { box-shadow:0 4px 12px rgba(76,134,168,.15); border-color:rgba(200,31,91,.35); }
 html.bitone #content .table-card, html.light #content .table-card { background:#ffffff; border-color:#E1E6F0; }
@@ -352,7 +352,9 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .g2 { grid-template-columns:1fr 1fr }
 .g3 { grid-template-columns:1fr 2fr }
 .chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px }
-.chart-head { font-family:var(--font-head),sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); margin-bottom:12px }
+.chart-head { font-family:var(--font-head),sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#fff; background:var(--hdr-mod); margin:-14px -14px 12px -14px; padding:10px 14px; border-radius:10px 10px 0 0 }
+.chart-head span { color:rgba(255,255,255,.72) !important }
+#rep-mod { color:#FFD9E6 !important; font-weight:800 }
 .chart-wrap { position:relative; height:188px }
 .prog-list { display:flex; flex-direction:column; gap:8px }
 .prog-item { cursor:pointer; padding:5px 6px; border-radius:7px; transition:background .15s }
@@ -365,9 +367,11 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 
 /* ── TABLE ── */
 .table-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden }
-.table-hdr  { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; border-bottom:1px solid var(--border) }
-.table-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase }
-.table-count { font-size:11px; color:var(--text2) }
+.table-hdr  { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; background:var(--hdr-mod); color:#fff }
+.table-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff }
+.table-count { font-size:11px; color:rgba(255,255,255,.75) }
+.table-hdr .btn-ghost { background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.3); color:#fff }
+.table-hdr .btn-ghost:hover { background:rgba(255,255,255,.25) }
 .table-wrap  { overflow-x:auto; max-height:calc(100vh - 280px); overflow-y:auto }
 table { width:100%; border-collapse:collapse; font-size:12px }
 th { padding:8px 12px; text-align:left; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); background:var(--bg3); border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; position:sticky; top:0; z-index:5; user-select:none }
@@ -482,10 +486,10 @@ tr:hover .act-btns { opacity:1 }
 .dr-overlay.open { display:block }
 .drawer { position:fixed; right:0; top:0; bottom:0; width:680px; background:var(--bg2); border-left:1px solid var(--border); z-index:201; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .22s ease }
 .drawer.open { transform:translateX(0) }
-.dr-head  { display:flex; align-items:center; justify-content:space-between; padding:13px 15px; border-bottom:1px solid var(--border); background:var(--bg3); flex-shrink:0 }
-.dr-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text2) }
-.dr-close { background:transparent; border:1px solid var(--border); color:var(--text2); width:27px; height:27px; border-radius:6px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s }
-.dr-close:hover { background:var(--border); color:var(--text) }
+.dr-head  { display:flex; align-items:center; justify-content:space-between; padding:13px 15px; background:var(--hdr-mod); flex-shrink:0 }
+.dr-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#fff }
+.dr-close { background:transparent; border:1px solid rgba(255,255,255,.35); color:#fff; width:27px; height:27px; border-radius:6px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s }
+.dr-close:hover { background:rgba(255,255,255,.2); color:#fff }
 .dr-body  { flex:1; overflow-y:auto; padding:20px 22px }
 .d-code { font-family:var(--font-head),sans-serif; font-weight:700; color:var(--accent); font-size:14px; letter-spacing:.04em; margin-bottom:4px }
 .d-name { font-size:17px; font-weight:700; margin-bottom:10px; line-height:1.4 }
@@ -11976,14 +11980,14 @@ function openProjDr(proj) {
     expBtn.id = 'dr-expand-btn';
     expBtn.title = 'Expandir';
     expBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    expBtn.style.cssText = 'background:var(--bg3);border:1px solid var(--border);box-shadow:0 2px 0 var(--border),0 3px 6px rgba(0,0,0,.2);color:var(--text2);cursor:pointer;padding:5px 8px;border-radius:6px;margin-left:8px;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:Barlow,sans-serif;font-weight:600;transition:all .15s;white-space:nowrap';
+    expBtn.style.cssText = 'background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;cursor:pointer;padding:5px 8px;border-radius:6px;margin-left:8px;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-body),sans-serif;font-weight:600;transition:all .15s;white-space:nowrap';
     expBtn.innerHTML += ' Expandir';
     expBtn.onclick = () => {
       const dr = document.getElementById('drawer');
       if (dr) {
         const expanded = dr.style.width === '95vw';
         dr.style.width = expanded ? '680px' : '95vw';
-        expBtn.style.color = expanded ? 'var(--text2)' : 'var(--accent)';
+        expBtn.style.background = expanded ? 'rgba(255,255,255,.15)' : 'rgba(255,61,119,.35)';
       }
     };
     drHdr.parentNode.insertBefore(expBtn, drHdr.nextSibling);
@@ -12025,11 +12029,11 @@ function openProjDr(proj) {
     <div style="font-size:9px;color:var(--text3);margin:-6px 0 12px;line-height:1.4">
       ℹ️ Cumplimiento = actividades/subtareas Realizadas (o Reprogramadas Justificadas) sobre el total planificado${PROJ_CUM_TO_DATE ? ' hasta hoy' : ' del proyecto completo'} · mismo cálculo que en Reporte Rápido y Reporte de Gestión.
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em">Actividades del Proyecto</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px -22px 8px;padding:10px 22px;background:var(--hdr-mod)">
+      <div style="font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.07em">Actividades del Proyecto</div>
       ${isAdmin ? `<div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:9px;color:var(--text3)">⋮⋮ Arrastra para reordenar</span>
-        <button onclick="saveProjActOrder('${esc(proj)}')" style="font-size:9px;padding:2px 9px;border-radius:5px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:var(--accent);cursor:pointer;font-weight:700">💾 Guardar orden</button>
+        <span style="font-size:9px;color:rgba(255,255,255,.7)">⋮⋮ Arrastra para reordenar</span>
+        <button onclick="saveProjActOrder('${esc(proj)}')" style="font-size:9px;padding:2px 9px;border-radius:5px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-weight:700">💾 Guardar orden</button>
       </div>` : ''}
     </div>
     <div style="overflow-x:auto;margin-bottom:12px">
