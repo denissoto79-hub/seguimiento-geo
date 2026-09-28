@@ -3484,7 +3484,7 @@ function renderActs() {
       }
       return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:var(--font-body),sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
     }).join('');
-    const ie = ['admin','collaborator'].includes(CURRENT_USER?.role); // inline editable
+    const ie = ['developer','admin','collaborator'].includes(CURRENT_USER?.role); // inline editable
     return `<tr id="act-row-${r._id}">
       <td><span class="code-lbl">${r['CÓDIGO']}</span></td>
       <td>
