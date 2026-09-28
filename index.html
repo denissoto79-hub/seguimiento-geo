@@ -850,8 +850,8 @@ tr:hover .act-btns { opacity:1 }
     </button>
     <span class="sec-lbl">An&#225;lisis</span>
     <button class="nav-item" onclick="goPage('mis-tareas',this)">
-      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
-      <span class="nav-lbl">Mis Tareas</span>
+      <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg></span>
+      <span class="nav-lbl">Mi Día</span>
     </button>
     <span class="sec-lbl">Sistema</span>
     <button class="nav-item" onclick="goPage('config',this)">
@@ -2333,7 +2333,7 @@ function goPage(id, el) {
   if (contentEl) {
     contentEl.style.overflowY = (id === 'calendar') ? 'hidden' : 'auto';
   }
-  const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
+  const T = { inicio:'Inicio', 'mis-tareas':'Mi Día', dashboard:'Dashboard', projects:'Proyectos', activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
   document.getElementById('tb-title').textContent = T[id] || id;
   // Keep tb-mod always showing the active module name
   document.getElementById('tb-mod').textContent = MOD_LBL[ACTIVE] || ACTIVE;
@@ -2349,16 +2349,68 @@ function goPage(id, el) {
   if (id === 'config')      setTimeout(renderCfg, 50);
 }
 
+// ════════════════════════════════════════════════════════════════
+// MI DÍA — planificador diario (Urgente/Importante, Mañana-Tarde-Noche,
+// Avance del Día, Citas o Reuniones, Crecimiento Profesional).
+// Todo se lee de las MISMAS actividades ya cargadas por módulo (MS) —
+// no se duplica ningún dato: es una vista agregada, igual que Inicio.
+// ════════════════════════════════════════════════════════════════
+let _misTareasRetries = 0;
+let MI_DIA_REUNIONES = null;      // null = aún no cargado
+let MI_DIA_CRECIMIENTO = null;    // null = aún no cargado
+let _miDiaReunionesLoading = false;
+let _miDiaCrecimientoLoading = false;
+const MI_DIA_MOMENTOS = { manana:{ label:'Mañana', icon:'🌅' }, tarde:{ label:'Tarde', icon:'☀️' }, noche:{ label:'Noche', icon:'🌙' } };
+
 function renderMisTareas() {
   const el = document.getElementById('mis-tareas-content'); if (!el) return;
   const user = CURRENT_USER; if (!user) return;
-  const all = get();
+
+  // Datos aún no cargados para todos los módulos: reintenta (igual patrón que Inicio)
+  if (!MS[ACTIVE] || MS[ACTIVE].acts === null) {
+    _misTareasRetries++;
+    if (_misTareasRetries <= 10) {
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="font-size:13px">Cargando datos...</span></div>';
+      setTimeout(renderMisTareas, 500);
+    } else {
+      el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text2)"><span style="font-size:14px">⚠️</span><span style="font-size:13px">No se pudieron cargar los datos.</span><button class="btn btn-sm" onclick="location.reload()">Recargar página</button></div>';
+    }
+    return;
+  }
+  _misTareasRetries = 0;
+
+  // Reuniones / notas de crecimiento: se cargan una sola vez (bajo demanda) y se
+  // mantienen sincronizadas después vía Realtime / al guardar.
+  if (MI_DIA_REUNIONES === null && !_miDiaReunionesLoading) miDiaLoadReuniones();
+  if (MI_DIA_CRECIMIENTO === null && !_miDiaCrecimientoLoading) miDiaLoadCrecimiento();
+
+  // Agregado cruzado de TODOS los módulos ya cargados — mismo patrón que renderInicio.
+  const allActs = Object.values(MS).flatMap(m => m.acts || []);
   const isAdmin = ['developer','admin'].includes(user.role);
-  // Show all tasks for admin, own tasks for others
-  const myActs = isAdmin ? all : all.filter(r =>
+  const myActs = isAdmin ? allActs : allActs.filter(r =>
     (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
   );
-  // Group by status
+
+  const overdue = myActs.filter(r => esVencida(r));
+  const importantes = myActs.filter(r => {
+    if (r.ESTADO === 'REALIZADA' || esVencida(r)) return false;
+    const f = fechaEfectiva(r); if (!f) return false;
+    const diff = (new Date(f + 'T00:00:00') - TODAY) / 86400000;
+    return diff >= 0 && diff <= 3;
+  });
+
+  const activas = myActs.filter(r => r.ESTADO !== 'REALIZADA');
+  const sinMomento = activas.filter(r => !r.MOMENTO_DIA);
+
+  const today = tds();
+  const hechasHoy = myActs.filter(r => r.ESTADO === 'REALIZADA' && r['FECHA COMPLETADA'] === today);
+  const totalPend = myActs.length ? myActs.length : 0;
+  const avanceDia = myActs.length ? Math.round((hechasHoy.length / myActs.length) * 100) : 0;
+
+  const reunionesHoy = (MI_DIA_REUNIONES || []).filter(x => x.fecha === today);
+  const reunionesProx = (MI_DIA_REUNIONES || []).filter(x => x.fecha > today).slice(0, 5);
+
+  // Grupos por estado (tablero completo — se conserva del diseño original de Mis Tareas)
   const groups = {
     'EN CURSO':     { label:'En Curso',    color:'var(--accent)',  icon:'▶', acts:[] },
     'PLANIFICADA':  { label:'Planificadas', color:'var(--text2)',  icon:'📌', acts:[] },
@@ -2366,17 +2418,37 @@ function renderMisTareas() {
     'REALIZADA':    { label:'Realizadas',   color:'var(--green)',  icon:'✅', acts:[] },
   };
   myActs.forEach(r => { if (groups[r.ESTADO]) groups[r.ESTADO].acts.push(r); });
-  const overdue = myActs.filter(r => esVencida(r));
+
+  // ── Tarjeta de actividad reutilizable (con check directo, mismo patrón que markDone) ──
+  const actCard = (r, color) => {
+    const isLate = esVencida(r);
+    const stD = (r.subtasks||[]).filter(s=>s.done).length, stT=(r.subtasks||[]).length;
+    const canCheck = r.ESTADO !== 'REALIZADA';
+    return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px${isLate?';border-left:3px solid var(--red)':''}">
+      ${canCheck ? `<div onclick="event.stopPropagation();miDiaComplete('${r._id}')" title="Marcar como realizada" style="width:18px;height:18px;border-radius:5px;border:2px solid ${color};flex-shrink:0;margin-top:2px;cursor:pointer"></div>`
+                 : `<div style="width:18px;height:18px;border-radius:5px;background:var(--green);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M4 12.5 9.5 18 20 6"/></svg></div>`}
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="openActDr('${r._id}')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${r.ESTADO==='REALIZADA'?';color:var(--text2);text-decoration:line-through':''}">${r.ACTIVIDAD||'—'}</div>
+          <span style="font-size:10px;font-weight:700;color:${color};flex-shrink:0">${r.AVANCE}%</span>
+        </div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(MOD_LBL[r.MODULE]||r.MODULE||'')} · ${fmtD(fechaEfectiva(r))}</div>
+        ${stT>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px">▪ ${stD}/${stT} subtareas</div>`:''}
+        <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:6px;overflow:hidden"><div style="height:100%;background:${color};width:${r.AVANCE}%;border-radius:99px"></div></div>
+      </div>
+    </div>`;
+  };
 
   el.style.cssText = "height:100%;overflow-y:auto;padding:4px 0";
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Mis Tareas</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${myActs.length} actividades ${isAdmin?'(vista admin)':'asignadas a ti'}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Mi Día</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${myActs.length} actividades ${isAdmin?'(vista admin)':'asignadas a ti'} · ${new Date().toLocaleDateString('es-BO',{weekday:'long',day:'numeric',month:'long'})}</div>
       </div>
       <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
     </div>
+
     ${overdue.length?`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
       <span style="font-size:18px">⚠️</span>
       <div>
@@ -2384,6 +2456,121 @@ function renderMisTareas() {
         <div style="font-size:11px;color:var(--text2)">${overdue.map(r=>r['CÓDIGO']||'').join(', ')}</div>
       </div>
     </div>`:''}
+
+    <!-- Urgente / Importante -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--red)">🔥 Urgente</span>
+          <span style="background:var(--red)20;color:var(--red);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${overdue.length}</span>
+        </div>
+        <div style="max-height:260px;overflow-y:auto">
+          ${overdue.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin vencidas 🎉</div>':overdue.map(r=>actCard(r,'var(--red)')).join('')}
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--orange)">⭐ Importante</span>
+          <span style="background:var(--orange)20;color:var(--orange);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${importantes.length}</span>
+        </div>
+        <div style="max-height:260px;overflow-y:auto">
+          ${importantes.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Nada urgente en 3 días</div>':importantes.map(r=>actCard(r,'var(--orange)')).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Mañana / Tarde / Noche -->
+    <div style="margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">Organiza tu día</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        ${Object.keys(MI_DIA_MOMENTOS).map(mk => {
+          const m = MI_DIA_MOMENTOS[mk];
+          const acts = activas.filter(r => r.MOMENTO_DIA === mk);
+          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+              <span>${m.icon}</span>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">${m.label}</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--text2)">${acts.length}</span>
+            </div>
+            <div style="max-height:220px;overflow-y:auto">
+              ${acts.length===0?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin tareas</div>':acts.map(r=>actCard(r,'var(--accent)')).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${sinMomento.length?`<div style="margin-top:10px;background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:10px 14px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">${sinMomento.length} actividad(es) sin momento del día asignado:</div>
+        ${sinMomento.map(r => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${r.ACTIVIDAD||'—'}</span>
+          <select class="fi" style="width:auto;min-width:110px;padding:4px 8px;font-size:11px" onchange="miDiaSetMomento('${r._id}', this.value)">
+            <option value="">Sin asignar</option>
+            <option value="manana">🌅 Mañana</option>
+            <option value="tarde">☀️ Tarde</option>
+            <option value="noche">🌙 Noche</option>
+          </select>
+        </div>`).join('')}
+      </div>`:''}
+    </div>
+
+    <!-- Avance del Día / Citas / Crecimiento -->
+    <div style="display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;margin-bottom:16px;align-items:start">
+
+      <!-- Avance del día -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px">Avance del Día</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="position:relative;width:74px;height:74px;flex-shrink:0">
+            <svg width="74" height="74" viewBox="0 0 74 74" style="transform:rotate(-90deg)">
+              <circle cx="37" cy="37" r="31" fill="none" stroke="var(--bg3)" stroke-width="8"/>
+              <circle cx="37" cy="37" r="31" fill="none" stroke="var(--green)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${2*Math.PI*31}" stroke-dashoffset="${2*Math.PI*31*(1-avanceDia/100)}"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">${avanceDia}%</div>
+          </div>
+          <div>
+            <div style="font-size:20px;font-weight:700">${hechasHoy.length}<span style="font-size:12px;color:var(--text2);font-weight:400"> / ${totalPend} hoy</span></div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">actividades realizadas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Citas o Reuniones -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">📅 Citas o Reuniones</span>
+          <button class="btn btn-sm" style="font-size:11px;padding:3px 10px" onclick="miDiaOpenReunionForm()">+ Nueva</button>
+        </div>
+        <div id="mi-dia-reunion-form"></div>
+        <div style="max-height:260px;overflow-y:auto">
+          ${MI_DIA_REUNIONES===null?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Cargando…</div>':
+          (reunionesHoy.length===0 && reunionesProx.length===0)?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin reuniones agendadas</div>':`
+          ${reunionesHoy.length?`<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">Hoy</div>`:''}
+          ${reunionesHoy.map(m=>miDiaReunionRow(m)).join('')}
+          ${reunionesProx.length?`<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Próximas</div>`:''}
+          ${reunionesProx.map(m=>miDiaReunionRow(m)).join('')}`}
+        </div>
+      </div>
+
+      <!-- Crecimiento Profesional -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">🌱 Crecimiento</span>
+        </div>
+        <div style="padding:10px 14px">
+          <textarea class="fi fi-ta" id="mi-dia-crec-txt" rows="2" placeholder="Una idea, aprendizaje o meta de hoy…" style="margin-bottom:8px"></textarea>
+          <button class="btn btn-accent btn-sm" style="width:100%" onclick="miDiaSaveCrecimiento()">Guardar nota</button>
+        </div>
+        <div style="max-height:180px;overflow-y:auto;border-top:1px solid var(--border)">
+          ${MI_DIA_CRECIMIENTO===null?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Cargando…</div>':
+          MI_DIA_CRECIMIENTO.length===0?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Aún no hay notas</div>':
+          MI_DIA_CRECIMIENTO.map(n => `<div style="padding:8px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text)">${esc(n.texto||'')}</div>
+            <div style="font-size:9.5px;color:var(--text3);margin-top:2px">${fmtD(n.fecha)}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablero completo por estado -->
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
       ${Object.values(groups).map(g => `
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
@@ -2396,24 +2583,117 @@ function renderMisTareas() {
           </div>
           <div style="max-height:360px;overflow-y:auto">
             ${g.acts.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin actividades</div>':
-            g.acts.map(r => {
-              const isLate = esVencida(r);
-              const stD = (r.subtasks||[]).filter(s=>s.done).length, stT=(r.subtasks||[]).length;
-              return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s${isLate?';border-left:3px solid var(--red)':''}" onclick="openActDr('${r._id}')" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
-                    <div style="font-size:10px;color:var(--text2);margin-top:2px">${r.PROYECTO||''} · ${fmtD(r['FECHA FIN'])}</div>
-                    ${stT>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px">▪ ${stD}/${stT} subtareas</div>`:''}
-                  </div>
-                  <span style="font-size:10px;font-weight:700;color:${g.color};flex-shrink:0">${r.AVANCE}%</span>
-                </div>
-                <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:6px;overflow:hidden"><div style="height:100%;background:${g.color};width:${r.AVANCE}%;border-radius:99px"></div></div>
-              </div>`;
-            }).join('')}
+            g.acts.map(r => actCard(r, g.color)).join('')}
           </div>
         </div>`).join('')}
     </div>`;
+}
+
+// ── Completar actividad desde Mi Día — funciona aunque la actividad pertenezca
+// a un módulo distinto del ACTIVE (markDone/get() están acotados al módulo activo,
+// así que fijamos ACTIVE al módulo de la actividad, completamos, y restauramos). ──
+async function miDiaComplete(id) {
+  const all = Object.values(MS).flatMap(m => m.acts || []);
+  const r = all.find(a => a._id === id);
+  if (!r) { notify('⚠ No se encontró la actividad', true); return; }
+  const prevActive = ACTIVE;
+  ACTIVE = r.MODULE;
+  const ok = await markDone(id);
+  ACTIVE = prevActive;
+  if (ok) renderMisTareas();
+}
+
+// ── Asignar momento del día (Mañana/Tarde/Noche) a una actividad ──
+async function miDiaSetMomento(id, momento) {
+  const all = Object.values(MS).flatMap(m => m.acts || []);
+  const r = all.find(a => a._id === id);
+  if (!r) return;
+  const val = momento || null;
+  const { error } = await _sb.from('actividades').update({ momento_dia: val, updated_at: new Date().toISOString() }).eq('id', r._dbid);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  r.MOMENTO_DIA = val; // reflejar de inmediato en memoria (sin esperar Realtime)
+  renderMisTareas();
+}
+
+// ── Reuniones (tabla real en Supabase — sincronización en vivo, no localStorage) ──
+async function miDiaLoadReuniones() {
+  _miDiaReunionesLoading = true;
+  const { data, error } = await _sb.from('reuniones').select('*')
+    .gte('fecha', tds())
+    .order('fecha', { ascending: true }).order('hora', { ascending: true });
+  _miDiaReunionesLoading = false;
+  if (error) { notify('⚠ Error cargando reuniones: ' + error.message, true); MI_DIA_REUNIONES = []; return; }
+  MI_DIA_REUNIONES = data || [];
+  renderMisTareas();
+}
+function miDiaReunionRow(m) {
+  const canDel = m.creado_por === CURRENT_USER?.id || ['developer','admin'].includes(CURRENT_USER?.role);
+  return `<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
+    <div style="font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0;min-width:44px">${(m.hora||'').substring(0,5)||'—'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:600">${esc(m.titulo||'')}</div>
+      ${m.sala_o_link?`<div style="font-size:10px;color:var(--text2);margin-top:2px">📍 ${esc(m.sala_o_link)}</div>`:''}
+      ${m.descripcion?`<div style="font-size:10.5px;color:var(--text2);margin-top:2px">${esc(m.descripcion)}</div>`:''}
+    </div>
+    ${canDel?`<span onclick="miDiaDeleteReunion('${m.id}')" title="Eliminar" style="cursor:pointer;color:var(--text3);font-size:13px;flex-shrink:0">✕</span>`:''}
+  </div>`;
+}
+function miDiaOpenReunionForm() {
+  const box = document.getElementById('mi-dia-reunion-form'); if (!box) return;
+  box.innerHTML = `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+    <input class="fi" id="mi-dia-reun-titulo" placeholder="Título de la reunión" />
+    <div style="display:flex;gap:6px">
+      <input class="fi" type="date" id="mi-dia-reun-fecha" value="${tds()}" style="flex:1" />
+      <input class="fi" type="time" id="mi-dia-reun-hora" style="flex:1" />
+    </div>
+    <input class="fi" id="mi-dia-reun-sala" placeholder="Sala / enlace (opcional)" />
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-accent btn-sm" style="flex:1" onclick="miDiaSaveReunion()">Guardar</button>
+      <button class="btn btn-sm" style="flex:1" onclick="document.getElementById('mi-dia-reunion-form').innerHTML=''">Cancelar</button>
+    </div>
+  </div>`;
+}
+async function miDiaSaveReunion() {
+  const titulo = (document.getElementById('mi-dia-reun-titulo')?.value || '').trim();
+  const fecha = document.getElementById('mi-dia-reun-fecha')?.value;
+  const hora = document.getElementById('mi-dia-reun-hora')?.value || null;
+  const sala = (document.getElementById('mi-dia-reun-sala')?.value || '').trim() || null;
+  if (!titulo || !fecha) { notify('⚠ Completa al menos título y fecha', true); return; }
+  const { error } = await _sb.from('reuniones').insert({
+    titulo, fecha, hora, sala_o_link: sala, modulo: ACTIVE, creado_por: CURRENT_USER.id,
+  });
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  document.getElementById('mi-dia-reunion-form').innerHTML = '';
+  notify('✅ Reunión agendada');
+  await miDiaLoadReuniones();
+}
+async function miDiaDeleteReunion(id) {
+  if (!confirm('¿Eliminar esta reunión?')) return;
+  const { error } = await _sb.from('reuniones').delete().eq('id', id);
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  await miDiaLoadReuniones();
+}
+
+// ── Crecimiento profesional (notas personales — tabla real, no localStorage) ──
+async function miDiaLoadCrecimiento() {
+  if (!CURRENT_USER) return;
+  _miDiaCrecimientoLoading = true;
+  const { data, error } = await _sb.from('notas_crecimiento').select('*')
+    .eq('user_id', CURRENT_USER.id)
+    .order('fecha', { ascending: false }).order('created_at', { ascending: false })
+    .limit(20);
+  _miDiaCrecimientoLoading = false;
+  if (error) { notify('⚠ Error cargando notas: ' + error.message, true); MI_DIA_CRECIMIENTO = []; return; }
+  MI_DIA_CRECIMIENTO = data || [];
+  renderMisTareas();
+}
+async function miDiaSaveCrecimiento() {
+  const txt = (document.getElementById('mi-dia-crec-txt')?.value || '').trim();
+  if (!txt) return;
+  const { error } = await _sb.from('notas_crecimiento').insert({ user_id: CURRENT_USER.id, fecha: tds(), texto: txt });
+  if (error) { notify('⚠ Error: ' + error.message, true); return; }
+  notify('✅ Nota guardada');
+  await miDiaLoadCrecimiento();
 }
 function _DISABLED_switchMod_sync(key, el) {
   document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
@@ -7654,6 +7934,7 @@ function mapActRow(r, key) {
     'NUEVA FECHA DE CIERRE': r.nueva_fecha_cierre,
     'HISTORIAL REPROGRAMACIONES': r.historial_reprog || [],
     reprogJustificada: r.reprog_justificada,
+    MOMENTO_DIA: r.momento_dia || null,
     MODULE: key,
     subtasks:    r.subtasks    || [],
     attachments: r.attachments || [],
@@ -8310,6 +8591,7 @@ function subscribeRealtime() {
           a['NUEVA FECHA DE CIERRE'] = updated.nueva_fecha_cierre;
           a['HISTORIAL REPROGRAMACIONES'] = updated.historial_reprog || [];
           a.reprogJustificada = updated.reprog_justificada;
+          a.MOMENTO_DIA = updated.momento_dia ?? null;
           a.subtasks    = updated.subtasks    || a.subtasks;
           a.attachments = updated.attachments || a.attachments;
           a._customFields = updated.custom_fields || a._customFields || {};
@@ -8454,7 +8736,14 @@ function subscribeRealtime() {
     })
     .subscribe();
 
-  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub, notifSub];
+  // Mi Día — reuniones: sincroniza en vivo entre usuarios (no localStorage)
+  const reunSub = _sb.channel('reuniones-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reuniones' }, () => {
+      if (MI_DIA_REUNIONES !== null) miDiaLoadReuniones();
+    })
+    .subscribe();
+
+  REALTIME_SUBS = [actSub, cmtSub, modSub, profSub, notifSub, reunSub];
 
   // Polling fallback: re-check own profile every 30s in case Realtime misses the event
   _startProfilePolling();
@@ -9118,7 +9407,7 @@ async function _doSwitchMod(key, el) {
   const activePage = document.querySelector('.page.active');
   if (activePage) {
     const pageId = (activePage.id||'').replace('page-','');
-    const T = { inicio:'Inicio', 'mis-tareas':'Mis Tareas', dashboard:'Dashboard', projects:'Proyectos',
+    const T = { inicio:'Inicio', 'mis-tareas':'Mi Día', dashboard:'Dashboard', projects:'Proyectos',
       activities:'Actividades', gantt:'Timeline / Gantt', calendar:'Calendario', reports:'Reportes', config:'Configuración' };
     if (T[pageId]) document.getElementById('tb-title').textContent = T[pageId];
   }
