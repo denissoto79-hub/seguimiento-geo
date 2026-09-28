@@ -9,18 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2333; --border:#21262d;
-  --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
-  --accent:#38bdf8; --accent2:#0ea5e9;
-  --green:#22c55e; --orange:#f97316; --red:#ef4444; --purple:#a855f7; --yellow:#eab308;
-  --s-done:#22c55e; --s-prog:#38bdf8; --s-plan:#8b949e; --s-rep:#f97316;
+  /* Fondos: base → superficie (cards) → superficie secundaria (inputs) */
+  --bg:#0B1220; --bg2:#141B2E; --bg3:#1B2338; --border:#232C42;
+  /* Texto: principal → secundario → terciario (el más apagado) */
+  --text:#E7EAF3; --text2:#8892B5; --text3:#5D6785;
+  /* Marca: acento primario (CTAs, links) → acento secundario (íconos, apoyo) */
+  --accent:#FF3D77; --accent2:#6FA8C9;
+  /* Semántico: éxito, advertencia, peligro, extra 1, extra 2 */
+  --green:#5FC98A; --orange:#E6B85C; --red:#FF7A9C; --purple:#B892E8; --yellow:#F5D76E;
+  /* Alias de estado de subtareas/actividades (REALIZADA, EN CURSO, PLANIFICADA, REPROGRAMADA) */
+  --s-done:#5FC98A; --s-prog:#6FA8C9; --s-plan:#8892B5; --s-rep:#E6B85C;
 }
 html.light {
-  --bg:#f0f4f8; --bg2:#ffffff; --bg3:#e8edf2; --border:#d0d7de;
-  --text:#1e293b; --text2:#64748b; --text3:#94a3b8;
-  --accent:#0ea5e9; --accent2:#0284c7;
-  --green:#16a34a; --orange:#ea580c; --red:#dc2626; --purple:#9333ea; --yellow:#ca8a04;
-  --s-done:#16a34a; --s-prog:#0ea5e9; --s-plan:#64748b; --s-rep:#ea580c;
+  /* Fondos: base → superficie (cards) → superficie secundaria (inputs) */
+  --bg:#EEF1F6; --bg2:#FFFFFF; --bg3:#F3F5F9; --border:#E1E6F0;
+  /* Texto: principal → secundario → terciario (el más apagado) */
+  --text:#12213D; --text2:#5A6685; --text3:#8B95B3;
+  /* Marca: acento primario (CTAs, links) → acento secundario (íconos, apoyo) */
+  --accent:#C81F5B; --accent2:#4C86A8;
+  /* Semántico: éxito, advertencia, peligro, extra 1, extra 2 */
+  --green:#2E7D4F; --orange:#B3800C; --red:#B3261E; --purple:#7C3AED; --yellow:#A16207;
+  /* Alias de estado de subtareas/actividades (REALIZADA, EN CURSO, PLANIFICADA, REPROGRAMADA) */
+  --s-done:#2E7D4F; --s-prog:#4C86A8; --s-plan:#5A6685; --s-rep:#B3800C;
 }
 html.light .kpi:hover { box-shadow:0 4px 16px rgba(14,165,233,.15) }
 html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
