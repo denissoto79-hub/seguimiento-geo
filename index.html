@@ -3496,15 +3496,9 @@ function renderActs() {
       <td>${ie?`<input type="text" value="${(r.RESPONSABLE||'').replace(/"/g,'&quot;')}" class="fi" style="padding:2px 5px;font-size:11px;min-width:80px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','responsable',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:`<span style="font-size:11px">${r.RESPONSABLE||'—'}</span>`}</td>
       <td>${ie?`<input type="date" value="${r['FECHA FIN']||''}" class="fi" style="padding:2px 5px;font-size:11px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','fecha_fin',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:`<span style="font-size:11px;color:var(--text2)">${fmtD(r['FECHA FIN'])}</span>`}</td>
       <td style="font-size:11px;color:${r['FECHA COMPLETADA']?'var(--green)':'var(--text2)'}">${fmtD(r['FECHA COMPLETADA'])}</td>
-      <td>${ie?`<select class="fi" style="padding:2px 5px;font-size:11px;border-radius:4px;background:transparent;border:1px solid transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','estado',this.value)" onchange="actInlineEdit('${r._id}','estado',this.value);renderActs()">
-        <option value="PLANIFICADA" ${r.ESTADO==='PLANIFICADA'?'selected':''}>PLANIFICADA</option>
-        <option value="EN CURSO" ${r.ESTADO==='EN CURSO'?'selected':''}>EN CURSO</option>
-        <option value="REPROGRAMADA" ${r.ESTADO==='REPROGRAMADA'?'selected':''}>REPROGRAMADA</option>
-        <option value="REALIZADA" ${r.ESTADO==='REALIZADA'?'selected':''}>REALIZADA</option>
-      </select>`:badge(r.ESTADO||'PLANIFICADA')}</td>
+      <td>${badge(r.ESTADO||'PLANIFICADA')}</td>
       <td style="text-align:center"><span style="font-size:11px;font-weight:700;color:${rn>0?'var(--orange)':'var(--text2)'}">${rn}</span></td>
-      <td>${ie?`<input type="number" min="0" max="100" value="${r.AVANCE}" class="fi" style="padding:2px 5px;font-size:11px;width:55px;border-radius:4px;background:transparent;border:1px solid transparent;text-align:center" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent';actInlineEdit('${r._id}','avance',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`:
-      (() => { const stT = r.subtasks?.length||0; const stD = r.subtasks?.filter(s=>s.done).length||0; const effAv = stT>0?Math.round(stD/stT*100):r.AVANCE; return `<div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${effAv}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${effAv}%${stT>0?`<span style="font-size:9px;color:var(--text3)"> (${stD}/${stT})</span>`:''}` + `</span></div>`; })()}</td>
+      <td>${(() => { const stT = r.subtasks?.length||0; const stD = r.subtasks?.filter(s=>s.done).length||0; const effAv = stT>0?Math.round(stD/stT*100):r.AVANCE; return `<div class="av-cell"><div class="av-bar"><div class="av-fill" style="width:${effAv}%;background:${S_COL[r.ESTADO]||'var(--accent)'}"></div></div><span class="av-pct">${effAv}%${stT>0?`<span style="font-size:9px;color:var(--text3)"> (${stD}/${stT})</span>`:''}` + `</span></div>`; })()}</td>
       ${cfCells}
       <td><div class="act-btns">
         <button class="abtn abtn-v" onclick="openActDr('${r._id}')">Ver</button>
