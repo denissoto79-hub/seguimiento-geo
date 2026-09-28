@@ -155,7 +155,7 @@ html.bitone #sidebar .logo-txt { color:#FFFFFF; }
 html.bitone #sidebar .logo-sub { color:#AEB9D6; }
 /* Topbar light */
 html.bitone #topbar { background:#ffffff; border-bottom:1px solid #E1E6F0; color:#12213D; }
-html.bitone #topbar .tb-mod { color:#5A6685; }
+html.bitone #topbar .tb-mod { color:#12213D; font-weight:700; }
 html.bitone #topbar .tb-badge { background:rgba(2,132,199,.1); color:#C81F5B; }
 html.bitone #topbar #theme-btn { background:#F3F5F9; border-color:#E1E6F0; color:#5A6685; }
 html.bitone #topbar #notif-btn { background:#F3F5F9; border-color:#E1E6F0; color:#5A6685; }
@@ -2408,10 +2408,13 @@ function renderMisTareas() {
   if (MI_DIA_REUNIONES === null && !_miDiaReunionesLoading) miDiaLoadReuniones();
   if (MI_DIA_CRECIMIENTO === null && !_miDiaCrecimientoLoading) miDiaLoadCrecimiento();
 
-  // Agregado cruzado de TODOS los módulos ya cargados — mismo patrón que renderInicio.
-  const allActs = Object.values(MS).flatMap(m => m.acts || []);
-  const isAdmin = ['developer','admin'].includes(user.role);
-  const myActs = isAdmin ? allActs : allActs.filter(r =>
+  // Agregado cruzado de TODOS los módulos accesibles para este usuario — mismo
+  // patrón que renderInicio. Mi Día es SIEMPRE personal: se filtra por
+  // responsable sin importar el rol (developer/admin incluidos), y solo se
+  // agregan módulos a los que el usuario tiene acceso.
+  const accessibleKeys = getAccessibleModKeys();
+  const allActs = accessibleKeys.flatMap(k => (MS[k] && MS[k].acts) || []);
+  const myActs = allActs.filter(r =>
     (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
   );
 
@@ -2431,11 +2434,15 @@ function renderMisTareas() {
   _miDiaOverdueCache = overdue; _miDiaUrgentCache = urgentes; _miDiaImportantCache = importantes;
 
   const activas = myActs.filter(r => r.ESTADO !== 'REALIZADA');
-  const hechasHoy = myActs.filter(r => r.ESTADO === 'REALIZADA' && r['FECHA COMPLETADA'] === today);
-  const enCursoCount = myActs.filter(r => r.ESTADO === 'EN CURSO').length;
-  const reprogCount  = myActs.filter(r => r.ESTADO === 'REPROGRAMADA').length;
-  const realizTotal  = myActs.filter(r => r.ESTADO === 'REALIZADA').length;
-  const cumplGlobal  = myActs.length ? Math.round(realizTotal / myActs.length * 100) : 0;
+  // "Avance del Día" se acota SOLO a lo de hoy: actividades programadas de otros
+  // proyectos cuya fecha efectiva es hoy, más las realizadas hoy — no todo el
+  // backlog del usuario (eso ya se ve en Urgente/Importante y el tablero completo).
+  const hoyActs = myActs.filter(r => fechaEfectiva(r) === today || (r.ESTADO === 'REALIZADA' && r['FECHA COMPLETADA'] === today));
+  const hechasHoy = hoyActs.filter(r => r.ESTADO === 'REALIZADA' && r['FECHA COMPLETADA'] === today);
+  const enCursoCount = hoyActs.filter(r => r.ESTADO === 'EN CURSO').length;
+  const reprogCount  = hoyActs.filter(r => r.ESTADO === 'REPROGRAMADA').length;
+  const realizTotal  = hechasHoy.length;
+  const cumplGlobal  = hoyActs.length ? Math.round(realizTotal / hoyActs.length * 100) : 0;
 
   const reunionesHoy = (MI_DIA_REUNIONES || []).filter(x => x.fecha === today);
   const reunionesProx = (MI_DIA_REUNIONES || []).filter(x => x.fecha > today).slice(0, 5);
@@ -12932,10 +12939,10 @@ function renderInicio() {
   // se cargan bajo demanda igual que en Mi Día (mismo dato, sin duplicar).
   if (MI_DIA_REUNIONES === null && !_miDiaReunionesLoading) miDiaLoadReuniones();
 
-  // Search ALL loaded modules for this user's activities (not just ACTIVE)
-  const allModActs = Object.values(MS).flatMap(m => m.acts || []);
-  const d = allModActs;
-  const isAdmin = ['developer','admin'].includes(user.role);
+  // Solo módulos a los que el usuario tiene acceso real (developer = todos,
+  // los demás según su lista de módulos asignados) — misma fuente que Mi Día.
+  const accessibleKeys = getAccessibleModKeys();
+  const d = accessibleKeys.flatMap(k => (MS[k] && MS[k].acts) || []);
 
   // Only show THIS user's tasks (personal view, igual que Mi Día)
   const myActs = d.filter(r =>
@@ -12961,8 +12968,8 @@ function renderInicio() {
   const dateStr = DIAS[now.getDay()] + ', ' + now.getDate() + ' de ' + MESES_FULL[now.getMonth()] + ' ' + now.getFullYear();
   const firstName = user.name.split(' ')[0];
 
-  // Módulos visibles para este usuario (todos si admin, los suyos si no)
-  const modKeys = isAdmin ? Object.keys(MOD_LBL) : Object.keys(MOD_LBL).filter(k => (user.modules||[]).includes(k));
+  // Módulos visibles para este usuario — mismo criterio de acceso real que el resto de la app
+  const modKeys = accessibleKeys;
   const modStats = modKeys.map(k => {
     const acts = (MS[k] && MS[k].acts) || [];
     const av = acts.length ? Math.round(acts.reduce((s,r)=>s+(r.AVANCE||0),0)/acts.length) : 0;
