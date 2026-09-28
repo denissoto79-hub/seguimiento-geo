@@ -6,9 +6,11 @@
 <title>Seguimiento de Gestión</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
+  /* Tipografía: encabezados (Sora, como en los mockups) → texto de cuerpo (Inter) */
+  --font-head:'Sora', system-ui, sans-serif; --font-body:'Inter', system-ui, sans-serif;
   /* Fondos: base → superficie (cards) → superficie secundaria (inputs) */
   --bg:#0B1220; --bg2:#141B2E; --bg3:#1B2338; --border:#232C42;
   /* Texto: principal → secundario → terciario (el más apagado) */
@@ -128,101 +130,101 @@ html.light .proj-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.15) }
 /* BI-TONE MODE — dark sidebar, light content */
 /* BI-TONE: dark sidebar, white/light content with proper contrast everywhere */
 html.bitone {
-  --bg:#e8f0f7; --bg2:#ffffff; --bg3:#f0f5fb; --border:#c8d8e8;
-  --text:#0f172a; --text2:#334155; --text3:#64748b;
-  --accent:#0284c7; --accent2:#0369a1;
-  --green:#15803d; --orange:#c2410c; --red:#b91c1c; --purple:#7c3aed; --yellow:#a16207;
-  --s-done:#15803d; --s-prog:#0284c7; --s-plan:#64748b; --s-rep:#c2410c;
+  --bg:#EEF1F6; --bg2:#ffffff; --bg3:#F3F5F9; --border:#E1E6F0;
+  --text:#12213D; --text2:#5A6685; --text3:#8B95B3;
+  --accent:#C81F5B; --accent2:#4C86A8;
+  --green:#2E7D4F; --orange:#B3800C; --red:#B3261E; --purple:#7c3aed; --yellow:#a16207;
+  --s-done:#2E7D4F; --s-prog:#C81F5B; --s-plan:#8B95B3; --s-rep:#B3800C;
 }
 /* Sidebar stays dark */
 html.bitone #sidebar {
-  background:#0d1117 !important; border-right-color:#21262d !important;
-  --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
-  --border:#21262d;
+  background:#12213D !important; border-right-color:rgba(255,255,255,.10) !important;
+  --text:#FFFFFF; --text2:#AEB9D6; --text3:#7482AA;
+  --border:rgba(255,255,255,.10);
 }
 html.bitone #sidebar * { color: inherit; }
-html.bitone #sidebar .nav-item { color:#8b949e; }
-html.bitone #sidebar .nav-item.active { color:#38bdf8; background:rgba(56,189,248,.12); }
-html.bitone #sidebar .nav-item:hover { color:#e6edf3; background:rgba(255,255,255,.06); }
-html.bitone #sidebar .sec-lbl { color:#444e58; }
-html.bitone #sidebar .mod-btn { color:#8b949e; background:transparent; }
-html.bitone #sidebar .mod-btn.active { color:#38bdf8; background:rgba(56,189,248,.1); border-color:rgba(56,189,248,.25); }
-html.bitone #sidebar .sb-name { color:#e6edf3; }
-html.bitone #sidebar .sb-role { color:#8b949e; }
-html.bitone #sidebar .logo-txt { color:#e6edf3; }
-html.bitone #sidebar .logo-sub { color:#8b949e; }
+html.bitone #sidebar .nav-item { color:#AEB9D6; }
+html.bitone #sidebar .nav-item.active { color:#C81F5B; background:rgba(200,31,91,.14); }
+html.bitone #sidebar .nav-item:hover { color:#FFFFFF; background:rgba(255,255,255,.06); }
+html.bitone #sidebar .sec-lbl { color:#5A6C99; }
+html.bitone #sidebar .mod-btn { color:#AEB9D6; background:transparent; }
+html.bitone #sidebar .mod-btn.active { color:#C81F5B; background:rgba(200,31,91,.12); border-color:rgba(200,31,91,.3); }
+html.bitone #sidebar .sb-name { color:#FFFFFF; }
+html.bitone #sidebar .sb-role { color:#AEB9D6; }
+html.bitone #sidebar .logo-txt { color:#FFFFFF; }
+html.bitone #sidebar .logo-sub { color:#AEB9D6; }
 /* Topbar light */
-html.bitone #topbar { background:#ffffff; border-bottom:1px solid #c8d8e8; color:#0f172a; }
-html.bitone #topbar .tb-mod { color:#334155; }
-html.bitone #topbar .tb-badge { background:rgba(2,132,199,.1); color:#0284c7; }
-html.bitone #topbar #theme-btn { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
-html.bitone #topbar #notif-btn { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
-html.bitone #topbar .tb-av { background: linear-gradient(135deg,#0284c7,#0369a1) !important; }
+html.bitone #topbar { background:#ffffff; border-bottom:1px solid #E1E6F0; color:#12213D; }
+html.bitone #topbar .tb-mod { color:#5A6685; }
+html.bitone #topbar .tb-badge { background:rgba(2,132,199,.1); color:#C81F5B; }
+html.bitone #topbar #theme-btn { background:#F3F5F9; border-color:#E1E6F0; color:#5A6685; }
+html.bitone #topbar #notif-btn { background:#F3F5F9; border-color:#E1E6F0; color:#5A6685; }
+html.bitone #topbar .tb-av { background: linear-gradient(135deg,#C81F5B,#4C86A8) !important; }
 /* Content area */
-html.bitone #content { background:#e8f0f7; }
-html.bitone #content .page { background:#e8f0f7; }
+html.bitone #content { background:#EEF1F6; }
+html.bitone #content .page { background:#EEF1F6; }
 html.bitone #content .page.active { display:block !important; }
-html.bitone #content .filter-bar { background:#ffffff; border-bottom:1px solid #c8d8e8; }
-html.bitone #content .fi { background:#f0f5fb; border-color:#c8d8e8; color:#0f172a; }
-html.bitone #content select.fi, html.bitone #content input.fi { color:#0f172a; }
-html.bitone #content label { color:#334155; }
+html.bitone #content .filter-bar { background:#ffffff; border-bottom:1px solid #E1E6F0; }
+html.bitone #content .fi { background:#F3F5F9; border-color:#E1E6F0; color:#12213D; }
+html.bitone #content select.fi, html.bitone #content input.fi { color:#12213D; }
+html.bitone #content label { color:#5A6685; }
 /* Cards */
-html.bitone #content .chart-card { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 4px rgba(0,0,0,.06); }
-html.bitone #content .kpi { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-html.bitone #content .kpi-label { color:#334155; }
-html.bitone #content .kpi-sub   { color:#64748b; }
-html.bitone #content .kpi-val   { color:#0f172a; }
-html.bitone #content .chart-head { color:#334155; font-weight:700; }
-html.bitone #content .proj-card { background:#ffffff; border-color:#c8d8e8; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-html.bitone #content .proj-card:hover { box-shadow:0 4px 12px rgba(2,132,199,.15); border-color:#93c5fd; }
-html.bitone #content .table-card { background:#ffffff; border-color:#c8d8e8; }
+html.bitone #content .chart-card { background:#ffffff; border-color:#E1E6F0; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+html.bitone #content .kpi { background:#ffffff; border-color:#E1E6F0; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+html.bitone #content .kpi-label { color:#5A6685; }
+html.bitone #content .kpi-sub   { color:#8B95B3; }
+html.bitone #content .kpi-val   { color:#12213D; }
+html.bitone #content .chart-head { color:#5A6685; font-weight:700; }
+html.bitone #content .proj-card { background:#ffffff; border-color:#E1E6F0; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+html.bitone #content .proj-card:hover { box-shadow:0 4px 12px rgba(2,132,199,.15); border-color:rgba(200,31,91,.35); }
+html.bitone #content .table-card { background:#ffffff; border-color:#E1E6F0; }
 /* Tables */
 html.bitone #content table { background:#ffffff; }
-html.bitone #content th { background:#f0f5fb; color:#334155; border-color:#c8d8e8; }
-html.bitone #content td { color:#0f172a; border-color:#e2eaf2; }
+html.bitone #content th { background:#F3F5F9; color:#5A6685; border-color:#E1E6F0; }
+html.bitone #content td { color:#12213D; border-color:#EDF0F6; }
 html.bitone #content tr:hover td { background:rgba(2,132,199,.04); }
-html.bitone #content .code-lbl { background:rgba(2,132,199,.1); color:#0284c7; border-color:rgba(2,132,199,.25); }
+html.bitone #content .code-lbl { background:rgba(2,132,199,.1); color:#C81F5B; border-color:rgba(2,132,199,.25); }
 /* Progress bars */
-html.bitone #content .prog-bar { background:#e2eaf2; }
-html.bitone #content .av-bar   { background:#e2eaf2; }
+html.bitone #content .prog-bar { background:#EDF0F6; }
+html.bitone #content .av-bar   { background:#EDF0F6; }
 /* Badges override */
-html.bitone .badge-done { background:rgba(21,128,61,.12); color:#15803d; }
-html.bitone .badge-prog { background:rgba(2,132,199,.12); color:#0284c7; }
-html.bitone .badge-plan { background:rgba(100,116,139,.1); color:#334155; }
-html.bitone .badge-rep  { background:rgba(194,65,12,.12); color:#c2410c; }
+html.bitone .badge-done { background:rgba(21,128,61,.12); color:#2E7D4F; }
+html.bitone .badge-prog { background:rgba(2,132,199,.12); color:#C81F5B; }
+html.bitone .badge-plan { background:rgba(100,116,139,.1); color:#5A6685; }
+html.bitone .badge-rep  { background:rgba(194,65,12,.12); color:#B3800C; }
 /* Drawers/Modals */
-html.bitone .drawer { background:#ffffff; border-left-color:#c8d8e8; }
+html.bitone .drawer { background:#ffffff; border-left-color:#E1E6F0; }
 html.bitone .modal  { background:#ffffff; }
-html.bitone .d-ml { color:#334155; }
-html.bitone .d-mv { color:#0f172a; }
-html.bitone .d-obs { background:rgba(2,132,199,.05); border-color:rgba(2,132,199,.2); color:#0f172a; }
-html.bitone .d-sec { color:#334155; border-top-color:#c8d8e8; }
-html.bitone .d-meta { background:#f8fafc; }
+html.bitone .d-ml { color:#5A6685; }
+html.bitone .d-mv { color:#12213D; }
+html.bitone .d-obs { background:rgba(2,132,199,.05); border-color:rgba(2,132,199,.2); color:#12213D; }
+html.bitone .d-sec { color:#5A6685; border-top-color:#E1E6F0; }
+html.bitone .d-meta { background:#F3F5F9; }
 html.bitone .d-rep-box { background:rgba(194,65,12,.06); border-color:rgba(194,65,12,.2); }
-html.bitone .d-rep-l   { color:#c2410c; }
+html.bitone .d-rep-l   { color:#B3800C; }
 /* Kanban & project bg */
-html.bitone #content .bg3-el { background:#f0f5fb; }
-html.bitone #content [style*="var(--bg3)"] { background:#f0f5fb !important; color:#0f172a !important; }
+html.bitone #content .bg3-el { background:#F3F5F9; }
+html.bitone #content [style*="var(--bg3)"] { background:#F3F5F9 !important; color:#12213D !important; }
 html.bitone #content [style*="var(--bg2)"] { background:#ffffff !important; }
 /* Gantt */
 html.bitone .gantt-bar { box-shadow:0 1px 4px rgba(0,0,0,.12); }
-html.bitone .gantt-month-tick { background:#f0f5fb; border-color:#c8d8e8; color:#334155; }
+html.bitone .gantt-month-tick { background:#F3F5F9; border-color:#E1E6F0; color:#5A6685; }
 /* Calendar */
-html.bitone .cal-cell { background:#ffffff; border-color:#c8d8e8; }
-html.bitone .cal-dname { color:#334155; }
-html.bitone .cal-dnum  { color:#334155; }
+html.bitone .cal-cell { background:#ffffff; border-color:#E1E6F0; }
+html.bitone .cal-dname { color:#5A6685; }
+html.bitone .cal-dnum  { color:#5A6685; }
 /* Toast */
-html.bitone .toast { background:#0f172a; color:#f1f5f9; }
+html.bitone .toast { background:#12213D; color:#E7EAF3; }
 /* KP overlay */
 html.bitone .kp-box { background:#ffffff; }
 /* Notification panel */
-html.bitone .notif-panel { background:#ffffff; border-color:#c8d8e8; }
-html.bitone .notif-item  { border-color:#e2eaf2; }
+html.bitone .notif-panel { background:#ffffff; border-color:#E1E6F0; }
+html.bitone .notif-item  { border-color:#EDF0F6; }
 html.bitone .notif-text  { color:#0f172a; }
 html.bitone .notif-time  { color:#64748b; }
 * { box-sizing:border-box; margin:0; padding:0 }
 html,body { height:100%; overflow:hidden }
-body { font-family:'Barlow',sans-serif; background:var(--bg); color:var(--text) }
+body { font-family:var(--font-body),sans-serif; background:var(--bg); color:var(--text) }
 
 /* ── SIDEBAR ── */
 #sidebar {
@@ -239,11 +241,11 @@ body { font-family:'Barlow',sans-serif; background:var(--bg); color:var(--text) 
 .logo-icon {
   width:30px; height:30px; background:linear-gradient(135deg,var(--accent),var(--accent2));
   border-radius:8px; display:flex; align-items:center; justify-content:center;
-  font-weight:900; color:#000; font-size:13px; font-family:'Barlow Condensed',sans-serif;
+  font-weight:900; color:#000; font-size:13px; font-family:var(--font-head),sans-serif;
   letter-spacing:.05em; flex-shrink:0;
 }
 .logo-txt { overflow:hidden; white-space:nowrap }
-.logo-title { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; letter-spacing:.07em; color:var(--accent); text-transform:uppercase; line-height:1.2 }
+.logo-title { font-family:var(--font-head),sans-serif; font-size:14px; font-weight:700; letter-spacing:.07em; color:var(--accent); text-transform:uppercase; line-height:1.2 }
 .logo-sub   { font-size:9px; color:var(--text2); margin-top:1px }
 .toggle-btn {
   position:absolute; right:-13px; top:50%; transform:translateY(-50%);
@@ -262,7 +264,7 @@ body { font-family:'Barlow',sans-serif; background:var(--bg); color:var(--text) 
 .mod-btn {
   display:flex; align-items:center; gap:7px; width:100%; padding:6px 8px;
   border-radius:7px; border:none; background:transparent; cursor:pointer;
-  font-size:11px; font-family:'Barlow',sans-serif; color:var(--text2);
+  font-size:11px; font-family:var(--font-body),sans-serif; color:var(--text2);
   text-align:left; white-space:nowrap; overflow:hidden; transition:all .15s;
 }
 .mod-btn.active { background:rgba(56,189,248,.12); color:var(--accent) }
@@ -291,7 +293,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 #main.expanded { margin-left:52px }
 .topbar { height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0 }
 .tb-left { display:flex; align-items:center; gap:10px }
-.tb-title { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:700; letter-spacing:.04em }
+.tb-title { font-family:var(--font-head),sans-serif; font-size:20px; font-weight:700; letter-spacing:.04em }
 .tb-badge { background:rgba(56,189,248,.15); color:var(--accent); padding:2px 9px; border-radius:12px; font-size:10px; font-weight:700; border:1px solid rgba(56,189,248,.3) }
 .tb-mod { font-size:11px; color:var(--accent); font-weight:500; border-left:1px solid var(--border); padding-left:10px }
 .tb-right { display:flex; align-items:center; gap:8px }
@@ -303,7 +305,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
 
 /* ── BUTTONS ── */
-.btn { padding:6px 14px; border-radius:7px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; font-family:'Barlow',sans-serif; display:inline-flex; align-items:center; gap:5px }
+.btn { padding:6px 14px; border-radius:7px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:12px; font-weight:500; cursor:pointer; transition:all .15s; font-family:var(--font-body),sans-serif; display:inline-flex; align-items:center; gap:5px }
 .btn:hover { background:var(--border) }
 .btn-accent { background:var(--accent); color:#000; border-color:var(--accent); font-weight:700 }
 .btn-accent:hover { background:#7dd3fc; border-color:#7dd3fc }
@@ -315,18 +317,18 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:18px }
 .fg { display:flex; flex-direction:column; gap:3px }
 .fg label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; font-weight:600 }
-.fg select, .fg input[type=text] { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:5px 9px; border-radius:6px; font-size:12px; font-family:'Barlow',sans-serif; cursor:pointer; min-width:130px; transition:border-color .15s }
+.fg select, .fg input[type=text] { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:5px 9px; border-radius:6px; font-size:12px; font-family:var(--font-body),sans-serif; cursor:pointer; min-width:130px; transition:border-color .15s }
 .fg select:focus, .fg input:focus { outline:none; border-color:var(--accent) }
 /* Searchable select styles */
 .srch-select-wrap { position:relative; display:inline-block; min-width:130px }
-.srch-select-wrap input.srch-inp { width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:5px 28px 5px 9px;border-radius:6px;font-size:12px;font-family:'Barlow',sans-serif;cursor:pointer;transition:border-color .15s;box-sizing:border-box }
+.srch-select-wrap input.srch-inp { width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:5px 28px 5px 9px;border-radius:6px;font-size:12px;font-family:var(--font-body),sans-serif;cursor:pointer;transition:border-color .15s;box-sizing:border-box }
 .srch-select-wrap input.srch-inp:focus { outline:none;border-color:var(--accent) }
 .srch-select-wrap .srch-arrow { position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text2);font-size:10px }
 .srch-dropdown { position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9999;min-width:180px;max-width:360px;max-height:240px;overflow-y:auto;display:none }
 .srch-dropdown-wide { max-width:640px }
 .srch-dropdown-wide .srch-opt { white-space:normal;overflow:visible;text-overflow:clip;max-width:none;line-height:1.4 }
 .srch-dropdown.open { display:block }
-.srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px }
+.srch-opt { padding:7px 12px;cursor:pointer;font-size:12px;font-family:var(--font-body),sans-serif;color:var(--text);transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px }
 .srch-opt:hover,.srch-opt.sel { background:rgba(56,189,248,.12);color:var(--accent) }
 .srch-opt.placeholder { color:var(--text2);font-style:italic }
 
@@ -336,7 +338,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .kpi:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:0 4px 20px rgba(56,189,248,.12) }
 .kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--kc,var(--accent)) }
 .kpi-label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:5px; font-weight:600 }
-.kpi-val { font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:700; line-height:1 }
+.kpi-val { font-family:var(--font-head),sans-serif; font-size:32px; font-weight:700; line-height:1 }
 .kpi-sub  { font-size:10px; color:var(--text2); margin-top:4px }
 .kpi-icon { position:absolute; top:12px; right:12px; font-size:17px; opacity:.18 }
 
@@ -345,7 +347,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 .g2 { grid-template-columns:1fr 1fr }
 .g3 { grid-template-columns:1fr 2fr }
 .chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px }
-.chart-head { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); margin-bottom:12px }
+.chart-head { font-family:var(--font-head),sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); margin-bottom:12px }
 .chart-wrap { position:relative; height:188px }
 .prog-list { display:flex; flex-direction:column; gap:8px }
 .prog-item { cursor:pointer; padding:5px 6px; border-radius:7px; transition:background .15s }
@@ -359,7 +361,7 @@ nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden }
 /* ── TABLE ── */
 .table-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden }
 .table-hdr  { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; border-bottom:1px solid var(--border) }
-.table-title { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase }
+.table-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase }
 .table-count { font-size:11px; color:var(--text2) }
 .table-wrap  { overflow-x:auto; max-height:calc(100vh - 280px); overflow-y:auto }
 table { width:100%; border-collapse:collapse; font-size:12px }
@@ -368,12 +370,12 @@ th:hover { color:var(--text) }
 td { padding:8px 12px; border-bottom:1px solid rgba(33,38,45,.7); vertical-align:middle }
 tr:last-child td { border-bottom:none }
 tr:hover td { background:rgba(255,255,255,.02) }
-.code-lbl { font-family:'Barlow Condensed',sans-serif; font-weight:700; color:var(--accent); font-size:13px }
-.name-btn { background:transparent; border:none; cursor:pointer; text-align:left; color:var(--text); font-size:12px; font-family:'Barlow',sans-serif; padding:0; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; transition:color .15s }
+.code-lbl { font-family:var(--font-head),sans-serif; font-weight:700; color:var(--accent); font-size:13px }
+.name-btn { background:transparent; border:none; cursor:pointer; text-align:left; color:var(--text); font-size:12px; font-family:var(--font-body),sans-serif; padding:0; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; transition:color .15s }
 .name-btn:hover { color:var(--accent) }
 .act-btns { display:flex; gap:3px; opacity:0; transition:opacity .15s }
 tr:hover .act-btns { opacity:1 }
-.abtn { padding:3px 7px; border-radius:5px; font-size:10px; font-weight:600; cursor:pointer; border:none; transition:all .15s; font-family:'Barlow',sans-serif }
+.abtn { padding:3px 7px; border-radius:5px; font-size:10px; font-weight:600; cursor:pointer; border:none; transition:all .15s; font-family:var(--font-body),sans-serif }
 .abtn-v { background:rgba(56,189,248,.12); color:var(--accent) } .abtn-v:hover { background:rgba(56,189,248,.25) }
 .abtn-d { background:rgba(34,197,94,.12); color:var(--green) }   .abtn-d:hover { background:rgba(34,197,94,.25) }
 .abtn-x { background:rgba(239,68,68,.10); color:var(--red) }     .abtn-x:hover { background:rgba(239,68,68,.22) }
@@ -389,7 +391,7 @@ tr:hover .act-btns { opacity:1 }
 .av-fill { height:100%; border-radius:99px }
 .av-pct  { font-size:10px; color:var(--text2); width:26px; text-align:right; flex-shrink:0 }
 .pagination { display:flex; gap:3px; align-items:center; padding:9px 14px; border-top:1px solid var(--border) }
-.pg-btn { width:27px; height:27px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text2); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:'Barlow',sans-serif }
+.pg-btn { width:27px; height:27px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text2); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:var(--font-body),sans-serif }
 .pg-btn:hover, .pg-btn.active { background:var(--accent); color:#000; border-color:var(--accent) }
 .pg-info { font-size:10px; color:var(--text2); margin-left:7px }
 
@@ -398,7 +400,7 @@ tr:hover .act-btns { opacity:1 }
 .gantt-h-row { display:grid; border-bottom:1px solid var(--border) }
 .gantt-h-left { padding:7px 10px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); background:var(--bg3) }
 .gantt-months { position:relative; height:30px; background:var(--bg3) }
-.gantt-month-tick { position:absolute; top:0; bottom:0; border-right:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text2); font-weight:600; font-family:'Barlow Condensed',sans-serif; letter-spacing:.04em }
+.gantt-month-tick { position:absolute; top:0; bottom:0; border-right:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text2); font-weight:600; font-family:var(--font-head),sans-serif; letter-spacing:.04em }
 .gantt-today { position:absolute; top:0; bottom:0; width:1.5px; background:var(--red); opacity:.8; z-index:5; pointer-events:none }
 .gantt-proj-sep { display:grid; background:rgba(56,189,248,.04); border-bottom:1px solid var(--border) }
 .gantt-proj-lbl { padding:4px 10px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em }
@@ -413,7 +415,7 @@ tr:hover .act-btns { opacity:1 }
 
 /* ── CALENDAR ── */
 .cal-nav   { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap }
-.cal-title { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; min-width:160px }
+.cal-title { font-family:var(--font-head),sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; min-width:160px }
 .cal-grid  { display:grid; grid-template-columns:repeat(7,1fr); gap:5px }
 .cal-scroll { flex:1; overflow-y:auto; min-height:0; }
 .cal-dname { text-align:center; font-size:11px; font-weight:700; color:var(--text2); padding:7px 0; text-transform:uppercase; letter-spacing:.07em }
@@ -433,22 +435,22 @@ tr:hover .act-btns { opacity:1 }
 .proj-card:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.4) }
 .proj-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:8px }
 .ps   { background:var(--bg3); border-radius:6px; padding:5px; text-align:center }
-.ps-v { font-size:13px; font-weight:700; font-family:'Barlow Condensed',sans-serif }
+.ps-v { font-size:13px; font-weight:700; font-family:var(--font-head),sans-serif }
 .ps-l { font-size:9px; color:var(--text2); margin-top:1px }
 .proj-delay { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--red); background:rgba(239,68,68,.1); border-radius:6px; padding:4px 8px; margin-top:8px; border:1px solid rgba(239,68,68,.2) }
 
 /* ── REPORTS ── */
 .rep-kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:9px; margin:12px 0 }
 .rep-kpi  { background:var(--bg3); border-radius:8px; padding:10px; text-align:center; border:1px solid var(--border) }
-.rk-v { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:700 }
+.rk-v { font-family:var(--font-head),sans-serif; font-size:26px; font-weight:700 }
 .rk-l { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-top:3px }
-.rep-btn  { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:8px; border:1px solid; font-size:12px; font-weight:700; cursor:pointer; font-family:'Barlow Condensed',sans-serif; letter-spacing:.04em; text-transform:uppercase; transition:all .2s }
+.rep-btn  { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:8px; border:1px solid; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-head),sans-serif; letter-spacing:.04em; text-transform:uppercase; transition:all .2s }
 .rep-pdf  { background:rgba(239,68,68,.1); color:var(--red); border-color:rgba(239,68,68,.3) } .rep-pdf:hover { background:rgba(239,68,68,.2) }
 .rep-xlsx { background:rgba(34,197,94,.1);  color:var(--green); border-color:rgba(34,197,94,.3) } .rep-xlsx:hover { background:rgba(34,197,94,.2) }
 
 /* ── CONFIG ── */
 .cfg-sec   { margin-bottom:24px }
-.cfg-title { font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px; padding-bottom:7px; border-bottom:1px solid var(--border) }
+.cfg-title { font-family:var(--font-head),sans-serif; font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px; padding-bottom:7px; border-bottom:1px solid var(--border) }
 .rg-title  { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:5px 9px; border-radius:6px; margin-bottom:8px; display:inline-block }
 .rg-developer{ background:rgba(168,85,247,.12); color:var(--purple) }
 .rg-admin  { background:rgba(56,189,248,.12); color:var(--accent) }
@@ -476,11 +478,11 @@ tr:hover .act-btns { opacity:1 }
 .drawer { position:fixed; right:0; top:0; bottom:0; width:680px; background:var(--bg2); border-left:1px solid var(--border); z-index:201; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .22s ease }
 .drawer.open { transform:translateX(0) }
 .dr-head  { display:flex; align-items:center; justify-content:space-between; padding:13px 15px; border-bottom:1px solid var(--border); background:var(--bg3); flex-shrink:0 }
-.dr-title { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text2) }
+.dr-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text2) }
 .dr-close { background:transparent; border:1px solid var(--border); color:var(--text2); width:27px; height:27px; border-radius:6px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s }
 .dr-close:hover { background:var(--border); color:var(--text) }
 .dr-body  { flex:1; overflow-y:auto; padding:20px 22px }
-.d-code { font-family:'Barlow Condensed',sans-serif; font-weight:700; color:var(--accent); font-size:14px; letter-spacing:.04em; margin-bottom:4px }
+.d-code { font-family:var(--font-head),sans-serif; font-weight:700; color:var(--accent); font-size:14px; letter-spacing:.04em; margin-bottom:4px }
 .d-name { font-size:17px; font-weight:700; margin-bottom:10px; line-height:1.4 }
 .d-meta { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 0 }
 .d-mb { background:var(--bg3); border-radius:7px; padding:7px 9px }
@@ -500,7 +502,7 @@ tr:hover .act-btns { opacity:1 }
 .d-st:last-child { border-bottom:none }
 .d-chk   { width:13px; height:13px; border-radius:3px; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:8px; flex-shrink:0; cursor:pointer; transition:all .15s }
 .d-chk.done { background:var(--green); border-color:var(--green); color:#000 }
-.d-done-btn { width:100%; padding:9px; border-radius:8px; border:1px solid rgba(34,197,94,.3); background:rgba(34,197,94,.1); color:var(--green); font-size:12px; font-weight:700; font-family:'Barlow Condensed',sans-serif; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; margin-top:12px; transition:all .2s }
+.d-done-btn { width:100%; padding:9px; border-radius:8px; border:1px solid rgba(34,197,94,.3); background:rgba(34,197,94,.1); color:var(--green); font-size:12px; font-weight:700; font-family:var(--font-head),sans-serif; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; margin-top:12px; transition:all .2s }
 .d-done-btn:hover { background:rgba(34,197,94,.22) }
 .d-rep-box { background:rgba(249,115,22,.07); border:1px solid rgba(249,115,22,.25); border-radius:7px; padding:9px; margin-bottom:10px }
 .d-rep-l   { font-size:9px; color:var(--orange); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin-bottom:4px }
@@ -510,15 +512,15 @@ tr:hover .act-btns { opacity:1 }
 .mo-overlay.open { display:flex }
 .modal    { background:var(--bg2); border:1px solid var(--border); border-radius:14px; width:600px; max-width:96vw; max-height:90vh; overflow-y:auto; padding:22px }
 .modal-sm { width:420px }
-.mo-title { font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:16px }
+.mo-title { font-family:var(--font-head),sans-serif; font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:16px }
 .mo-tabs  { display:flex; border-bottom:1px solid var(--border); margin-bottom:16px }
-.mo-tab   { padding:7px 13px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; border:none; background:transparent; border-bottom:2px solid transparent; font-family:'Barlow',sans-serif; transition:all .15s }
+.mo-tab   { padding:7px 13px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; border:none; background:transparent; border-bottom:2px solid transparent; font-family:var(--font-body),sans-serif; transition:all .15s }
 .mo-tab.active { color:var(--accent); border-bottom-color:var(--accent) }
 .mo-tab:hover:not(.active) { color:var(--text) }
 .mo-body { display:none } .mo-body.active { display:block }
 .fg2 { display:grid; grid-template-columns:1fr 1fr; gap:11px }
 .fg2 .fg-full { grid-column:1/-1 }
-.fi  { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:7px 10px; border-radius:7px; font-size:12px; font-family:'Barlow',sans-serif; transition:border-color .15s; width:100% }
+.fi  { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:7px 10px; border-radius:7px; font-size:12px; font-family:var(--font-body),sans-serif; transition:border-color .15s; width:100% }
 .fi:focus { outline:none; border-color:var(--accent) }
 .fi[readonly] { opacity:.45; cursor:not-allowed; background:var(--bg) }
 .fi-range { width:100%; accent-color:var(--accent) }
@@ -627,22 +629,22 @@ tr:hover .act-btns { opacity:1 }
 
 /* ── CONFIG SUB-NAVIGATION ── */
 .cfg-subnav { display:flex; gap:4px; margin-bottom:20px; border-bottom:2px solid var(--border); padding-bottom:0 }
-.cfg-subnav-btn { padding:9px 20px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .18s; display:inline-flex; align-items:center; gap:6px; border-radius:6px 6px 0 0 }
+.cfg-subnav-btn { padding:9px 20px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-head),sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .18s; display:inline-flex; align-items:center; gap:6px; border-radius:6px 6px 0 0 }
 .cfg-subnav-btn:hover { color:var(--text); background:rgba(255,255,255,.04) }
 .cfg-subnav-btn.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(56,189,248,.06) }
 
 /* ── BACKUP MODULE ── */
 .bk-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px }
-.bk-tab { padding:8px 16px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .2s }
+.bk-tab { padding:8px 16px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-head),sans-serif; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .2s }
 .bk-tab:hover { color:var(--text) }
 .bk-tab.active { color:var(--accent); border-bottom-color:var(--accent) }
 .bk-panel { display:none }
 .bk-panel.active { display:block }
 .bk-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px }
-.bk-card-title { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin-bottom:10px; display:flex; align-items:center; gap:7px }
+.bk-card-title { font-family:var(--font-head),sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin-bottom:10px; display:flex; align-items:center; gap:7px }
 .bk-stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:14px }
 .bk-stat { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:10px 12px; text-align:center }
-.bk-stat-val { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; color:var(--accent) }
+.bk-stat-val { font-family:var(--font-head),sans-serif; font-size:22px; font-weight:700; color:var(--accent) }
 .bk-stat-lbl { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.05em; margin-top:2px }
 .bk-mod-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--bg3); border-radius:7px; margin-bottom:6px }
 .bk-mod-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
@@ -694,7 +696,7 @@ tr:hover .act-btns { opacity:1 }
 /* Import result */
 .bk-import-result { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:14px }
 .bk-import-hdr { padding:12px 16px; background:var(--bg3); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between }
-.bk-import-title { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.05em }
+.bk-import-title { font-family:var(--font-head),sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.05em }
 .bk-import-actions { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--border); justify-content:flex-end }
 .bk-progress { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:8px }
 .bk-progress-bar { height:100%; background:var(--accent); border-radius:2px; transition:width .4s ease }
@@ -703,14 +705,14 @@ tr:hover .act-btns { opacity:1 }
 .bk-overlay.open { display:flex }
 .bk-modal { background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(96vw,820px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden }
 .bk-modal-hdr { padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3) }
-.bk-modal-title { font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.06em }
+.bk-modal-title { font-family:var(--font-head),sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.06em }
 .bk-modal-body { flex:1;overflow-y:auto;padding:18px 20px }
 .bk-modal-footer { padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--bg3) }
 /* ── PIN Modal ──────────────────────────────────── */
 .pin-overlay { position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:9999 }
 .pin-box { background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:min(96vw,380px);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4) }
 .pin-icon { font-size:36px;margin-bottom:10px }
-.pin-title { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:.04em;margin-bottom:4px;color:var(--text) }
+.pin-title { font-family:var(--font-head),sans-serif;font-size:20px;font-weight:700;letter-spacing:.04em;margin-bottom:4px;color:var(--text) }
 .pin-sub { font-size:12px;color:var(--text2);margin-bottom:20px }
 .pin-dots { display:flex;justify-content:center;gap:10px;margin-bottom:20px }
 .pin-dot { width:12px;height:12px;border-radius:50%;background:var(--border);transition:background .2s }
@@ -766,27 +768,27 @@ tr:hover .act-btns { opacity:1 }
 </div>
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="login-screen" style="position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'Barlow',sans-serif;padding:16px">
+<div id="login-screen" style="position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:var(--font-body),sans-serif;padding:16px">
   <div style="background:#161b22;border:1px solid #21262d;border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
     <div style="text-align:center;margin-bottom:30px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8b949e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">GEO Automotriz</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;line-height:1">Seguimiento</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;opacity:.65">de Gesti&#243;n</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:11px;color:#8b949e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">GEO Automotriz</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:28px;font-weight:700;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;line-height:1">Seguimiento</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:600;color:#38bdf8;letter-spacing:.06em;text-transform:uppercase;opacity:.65">de Gesti&#243;n</div>
     </div>
     <div id="login-err" style="display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#ef4444;margin-bottom:14px;line-height:1.5"></div>
     <form id="lg-form" method="post" action="javascript:void(0)" onsubmit="event.preventDefault(); try { doLogin(); } catch(e) { console.error('Login error:', e); document.getElementById('login-err').textContent='Error al cargar la aplicación. Recarga la página (F5) e inténtalo de nuevo.'; document.getElementById('login-err').style.display='block'; } return false;" autocomplete="on">
     <div style="margin-bottom:13px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Email</div>
-      <input id="lg-email" type="email" name="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
+      <input id="lg-email" type="email" name="email" placeholder="usuario@geoautomotriz.com.bo" autocomplete="email" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:var(--font-body),sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
     </div>
     <div style="margin-bottom:8px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:5px">Contrase&#241;a</div>
-      <input id="lg-pass" type="password" name="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'">
+      <input id="lg-pass" type="password" name="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" style="width:100%;background:#1c2333;border:1px solid #21262d;color:#e6edf3;padding:11px 13px;border-radius:8px;font-size:13px;font-family:var(--font-body),sans-serif;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#21262d'">
     </div>
     <div style="text-align:right;margin-bottom:20px">
-      <button type="button" onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
+      <button type="button" onclick="resetPwd()" style="font-size:11px;color:#8b949e;background:transparent;border:none;cursor:pointer;font-family:var(--font-body),sans-serif" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='#8b949e'">&#191;Olvidaste tu contrase&#241;a?</button>
     </div>
-    <button id="lg-btn" type="submit" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
+    <button id="lg-btn" type="submit" style="width:100%;padding:12px;background:#38bdf8;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:var(--font-head),sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#7dd3fc'" onmouseout="this.style.background='#38bdf8'">Ingresar al Sistema</button>
     </form>
     <div style="text-align:center;margin-top:20px;font-size:10px;color:#6e7681">GEO Automotriz &middot; Sistema de Seguimiento de Gesti&#243;n</div>
   </div>
@@ -889,8 +891,8 @@ tr:hover .act-btns { opacity:1 }
     <!-- NOTIFICATION PANEL -->
     <div id="notif-panel" style="display:none;position:fixed;top:54px;right:16px;width:340px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;z-index:250;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3)">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)">Notificaciones</span>
-        <button onclick="markAllRead()" style="font-size:10px;color:var(--accent);background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif">Marcar todas leídas</button>
+        <span style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)">Notificaciones</span>
+        <button onclick="markAllRead()" style="font-size:10px;color:var(--accent);background:transparent;border:none;cursor:pointer;font-family:var(--font-body),sans-serif">Marcar todas leídas</button>
       </div>
       <div id="notif-list" style="max-height:420px;overflow-y:auto"></div>
       <div style="padding:8px 14px;border-top:1px solid var(--border);text-align:center">
@@ -967,7 +969,7 @@ tr:hover .act-btns { opacity:1 }
       <div id="dash-alert-banner"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div class="kpi-grid" id="kpi-grid" style="flex:1;margin-bottom:0"></div>
-        <button onclick="openDashCustomize()" title="Personalizar dashboard" style="margin-left:10px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);box-shadow:0 2px 0 var(--border);color:var(--text2);border-radius:7px;cursor:pointer;font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;transition:all .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+        <button onclick="openDashCustomize()" title="Personalizar dashboard" style="margin-left:10px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);box-shadow:0 2px 0 var(--border);color:var(--text2);border-radius:7px;cursor:pointer;font-size:11px;font-family:var(--font-body),sans-serif;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;transition:all .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15"/></svg>
           Personalizar
         </button>
@@ -1031,25 +1033,25 @@ tr:hover .act-btns { opacity:1 }
         <div style="flex:1"></div>
         <!-- Cumplimiento "hasta hoy" toggle — ON by default -->
         <button id="p-todate-btn" onclick="toggleProjCumToDate()" title="Calcular Cumplimiento solo con lo planificado hasta hoy (excluye actividades futuras aún no vencidas)"
-          style="display:flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;border-radius:99px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.12);color:var(--accent);cursor:pointer;transition:all .2s;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.03em">
+          style="display:flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;border-radius:99px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.12);color:var(--accent);cursor:pointer;transition:all .2s;font-size:10px;font-weight:700;font-family:var(--font-head),sans-serif;letter-spacing:.03em">
           <span id="p-todate-dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
           📅 Hasta hoy
         </button>
         <!-- Sort buttons -->
         <div style="display:flex;gap:4px">
-          <button id="psort-avg" onclick="setProjSort('avg')" title="Ordenar por avance" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Avance</button>
-          <button id="psort-cum" onclick="setProjSort('cum')" title="Ordenar por cumplimiento" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">↕ Cumpl.</button>
+          <button id="psort-avg" onclick="setProjSort('avg')" title="Ordenar por avance" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .15s">↕ Avance</button>
+          <button id="psort-cum" onclick="setProjSort('cum')" title="Ordenar por cumplimiento" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .15s">↕ Cumpl.</button>
         </div>
         <!-- Group-by toggle (Planta / Año) — Planta is the default -->
         <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px" title="Agrupar tarjetas por">
-          <button id="pgroup-planta" onclick="setProjGroup('planta')" style="padding:4px 9px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">🏭 Planta</button>
-          <button id="pgroup-anio"   onclick="setProjGroup('anio')"   style="padding:4px 9px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .15s">📅 Año</button>
+          <button id="pgroup-planta" onclick="setProjGroup('planta')" style="padding:4px 9px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:10px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .15s">🏭 Planta</button>
+          <button id="pgroup-anio"   onclick="setProjGroup('anio')"   style="padding:4px 9px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .15s">📅 Año</button>
         </div>
         <!-- View toggle -->
         <div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
           <button id="pv-card"   onclick="setProjView('card')"   title="Vista tarjetas" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-size:13px;cursor:pointer;transition:all .15s">⊞</button>
           <button id="pv-list"   onclick="setProjView('list')"   title="Vista lista"    style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s">☰</button>
-          <button id="pv-kanban" onclick="setProjView('kanban')" title="Vista Kanban"   style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.03em">KB</button>
+          <button id="pv-kanban" onclick="setProjView('kanban')" title="Vista Kanban"   style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;font-family:var(--font-head),sans-serif;letter-spacing:.03em">KB</button>
         </div>
         <button class="btn btn-accent btn-sm" onclick="openNewProj()">+ Nuevo Proyecto</button>
       </div>
@@ -1835,7 +1837,7 @@ tr:hover .act-btns { opacity:1 }
 <div class="kp-overlay" id="kp-ov" onclick="if(event.target===this)closeKP()">
   <div class="kp-box">
     <div class="kp-head">
-      <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)" id="kp-title">Resumen</span>
+      <span style="font-family:var(--font-head),sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)" id="kp-title">Resumen</span>
       <button class="dr-close" onclick="closeKP()">&#10005;</button>
     </div>
     <div class="kp-body" id="kp-body"></div>
@@ -2360,7 +2362,23 @@ let MI_DIA_REUNIONES = null;      // null = aún no cargado
 let MI_DIA_CRECIMIENTO = null;    // null = aún no cargado
 let _miDiaReunionesLoading = false;
 let _miDiaCrecimientoLoading = false;
+let _miDiaEditingCrec = false;
+let _miDiaShowNotasAnt = false;
+let _miDiaOverdueCache = [];
+let _miDiaUrgentCache = [];
+let _miDiaImportantCache = [];
 const MI_DIA_MOMENTOS = { manana:{ label:'Mañana', icon:'🌅' }, tarde:{ label:'Tarde', icon:'☀️' }, noche:{ label:'Noche', icon:'🌙' } };
+const MI_DIA_DOW = ['L','M','M','J','V','S','D'];
+
+// ── Modal genérico de listado (para "Ver listado" en vez de saturar la vista) ──
+function miDiaOpenListModal(title, rows, color) {
+  color = color || 'var(--accent)';
+  const html = (rows||[]).map(r => `<div onclick="document.getElementById('_alert-modal').style.display='none';openActDr('${r._id}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer">
+    <span style="font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.ACTIVIDAD||'—')}</span>
+    <span style="font-size:10.5px;color:var(--text2);flex-shrink:0;margin-left:10px">${esc(r['CÓDIGO']||'')}</span>
+  </div>`).join('');
+  showAlertModal({ title, icon:'📋', color, message: `<div style="max-height:320px;overflow-y:auto">${html || '<div style="padding:8px 0">Sin actividades.</div>'}</div>` });
+}
 
 function renderMisTareas() {
   const el = document.getElementById('mis-tareas-content'); if (!el) return;
@@ -2391,26 +2409,37 @@ function renderMisTareas() {
     (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
   );
 
-  const overdue = myActs.filter(r => esVencida(r));
-  const importantes = myActs.filter(r => {
-    if (r.ESTADO === 'REALIZADA' || esVencida(r)) return false;
+  const today = tds();
+  const overdue = myActs.filter(r => esVencida(r));                 // solo vencidas (banner superior)
+  const urgentes = myActs.filter(r => {                              // vencidas + vencen hoy
+    if (r.ESTADO === 'REALIZADA') return false;
+    const f = fechaEfectiva(r); if (!f) return false;
+    return (new Date(f + 'T00:00:00') - TODAY) / 86400000 <= 0;
+  });
+  const importantes = myActs.filter(r => {                           // vencen en 1-3 días
+    if (r.ESTADO === 'REALIZADA') return false;
     const f = fechaEfectiva(r); if (!f) return false;
     const diff = (new Date(f + 'T00:00:00') - TODAY) / 86400000;
-    return diff >= 0 && diff <= 3;
+    return diff > 0 && diff <= 3;
   });
+  _miDiaOverdueCache = overdue; _miDiaUrgentCache = urgentes; _miDiaImportantCache = importantes;
 
   const activas = myActs.filter(r => r.ESTADO !== 'REALIZADA');
-  const sinMomento = activas.filter(r => !r.MOMENTO_DIA);
-
-  const today = tds();
   const hechasHoy = myActs.filter(r => r.ESTADO === 'REALIZADA' && r['FECHA COMPLETADA'] === today);
-  const totalPend = myActs.length ? myActs.length : 0;
-  const avanceDia = myActs.length ? Math.round((hechasHoy.length / myActs.length) * 100) : 0;
+  const enCursoCount = myActs.filter(r => r.ESTADO === 'EN CURSO').length;
+  const reprogCount  = myActs.filter(r => r.ESTADO === 'REPROGRAMADA').length;
+  const realizTotal  = myActs.filter(r => r.ESTADO === 'REALIZADA').length;
+  const cumplGlobal  = myActs.length ? Math.round(realizTotal / myActs.length * 100) : 0;
 
   const reunionesHoy = (MI_DIA_REUNIONES || []).filter(x => x.fecha === today);
   const reunionesProx = (MI_DIA_REUNIONES || []).filter(x => x.fecha > today).slice(0, 5);
+  const notaHoy = (MI_DIA_CRECIMIENTO || []).find(n => n.fecha === today);
+  const notasAnteriores = (MI_DIA_CRECIMIENTO || []).filter(n => n.fecha !== today);
 
-  // Grupos por estado (tablero completo — se conserva del diseño original de Mis Tareas)
+  const modulosUsados = [...new Set(myActs.map(r => MOD_LBL[r.MODULE] || r.MODULE))];
+
+  // Grupos por estado (tablero completo, debajo del planificador — se conserva del
+  // diseño original de Mis Tareas, con check directo)
   const groups = {
     'EN CURSO':     { label:'En Curso',    color:'var(--accent)',  icon:'▶', acts:[] },
     'PLANIFICADA':  { label:'Planificadas', color:'var(--text2)',  icon:'📌', acts:[] },
@@ -2419,7 +2448,39 @@ function renderMisTareas() {
   };
   myActs.forEach(r => { if (groups[r.ESTADO]) groups[r.ESTADO].acts.push(r); });
 
-  // ── Tarjeta de actividad reutilizable (con check directo, mismo patrón que markDone) ──
+  // ── Fila compacta (Urgente/Importante/Mañana-Tarde-Noche): checkbox decorativo +
+  // título + chips módulo/proyecto — TODA la fila abre el detalle, igual que en el
+  // mockup de interacción (el check real se hace desde el drawer). ──
+  const miniRow = (r, color) => {
+    const proyecto = r.PROYECTO ? esc(r.PROYECTO) : '';
+    const modulo = esc(MOD_LBL[r.MODULE] || r.MODULE || '');
+    const f = fechaEfectiva(r);
+    const late = esVencida(r);
+    const dueChip = late
+      ? `<span style="font-size:10px;font-weight:600;background:rgba(255,122,156,.14);color:var(--red);border-radius:999px;padding:2px 8px;flex-shrink:0">Vencida</span>`
+      : (f === today ? `<span style="font-size:10px;font-weight:600;background:rgba(255,122,156,.14);color:var(--red);border-radius:999px;padding:2px 8px;flex-shrink:0">Vence hoy</span>` : '');
+    return `<div onclick="openActDr('${r._id}')" style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--border);background:var(--bg3);border-radius:10px;cursor:pointer">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${color};flex-shrink:0;margin-top:2px"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.ACTIVIDAD||'—')}</div>
+        <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:10px;font-weight:600;background:var(--bg2);color:var(--text2);border-radius:999px;padding:2px 8px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${modulo}${proyecto?' · '+proyecto:''}</span>
+          ${dueChip}
+        </div>
+      </div>
+    </div>`;
+  };
+  const miniList = (rows, color, emptyMsg, cacheVarName, cacheColor, modalTitle) => {
+    const shown = rows.slice(0, 6);
+    const more = rows.length > 6
+      ? `<button class="btn btn-sm" style="width:100%;margin-top:2px;font-size:11px" onclick="miDiaOpenListModal('${modalTitle}', ${cacheVarName}, '${cacheColor}')">Ver las ${rows.length}</button>`
+      : '';
+    return rows.length === 0
+      ? `<div style="font-size:12px;color:var(--text2);padding:8px 0">${emptyMsg}</div>`
+      : `<div style="display:flex;flex-direction:column;gap:8px">${shown.map(r=>miniRow(r,color)).join('')}${more}</div>`;
+  };
+
+  // ── Tarjeta de actividad para el tablero completo (con check directo, como antes) ──
   const actCard = (r, color) => {
     const isLate = esVencida(r);
     const stD = (r.subtasks||[]).filter(s=>s.done).length, stT=(r.subtasks||[]).length;
@@ -2432,160 +2493,176 @@ function renderMisTareas() {
           <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${r.ESTADO==='REALIZADA'?';color:var(--text2);text-decoration:line-through':''}">${r.ACTIVIDAD||'—'}</div>
           <span style="font-size:10px;font-weight:700;color:${color};flex-shrink:0">${r.AVANCE}%</span>
         </div>
-        <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(MOD_LBL[r.MODULE]||r.MODULE||'')} · ${fmtD(fechaEfectiva(r))}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(MOD_LBL[r.MODULE]||r.MODULE||'')}${r.PROYECTO?' · '+esc(r.PROYECTO):''} · ${fmtD(fechaEfectiva(r))}</div>
         ${stT>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px">▪ ${stD}/${stT} subtareas</div>`:''}
         <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:6px;overflow:hidden"><div style="height:100%;background:${color};width:${r.AVANCE}%;border-radius:99px"></div></div>
       </div>
     </div>`;
   };
 
+  // ── Encabezado: título + tira de días (L M M J V S D, hoy resaltado) + fecha ──
+  const todayIdx = (new Date().getDay() + 6) % 7; // 0=Lunes … 6=Domingo
+  const dateStr = new Date().toLocaleDateString('es-BO', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const dowChips = MI_DIA_DOW.map((d,i) => `<div style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head),sans-serif;font-size:11px;font-weight:700;${i===todayIdx?'background:var(--accent);color:#fff':'background:var(--bg3);border:1px solid var(--border);color:var(--text2)'}">${d}</div>`).join('');
+
   el.style.cssText = "height:100%;overflow-y:auto;padding:4px 0";
   el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:16px">
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Mi Día</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${myActs.length} actividades ${isAdmin?'(vista admin)':'asignadas a ti'} · ${new Date().toLocaleDateString('es-BO',{weekday:'long',day:'numeric',month:'long'})}</div>
+        <div style="font-family:var(--font-head),sans-serif;font-size:24px;font-weight:800;letter-spacing:.02em">MI DÍA</div>
+        <div style="font-size:12.5px;color:var(--text2);margin-top:4px">${myActs.length} actividades ${isAdmin?'(vista admin)':'asignadas a ti'}</div>
       </div>
-      <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="display:flex;gap:4px">${dowChips}</div>
+        <div style="font-size:12.5px;color:var(--text2);border:1px solid var(--border);background:var(--bg2);border-radius:8px;padding:7px 12px">${dateStr}</div>
+        <button class="btn btn-accent btn-sm" onclick="openModal()">+ Nueva Actividad</button>
+      </div>
     </div>
 
-    ${overdue.length?`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">⚠️</span>
-      <div>
-        <div style="font-weight:700;font-size:13px;color:var(--red)">${overdue.length} actividades vencidas</div>
-        <div style="font-size:11px;color:var(--text2)">${overdue.map(r=>r['CÓDIGO']||'').join(', ')}</div>
+    ${overdue.length?`<div style="background:rgba(255,122,156,.1);border:1px solid rgba(255,122,156,.3);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px">⚠️</span>
+        <span style="font-weight:700;font-size:13px;color:var(--red)">${overdue.length} actividad(es) vencida(s)</span>
       </div>
+      <button class="btn btn-sm" style="font-size:11px" onclick="miDiaOpenListModal('Actividades vencidas', _miDiaOverdueCache, 'var(--red)')">Ver listado</button>
     </div>`:''}
 
-    <!-- Urgente / Importante -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--red)">🔥 Urgente</span>
-          <span style="background:var(--red)20;color:var(--red);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${overdue.length}</span>
+    <!-- Tareas por hacer: Urgente / Importante -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+      <div style="background:var(--accent);color:#fff;font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;padding:11px 18px;text-transform:uppercase">Tareas por hacer</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px">
+        <div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;color:var(--text);letter-spacing:.4px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--text);text-transform:uppercase">Urgente (${urgentes.length})</div>
+          ${miniList(urgentes, 'var(--red)', 'Nada urgente 🎉', '_miDiaUrgentCache', 'var(--red)', 'Urgente')}
         </div>
-        <div style="max-height:260px;overflow-y:auto">
-          ${overdue.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin vencidas 🎉</div>':overdue.map(r=>actCard(r,'var(--red)')).join('')}
-        </div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--orange)">⭐ Importante</span>
-          <span style="background:var(--orange)20;color:var(--orange);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${importantes.length}</span>
-        </div>
-        <div style="max-height:260px;overflow-y:auto">
-          ${importantes.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Nada urgente en 3 días</div>':importantes.map(r=>actCard(r,'var(--orange)')).join('')}
+        <div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;color:var(--text);letter-spacing:.4px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--text);text-transform:uppercase">Importante (${importantes.length})</div>
+          ${miniList(importantes, 'var(--accent2)', 'Nada en los próximos 3 días', '_miDiaImportantCache', 'var(--accent2)', 'Importante')}
         </div>
       </div>
     </div>
 
-    <!-- Mañana / Tarde / Noche -->
-    <div style="margin-bottom:16px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">Organiza tu día</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
-        ${Object.keys(MI_DIA_MOMENTOS).map(mk => {
-          const m = MI_DIA_MOMENTOS[mk];
-          const acts = activas.filter(r => r.MOMENTO_DIA === mk);
-          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-            <div style="display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-              <span>${m.icon}</span>
-              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">${m.label}</span>
-              <span style="margin-left:auto;font-size:11px;color:var(--text2)">${acts.length}</span>
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start">
+
+      <!-- COLUMNA IZQUIERDA -->
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- Mañana / Tarde / Noche -->
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+            <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Mañana, tarde y noche</div>
+            <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              ${Object.keys(MI_DIA_MOMENTOS).map(mk => {
+                const m = MI_DIA_MOMENTOS[mk];
+                const acts = activas.filter(r => r.MOMENTO_DIA === mk).slice(0, 3);
+                return `<div style="display:flex;gap:10px;align-items:baseline">
+                  <div style="width:56px;flex-shrink:0;font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase">${m.icon} ${m.label}</div>
+                  <div style="flex:1;min-width:0">
+                    ${acts.length===0?'<span style="font-size:12px;color:var(--text3)">Sin tareas</span>':
+                    acts.map(r=>`<div onclick="openActDr('${r._id}')" style="font-size:12.5px;color:var(--text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text)'">${esc(r.ACTIVIDAD||'—')}</div>`).join('')}
+                  </div>
+                </div>`;
+              }).join('')}
             </div>
-            <div style="max-height:220px;overflow-y:auto">
-              ${acts.length===0?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin tareas</div>':acts.map(r=>actCard(r,'var(--accent)')).join('')}
+          </div>
+
+          <!-- Avance del día -->
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+            <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:10px 16px;text-transform:uppercase">Avance del día</div>
+            <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:12px;color:var(--text2)">Realizadas hoy</div>
+                <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:700;color:var(--green)">${hechasHoy.length}</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:12px;color:var(--text2)">En curso</div>
+                <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:700;color:var(--accent2)">${enCursoCount}</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:12px;color:var(--text2)">Reprogramadas</div>
+                <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:700;color:var(--orange)">${reprogCount}</div>
+              </div>
+              <div style="height:1px;background:var(--border);margin:2px 0"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:12px;font-weight:600;color:var(--text)">Cumplimiento global</div>
+                <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:800">${cumplGlobal}%</div>
+              </div>
             </div>
-          </div>`;
-        }).join('')}
-      </div>
-      ${sinMomento.length?`<div style="margin-top:10px;background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:10px 14px">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">${sinMomento.length} actividad(es) sin momento del día asignado:</div>
-        ${sinMomento.map(r => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${r.ACTIVIDAD||'—'}</span>
-          <select class="fi" style="width:auto;min-width:110px;padding:4px 8px;font-size:11px" onchange="miDiaSetMomento('${r._id}', this.value)">
-            <option value="">Sin asignar</option>
-            <option value="manana">🌅 Mañana</option>
-            <option value="tarde">☀️ Tarde</option>
-            <option value="noche">🌙 Noche</option>
-          </select>
-        </div>`).join('')}
-      </div>`:''}
-    </div>
-
-    <!-- Avance del Día / Citas / Crecimiento -->
-    <div style="display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;margin-bottom:16px;align-items:start">
-
-      <!-- Avance del día -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px">Avance del Día</div>
-        <div style="display:flex;align-items:center;gap:14px">
-          <div style="position:relative;width:74px;height:74px;flex-shrink:0">
-            <svg width="74" height="74" viewBox="0 0 74 74" style="transform:rotate(-90deg)">
-              <circle cx="37" cy="37" r="31" fill="none" stroke="var(--bg3)" stroke-width="8"/>
-              <circle cx="37" cy="37" r="31" fill="none" stroke="var(--green)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${2*Math.PI*31}" stroke-dashoffset="${2*Math.PI*31*(1-avanceDia/100)}"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">${avanceDia}%</div>
-          </div>
-          <div>
-            <div style="font-size:20px;font-weight:700">${hechasHoy.length}<span style="font-size:12px;color:var(--text2);font-weight:400"> / ${totalPend} hoy</span></div>
-            <div style="font-size:11px;color:var(--text2);margin-top:2px">actividades realizadas</div>
           </div>
         </div>
-      </div>
 
-      <!-- Citas o Reuniones -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">📅 Citas o Reuniones</span>
-          <button class="btn btn-sm" style="font-size:11px;padding:3px 10px" onclick="miDiaOpenReunionForm()">+ Nueva</button>
-        </div>
-        <div id="mi-dia-reunion-form"></div>
-        <div style="max-height:260px;overflow-y:auto">
-          ${MI_DIA_REUNIONES===null?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Cargando…</div>':
-          (reunionesHoy.length===0 && reunionesProx.length===0)?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin reuniones agendadas</div>':`
-          ${reunionesHoy.length?`<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">Hoy</div>`:''}
-          ${reunionesHoy.map(m=>miDiaReunionRow(m)).join('')}
-          ${reunionesProx.length?`<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Próximas</div>`:''}
-          ${reunionesProx.map(m=>miDiaReunionRow(m)).join('')}`}
-        </div>
-      </div>
+        ${modulosUsados.length?`<div style="background:var(--bg3);border:1px dashed var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-size:10.5px;font-weight:700;color:var(--text2);letter-spacing:.3px">DATOS TOMADOS DE:</div>
+          ${modulosUsados.map(m=>`<span style="font-size:11px;font-weight:600;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:999px;padding:4px 10px">${esc(m)}</span>`).join('')}
+        </div>`:''}
 
-      <!-- Crecimiento Profesional -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em">🌱 Crecimiento</span>
-        </div>
-        <div style="padding:10px 14px">
-          <textarea class="fi fi-ta" id="mi-dia-crec-txt" rows="2" placeholder="Una idea, aprendizaje o meta de hoy…" style="margin-bottom:8px"></textarea>
-          <button class="btn btn-accent btn-sm" style="width:100%" onclick="miDiaSaveCrecimiento()">Guardar nota</button>
-        </div>
-        <div style="max-height:180px;overflow-y:auto;border-top:1px solid var(--border)">
-          ${MI_DIA_CRECIMIENTO===null?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Cargando…</div>':
-          MI_DIA_CRECIMIENTO.length===0?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Aún no hay notas</div>':
-          MI_DIA_CRECIMIENTO.map(n => `<div style="padding:8px 14px;border-bottom:1px solid var(--border)">
-            <div style="font-size:11px;color:var(--text)">${esc(n.texto||'')}</div>
-            <div style="font-size:9.5px;color:var(--text3);margin-top:2px">${fmtD(n.fecha)}</div>
-          </div>`).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- Tablero completo por estado -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
-      ${Object.values(groups).map(g => `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
-            <div style="display:flex;align-items:center;gap:7px">
-              <span>${g.icon}</span>
-              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:${g.color}">${g.label}</span>
-            </div>
-            <span style="background:${g.color}20;color:${g.color};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${g.acts.length}</span>
+        <!-- Tablero completo por estado -->
+        <div>
+          <div style="font-family:var(--font-head),sans-serif;font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">Todas tus actividades</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+            ${Object.values(groups).map(g => `
+              <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3)">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span>${g.icon}</span>
+                    <span style="font-family:var(--font-head),sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:${g.color}">${g.label}</span>
+                  </div>
+                  <span style="background:${g.color}20;color:${g.color};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${g.acts.length}</span>
+                </div>
+                <div style="max-height:320px;overflow-y:auto">
+                  ${g.acts.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin actividades</div>':
+                  g.acts.map(r => actCard(r, g.color)).join('')}
+                </div>
+              </div>`).join('')}
           </div>
-          <div style="max-height:360px;overflow-y:auto">
-            ${g.acts.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text2)">Sin actividades</div>':
-            g.acts.map(r => actCard(r, g.color)).join('')}
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA -->
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+
+        <!-- Citas o Reuniones -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+          <div style="background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:11px 16px">
+            <span style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Citas o reuniones</span>
+            <button onclick="miDiaOpenReunionForm()" title="Nueva reunión" style="background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:6px;width:22px;height:22px;font-size:14px;font-weight:700;cursor:pointer;line-height:1">+</button>
           </div>
-        </div>`).join('')}
+          <div id="mi-dia-reunion-form"></div>
+          <div style="max-height:280px;overflow-y:auto">
+            ${MI_DIA_REUNIONES===null?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Cargando…</div>':
+            (reunionesHoy.length===0 && reunionesProx.length===0)?'<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin reuniones agendadas</div>':`
+            ${reunionesHoy.length?`<div style="padding:8px 16px 2px;font-size:10px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em">Hoy</div>`:''}
+            ${reunionesHoy.map(m=>miDiaReunionRow(m)).join('')}
+            ${reunionesProx.length?`<div style="padding:8px 16px 2px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Próximas</div>`:''}
+            ${reunionesProx.map(m=>miDiaReunionRow(m)).join('')}`}
+          </div>
+        </div>
+
+        <!-- Crecimiento Profesional -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+          <div style="background:var(--accent2);color:#fff;font-family:var(--font-head),sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.3px;padding:11px 16px;line-height:1.3">¿Qué haré hoy para mi crecimiento profesional?</div>
+          <div style="padding:16px">
+            ${(notaHoy && !_miDiaEditingCrec) ? `
+              <div style="font-size:13px;color:var(--text);line-height:1.5">${esc(notaHoy.texto||'')}</div>
+              <button class="btn btn-sm" style="margin-top:10px;font-size:11px" onclick="_miDiaEditingCrec=true;renderMisTareas()">Editar</button>
+            ` : `
+              <textarea class="fi fi-ta" id="mi-dia-crec-txt" rows="3" placeholder="Una idea, aprendizaje o meta de hoy…">${notaHoy?esc(notaHoy.texto||''):''}</textarea>
+              <button class="btn btn-accent btn-sm" style="width:100%;margin-top:8px" onclick="miDiaSaveCrecimiento()">Guardar</button>
+            `}
+            ${notasAnteriores.length?`
+              <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">
+                <button class="btn btn-sm" style="font-size:10.5px" onclick="_miDiaShowNotasAnt=!_miDiaShowNotasAnt;renderMisTareas()">${_miDiaShowNotasAnt?'Ocultar':'Ver'} notas anteriores (${notasAnteriores.length})</button>
+                ${_miDiaShowNotasAnt?`<div style="margin-top:8px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+                  ${notasAnteriores.map(n=>`<div style="font-size:11.5px;color:var(--text2);border-left:2px solid var(--border);padding-left:8px">
+                    <div style="font-size:9.5px;color:var(--text3);margin-bottom:2px">${fmtD(n.fecha)}</div>${esc(n.texto||'')}
+                  </div>`).join('')}
+                </div>`:''}
+              </div>`:''}
+          </div>
+        </div>
+
+      </div>
     </div>`;
 }
 
@@ -2690,9 +2767,15 @@ async function miDiaLoadCrecimiento() {
 async function miDiaSaveCrecimiento() {
   const txt = (document.getElementById('mi-dia-crec-txt')?.value || '').trim();
   if (!txt) return;
-  const { error } = await _sb.from('notas_crecimiento').insert({ user_id: CURRENT_USER.id, fecha: tds(), texto: txt });
+  const today = tds();
+  // Una nota por día: si ya existe la de hoy, se actualiza en vez de duplicarla.
+  const existing = (MI_DIA_CRECIMIENTO || []).find(n => n.fecha === today);
+  const { error } = existing
+    ? await _sb.from('notas_crecimiento').update({ texto: txt, updated_at: new Date().toISOString() }).eq('id', existing.id)
+    : await _sb.from('notas_crecimiento').insert({ user_id: CURRENT_USER.id, fecha: today, texto: txt });
   if (error) { notify('⚠ Error: ' + error.message, true); return; }
   notify('✅ Nota guardada');
+  _miDiaEditingCrec = false;
   await miDiaLoadCrecimiento();
 }
 function _DISABLED_switchMod_sync(key, el) {
@@ -3294,12 +3377,12 @@ function renderActs() {
     const cfCells = cf.map(f => {
       const val = r._customFields?.[f.name] || '';
       if (f.type === 'select') {
-        return `<td><select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-size:10px;font-family:'Barlow',sans-serif" onchange="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))">
+        return `<td><select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:2px 5px;border-radius:4px;font-size:10px;font-family:var(--font-body),sans-serif" onchange="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))">
           <option value="">—</option>
           ${(f.opts||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
         </select></td>`;
       }
-      return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:'Barlow',sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+      return `<td><input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" value="${val}" style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 4px;font-size:11px;width:${f.type==='date'?'110px':'90px'};font-family:var(--font-body),sans-serif" onblur="updateCustomField('${r._id}','${f.name}',this.value,this.closest('td'))" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
     }).join('');
     const ie = ['admin','collaborator'].includes(CURRENT_USER?.role); // inline editable
     return `<tr id="act-row-${r._id}">
@@ -3421,7 +3504,7 @@ function renderGantt() {
           </div>`;
         }).join('');
       html += `<div class="gantt-row-w" style="grid-template-columns:${LW}px 1fr">
-        <div class="gantt-cell" style="cursor:${hasST?'pointer':'default'}" ${hasST?`onclick="ganttToggleST('${r._id}',this)" title="Ver subtareas: ${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`:`title="${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`}><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span>${hasST?`<span style="font-size:9px;color:var(--text2);margin-left:3px">▶</span>`:''}<span style="font-size:11px;color:var(--text2);margin-left:4px">${r.ACTIVIDAD||''}</span></div>
+        <div class="gantt-cell" style="cursor:${hasST?'pointer':'default'}" ${hasST?`onclick="ganttToggleST('${r._id}',this)" title="Ver subtareas: ${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`:`title="${(r.ACTIVIDAD||'').replace(/"/g,'&quot;')}"`}><span style="font-family:var(--font-head),sans-serif;font-weight:700;font-size:12px;color:var(--accent)">${r['CÓDIGO']}</span>${hasST?`<span style="font-size:9px;color:var(--text2);margin-left:3px">▶</span>`:''}<span style="font-size:11px;color:var(--text2);margin-left:4px">${r.ACTIVIDAD||''}</span></div>
         <div class="gantt-bar-area">
           <div class="gantt-today" style="left:${tPct}%"></div>
           <div class="gantt-bar" style="left:${l}%;width:${w}%;background:${bc}20;border-color:${bc};color:${bc}" onclick="ganttBarClick(event,'${r._id}')">
@@ -3544,7 +3627,7 @@ function _old_renderProjs_UNUSED() {
             <div style="font-size:10px;color:var(--text2);margin-top:2px">${plant||'—'}</div>
           </div>
         </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:${cc};flex-shrink:0;margin-left:6px">${cum}%</div>
+        <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:700;color:${cc};flex-shrink:0;margin-left:6px">${cum}%</div>
       </div>
       <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px"><span>Avance</span><span style="color:${col};font-weight:600">${avg}%</span></div>
@@ -3559,7 +3642,7 @@ function _old_renderProjs_UNUSED() {
       </div>
       ${delayed>0?`<div class="proj-delay">⚠ ${delayed} actividad(es) vencida(s)</div>`:''}
       <div style="display:flex;gap:5px;margin-top:8px" onclick="event.stopPropagation()">
-        ${isAdmin?`<button onclick="duplicateProject('${esc(p)}')" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.18)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉ Duplicar Proyecto</button>`:''}
+        ${isAdmin?`<button onclick="duplicateProject('${esc(p)}')" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.08);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font-body),sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(56,189,248,.18)'" onmouseout="this.style.background='rgba(56,189,248,.08)'">⧉ Duplicar Proyecto</button>`:''}
       </div>
     </div>`;
   }).join('') || '<div style="text-align:center;color:var(--text2);padding:40px;font-size:13px">Sin proyectos para los filtros seleccionados.</div>';
@@ -3577,7 +3660,7 @@ function gaugeArc(pct, col) {
   return `<svg width="120" height="70" viewBox="0 0 120 70">
     <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#1c2333" stroke-width="10"/>
     ${pct>0?`<path d="M ${x1} ${y1} A ${r} ${r} 0 ${laf} 1 ${x2} ${y2}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round"/>`:''}
-    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Barlow Condensed" font-size="18" font-weight="700" fill="${col}">${pct}%</text>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="'Sora',sans-serif" font-size="18" font-weight="700" fill="${col}">${pct}%</text>
   </svg>`;
 }
 
@@ -3722,19 +3805,19 @@ function renderRep() {
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
-            <div style="font-size:22px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif">${n}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--font-head),sans-serif">${n}</div>
             <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total Actividades</div>
           </div>
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
-            <div style="font-size:22px;font-weight:700;color:var(--purple);font-family:'Barlow Condensed',sans-serif">${totalSubtasks}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--purple);font-family:var(--font-head),sans-serif">${totalSubtasks}</div>
             <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Total Subtareas</div>
           </div>
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
-            <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'Barlow Condensed',sans-serif">${real}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--green);font-family:var(--font-head),sans-serif">${real}</div>
             <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Realizadas</div>
           </div>
           <div style="background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
-            <div style="font-size:22px;font-weight:700;color:var(--orange);font-family:'Barlow Condensed',sans-serif">${tRep}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--orange);font-family:var(--font-head),sans-serif">${tRep}</div>
             <div style="font-size:10px;color:var(--text2);text-transform:uppercase">T. Reprog.</div>
           </div>
         </div>
@@ -3751,7 +3834,7 @@ function renderRep() {
           <span style="color:var(--accent);font-size:13px">&#127981;</span>
         </div>
         <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em">${pl}</div>
+          <div style="font-family:var(--font-head),sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em">${pl}</div>
           <div style="font-size:10px;color:var(--text2)">${ap.length} actividades &nbsp;&#183;&nbsp; ${projs.length} proyectos</div>
         </div>
       </div>
@@ -4213,7 +4296,7 @@ function renderRepPlan() {
   const cumColor = cumPlan >= 80 ? 'var(--green)' : cumPlan >= 50 ? 'var(--orange)' : 'var(--red)';
 
   let html = `<div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">
+    <div style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em">
       ${mesNm} — ${d.length} actividades · ${stMatched.length} subtareas
     </div>
     <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border-radius:10px;padding:8px 14px;border:1px solid var(--border)">
@@ -4459,7 +4542,7 @@ function exportPlanPDF() {
     { l:'Planificadas', v: kpiPlan, c: '#64748b' },
     { l:'Proyectos', v: projs.length, c: '#7c3aed' },
   ].map(k => `<div style="text-align:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 8px;border-top:3px solid ${k.c}">
-    <div style="font-size:20px;font-weight:800;color:${k.c};font-family:'Barlow Condensed',sans-serif,Arial">${k.v}</div>
+    <div style="font-size:20px;font-weight:800;color:${k.c};font-family:Arial,sans-serif">${k.v}</div>
     <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;font-weight:600">${k.l}</div>
   </div>`).join('');
 
@@ -7626,7 +7709,7 @@ function _DISABLED_openProjDr_v1(proj) {
         </tbody>
       </table>
     </div>
-    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
+    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
   openDr();
 }
 
@@ -9688,7 +9771,7 @@ function _DISABLED_openProjDr_v2(proj) {
         </tbody>
       </table>
     </div>
-    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
+    ${canDelete ? `<button onclick="deleteProject('${esc(proj)}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar Proyecto y Actividades</button>` : ''}`;
   openDr();
 }
 
@@ -10110,7 +10193,7 @@ function promptProjectFinalizado(proj) {
   const defDate = getProjFechaFin(proj) || TODAY_S;
   modal.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;width:320px;max-width:100%" onclick="event.stopPropagation()">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Finalizar Proyecto</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Finalizar Proyecto</div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:12px">${esc(proj)}</div>
       <label style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Fecha de finalización</label>
       <input type="date" id="proj-fin-date" class="fi" value="${defDate}" style="width:100%;margin:6px 0 14px">
@@ -10339,13 +10422,13 @@ function renderProjs() {
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:16px">${PROJ_GROUP_BY === 'anio' ? '📅' : '🏭'}</span>
           <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em">${PROJ_GROUP_BY === 'anio' && plant !== 'Sin Año' ? 'Gestión ' + plant : plant}</div>
+            <div style="font-family:var(--font-head),sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em">${PROJ_GROUP_BY === 'anio' && plant !== 'Sin Año' ? 'Gestión ' + plant : plant}</div>
             <div style="font-size:10px;color:var(--text2)">${plantProjs.length} proyectos · ${plantActs.length} actividades</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;text-align:center">
-          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--accent)">${plantAvg}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Avance</div></div>
-          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:${cc}">${plantCum}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Cumplimiento</div></div>
+          <div><div style="font-family:var(--font-head),sans-serif;font-size:20px;font-weight:700;color:var(--accent)">${plantAvg}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Avance</div></div>
+          <div><div style="font-family:var(--font-head),sans-serif;font-size:20px;font-weight:700;color:${cc}">${plantCum}%</div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Cumplimiento</div></div>
         </div>
       </div>`;
 
@@ -10424,7 +10507,7 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
         </div>
         </div>
       </div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:6px">${avg}%</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:6px">${avg}%</div>
     </div>
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px"><span>Cumplimiento</span><span style="color:${cc};font-weight:600">${cum}%</span></div>
@@ -10443,15 +10526,15 @@ function buildProjCard(p, isAdmin, canDelete) { canDelete = canDelete ?? (CURREN
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
         ${isAdmin ? `
           <button onclick="setProjectEstado('${esc(p)}','activo')" title="Marcar como Activo"
-            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='activo'?'rgba(34,197,94,.4)':'var(--border)'};background:${proyEstado==='activo'?'rgba(34,197,94,.15)':'transparent'};color:${proyEstado==='activo'?'var(--green)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Activo</button>
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='activo'?'rgba(34,197,94,.4)':'var(--border)'};background:${proyEstado==='activo'?'rgba(34,197,94,.15)':'transparent'};color:${proyEstado==='activo'?'var(--green)':'var(--text3)'};font-size:9px;font-weight:700;font-family:var(--font-head),sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Activo</button>
           <button onclick="setProjectEstado('${esc(p)}','pausado')" title="Marcar como Pausado"
-            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='pausado'?'rgba(139,148,158,.5)':'var(--border)'};background:${proyEstado==='pausado'?'rgba(139,148,158,.15)':'transparent'};color:${proyEstado==='pausado'?'var(--text2)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Pausado</button>
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='pausado'?'rgba(139,148,158,.5)':'var(--border)'};background:${proyEstado==='pausado'?'rgba(139,148,158,.15)':'transparent'};color:${proyEstado==='pausado'?'var(--text2)':'var(--text3)'};font-size:9px;font-weight:700;font-family:var(--font-head),sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Pausado</button>
           <button onclick="promptProjectFinalizado('${esc(p)}')" title="Marcar como Finalizado (requiere fecha)"
-            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='finalizado'?'rgba(56,189,248,.45)':'var(--border)'};background:${proyEstado==='finalizado'?'rgba(56,189,248,.15)':'transparent'};color:${proyEstado==='finalizado'?'var(--accent)':'var(--text3)'};font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Finalizado</button>
+            style="padding:3px 8px;border-radius:99px;border:1px solid ${proyEstado==='finalizado'?'rgba(56,189,248,.45)':'var(--border)'};background:${proyEstado==='finalizado'?'rgba(56,189,248,.15)':'transparent'};color:${proyEstado==='finalizado'?'var(--accent)':'var(--text3)'};font-size:9px;font-weight:700;font-family:var(--font-head),sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:all .15s">Finalizado</button>
         ` : `
           <span style="display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:99px;border:1px solid ${eUi.bd};background:${eUi.bg}">
             <span style="width:8px;height:8px;border-radius:50%;background:${eUi.color};flex-shrink:0"></span>
-            <span style="font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;color:${eUi.color};text-transform:uppercase">${eUi.label}</span>
+            <span style="font-size:9px;font-weight:700;font-family:var(--font-head),sans-serif;letter-spacing:.04em;color:${eUi.color};text-transform:uppercase">${eUi.label}</span>
           </span>
         `}
       </div>
@@ -10481,7 +10564,7 @@ function buildProjListRow(p, isAdmin, canDelete) { canDelete = canDelete ?? (CUR
         <button onclick="toggleProjectActive('${esc(p)}',event)" title="${isProjectActive(p)?'Pausar':'Activar'}"
           style="display:flex;align-items:center;gap:4px;padding:2px 7px 2px 4px;border-radius:99px;border:1px solid ${isProjectActive(p)?'rgba(34,197,94,.35)':'rgba(139,148,158,.3)'};background:${isProjectActive(p)?'rgba(34,197,94,.1)':'rgba(139,148,158,.08)'};cursor:pointer;transition:all .2s;outline:none;white-space:nowrap">
           <span style="width:6px;height:6px;border-radius:50%;background:${isProjectActive(p)?'var(--green)':'var(--text3)'};flex-shrink:0"></span>
-          <span style="font-size:8px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:${isProjectActive(p)?'var(--green)':'var(--text3)'};">${isProjectActive(p)?'ON':'OFF'}</span>
+          <span style="font-size:8px;font-weight:700;font-family:var(--font-head),sans-serif;color:${isProjectActive(p)?'var(--green)':'var(--text3)'};">${isProjectActive(p)?'ON':'OFF'}</span>
         </button>
       </div>
       <!-- Arrow: only expands list -->
@@ -10552,7 +10635,7 @@ function openQuickMonthReport() {
   }
   m2.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px 28px;min-width:340px;max-width:420px;width:90%">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em">⚡ Reporte Rápido</div>
+      <div style="font-family:var(--font-head),sans-serif;font-size:16px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em">⚡ Reporte Rápido</div>
       <button onclick="document.getElementById('_qmr-modal').style.display='none'" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer">✕</button>
     </div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Selecciona el rango y genera un PDF con el estado de cumplimiento segmentado por proyecto.</div>
@@ -10816,7 +10899,7 @@ function openProjSummaryReport() {
     document.body.appendChild(sel);
   }
   sel.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px 28px;min-width:340px;max-width:480px;width:90%">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px">📋 Resumen Ejecutivo de Proyecto</div>
+    <div style="font-family:var(--font-head),sans-serif;font-size:16px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px">📋 Resumen Ejecutivo de Proyecto</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Seleccione el proyecto:</div>
     <select id="_psr-sel" class="fi" style="width:100%;margin-bottom:16px;font-size:12px">
       <option value="">-- Seleccionar proyecto --</option>
@@ -11794,7 +11877,7 @@ function openProjDr(proj) {
 
   document.getElementById('dr-body').innerHTML = `
     <!-- Back button -->
-    <button onclick="closeDr()" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+    <button onclick="closeDr()" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:var(--font-body),sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
       ← Volver a Proyectos
     </button>
     <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
@@ -11892,10 +11975,10 @@ function openProjDr(proj) {
       </table>
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
-      ${canEdit?`<button onclick="openModalFromProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:var(--accent);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.2)'" onmouseout="this.style.background='rgba(56,189,248,.1)'">+ Nueva Actividad</button>`:''}
-      <button onclick="openProjMetrics('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.3);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 2px 0 rgba(168,85,247,.2)">📊 Métricas</button>
-      ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
-      ${canDelete?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
+      ${canEdit?`<button onclick="openModalFromProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.2)'" onmouseout="this.style.background='rgba(56,189,248,.1)'">+ Nueva Actividad</button>`:''}
+      <button onclick="openProjMetrics('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.3);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 2px 0 rgba(168,85,247,.2)">📊 Métricas</button>
+      ${isAdmin?`<button onclick="duplicateProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.08);color:var(--purple);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .2s">⧉ Duplicar</button>`:''}
+      ${canDelete?`<button onclick="deleteProject('${esc(proj)}')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:var(--red);font-size:12px;font-weight:700;font-family:var(--font-head),sans-serif;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">🗑️ Eliminar</button>`:''}
     </div>`;
   openDr();
   if (isAdmin) {
@@ -11952,7 +12035,7 @@ function openActDr(id) {
   const canEdit = CURRENT_USER?.role !== 'viewer';
 
   document.getElementById('dr-body').innerHTML = `
-    <button onclick="const proj=window._currentProjContext||'${esc(fromProj)}';window._currentProjContext=null;openProjDr(proj);" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:'Barlow',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+    <button onclick="const proj=window._currentProjContext||'${esc(fromProj)}';window._currentProjContext=null;openProjDr(proj);" style="display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;margin-bottom:14px;font-family:var(--font-body),sans-serif;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
       ← Volver al Proyecto
     </button>
     <div class="d-code" style="display:flex;align-items:center;gap:6px">
@@ -12880,7 +12963,7 @@ function renderInicio() {
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${user.color},#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${user.initials}</div>
       <div>
-        <div style="font-size:20px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em">${greet}, ${firstName} 👋</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);font-family:var(--font-head),sans-serif;letter-spacing:.02em">${greet}, ${firstName} 👋</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${dateStr} &nbsp;·&nbsp; <span style="color:var(--accent)">${{'admin':'Administrador','collaborator':'Colaborador','viewer':'Visualizador'}[user.role]||user.role}</span></div>
       </div>
     </div>
@@ -12900,7 +12983,7 @@ function renderInicio() {
           stroke-dasharray="${Math.round(2*3.14159*22)}"
           stroke-dashoffset="${Math.round(2*3.14159*22*(1-pct/100))}"
           stroke-linecap="round" transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .6s ease"/>
-        <text x="27" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="Barlow Condensed">${pct}%</text>
+        <text x="27" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="'Sora',sans-serif">${pct}%</text>
       </svg>
     </div>
     <div style="flex:1">
@@ -12912,13 +12995,13 @@ function renderInicio() {
           {v:overdue.length, l:'Vencidas',   c:'var(--red)'},
           {v:done.length,    l:'Finalizadas', c:'var(--green)'},
         ].map(k=>`<div style="text-align:center">
-          <div style="font-size:18px;font-weight:700;color:${k.c};font-family:'Barlow Condensed',sans-serif">${k.v}</div>
+          <div style="font-size:18px;font-weight:700;color:${k.c};font-family:var(--font-head),sans-serif">${k.v}</div>
           <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">${k.l}</div>
         </div>`).join('')}
       </div>
     </div>
     ${unread.length>0?`<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px 14px;text-align:center;flex-shrink:0">
-      <div style="font-size:20px;font-weight:700;color:var(--red);font-family:'Barlow Condensed',sans-serif">${unread.length}</div>
+      <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--font-head),sans-serif">${unread.length}</div>
       <div style="font-size:9px;color:var(--text2);text-transform:uppercase">Sin leer</div>
     </div>`:''}
   </div>
@@ -13235,7 +13318,7 @@ function openCustomFieldsModal() {
   modal.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:460px;max-width:calc(100vw - 32px);max-height:80vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Columnas personalizadas</div>
+        <div style="font-family:var(--font-head),sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Columnas personalizadas</div>
         <button onclick="document.getElementById('cf-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">×</button>
       </div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Añade columnas personalizadas a la tabla de actividades. Los campos se guardan para todos los usuarios.</div>
@@ -13517,7 +13600,7 @@ function openDashCustomize() {
   modal.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:480px;max-width:calc(100vw - 32px);max-height:85vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Personalizar Dashboard</div>
+        <div style="font-family:var(--font-head),sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Personalizar Dashboard</div>
         <button onclick="document.getElementById('dash-cfg-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">×</button>
       </div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Selecciona qué tarjetas y gráficos mostrar. Se guarda para todos los usuarios.</div>
@@ -13702,7 +13785,7 @@ function openProjMetrics(proj) {
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Métricas del Proyecto</div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Métricas del Proyecto</div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px">${proj}</div>
         </div>
         <button onclick="document.getElementById('proj-metrics-modal').remove()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:20px">×</button>
@@ -13715,7 +13798,7 @@ function openProjMetrics(proj) {
           {l:'Reprog.',v:tRep,c:'var(--orange)'},
           {l:'Vencidas',v:delayed,c:delayed>0?'var(--red)':'var(--green)'},
         ].map(k=>`<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:20px;font-weight:700;color:${k.c};font-family:'Barlow Condensed',sans-serif">${k.v}</div>
+          <div style="font-size:20px;font-weight:700;color:${k.c};font-family:var(--font-head),sans-serif">${k.v}</div>
           <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-top:2px">${k.l}</div>
         </div>`).join('')}
       </div>
