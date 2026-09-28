@@ -2316,6 +2316,12 @@ function toggleSB() {
   sb.classList.toggle('collapsed'); mn.classList.toggle('expanded');
   tb.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
 }
+function inicioGoModule(key) {
+  const shortIdMap = { automatizacion: 'mod-auto', investigaciones: 'mod-inv', cambios: 'mod-cam' };
+  const btnEl = document.getElementById(shortIdMap[key] || ('mod-' + key));
+  switchMod(key, btnEl || document.querySelector('.mod-btn'));
+  goPage('dashboard', document.querySelector('.nav-item[onclick*="dashboard"]'));
+}
 function goPage(id, el) {
   // Block config access for non-developer roles unless they have explicit Configuración perm
   if (id === 'config' && CURRENT_USER && CURRENT_USER.role !== 'developer') {
@@ -12922,50 +12928,59 @@ function renderInicio() {
   }
   _inicioRetries = 0;
 
+  // Reuniones para el banner "Mi Día" y la tarjeta "Próxima reunión" del aside —
+  // se cargan bajo demanda igual que en Mi Día (mismo dato, sin duplicar).
+  if (MI_DIA_REUNIONES === null && !_miDiaReunionesLoading) miDiaLoadReuniones();
+
   // Search ALL loaded modules for this user's activities (not just ACTIVE)
   const allModActs = Object.values(MS).flatMap(m => m.acts || []);
   const d = allModActs;
   const isAdmin = ['developer','admin'].includes(user.role);
 
-  // Only show THIS user's tasks (not all tasks for admin either — personal view)
+  // Only show THIS user's tasks (personal view, igual que Mi Día)
   const myActs = d.filter(r =>
     (r.RESPONSABLE||'').trim().toUpperCase() === (user.name||'').trim().toUpperCase()
   );
 
   const now = new Date();
-  const overdue  = myActs.filter(r => esVencida(r));
-  const upcoming = myActs.filter(r => {
-    const f = fechaEfectiva(r);
-    if (r.ESTADO==='REALIZADA' || !f) return false;
-    const diff = (new Date(f+'T00:00:00') - TODAY) / 86400000;
-    return diff >= 0 && diff <= 7;
-  });
-  const inProgress = myActs.filter(r => r.ESTADO === 'EN CURSO');
-  const planned    = myActs.filter(r => r.ESTADO === 'PLANIFICADA');
-  const done       = myActs.filter(r => r.ESTADO === 'REALIZADA');
-  const unread     = NOTIFICATIONS.filter(n => !n.read);
-  const mentions   = NOTIFICATIONS.filter(n => n.type === 'mention');
+  const today = tds();
+  const overdue = myActs.filter(r => esVencida(r));
+  const urgentCount = myActs.filter(r => {
+    if (r.ESTADO === 'REALIZADA') return false;
+    const f = fechaEfectiva(r); if (!f) return false;
+    return (new Date(f + 'T00:00:00') - TODAY) / 86400000 <= 0;
+  }).length;
+  const done = myActs.filter(r => r.ESTADO === 'REALIZADA');
+  const avanceGlobal = myActs.length ? Math.round(myActs.reduce((s,r)=>s+(r.AVANCE||0),0) / myActs.length) : 0;
+  const cumplimiento = myActs.length ? Math.round(done.length / myActs.length * 100) : 0;
+  const reunionesHoyCount = (MI_DIA_REUNIONES || []).filter(x => x.fecha === today).length;
+  const proximaReunion = (MI_DIA_REUNIONES || []).find(x => x.fecha >= today) || null;
 
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const dateStr = DIAS[now.getDay()] + ', ' + now.getDate() + ' de ' + MESES_FULL[now.getMonth()] + ' ' + now.getFullYear();
-  const greet = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
   const firstName = user.name.split(' ')[0];
 
-  // Completion % for user
-  const pct = myActs.length ? Math.round(done.length / myActs.length * 100) : 0;
+  // Módulos visibles para este usuario (todos si admin, los suyos si no)
+  const modKeys = isAdmin ? Object.keys(MOD_LBL) : Object.keys(MOD_LBL).filter(k => (user.modules||[]).includes(k));
+  const modStats = modKeys.map(k => {
+    const acts = (MS[k] && MS[k].acts) || [];
+    const av = acts.length ? Math.round(acts.reduce((s,r)=>s+(r.AVANCE||0),0)/acts.length) : 0;
+    return { key:k, name: MOD_LBL[k]||k, avance: av, count: acts.length };
+  });
+
+  // Actividad reciente (notificaciones — mismo dato que la bandeja, sin duplicar)
+  const recent = NOTIFICATIONS.slice(0, 8);
+  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
 
   el.style.cssText = 'height:100%;overflow-y:auto;overflow-x:hidden;padding-bottom:20px;';
 
   el.innerHTML = `
   <!-- ── HEADER ── -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;gap:16px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${user.color},#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${user.initials}</div>
-      <div>
-        <div style="font-size:20px;font-weight:700;color:var(--text);font-family:var(--font-head),sans-serif;letter-spacing:.02em">${greet}, ${firstName} 👋</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${dateStr} &nbsp;·&nbsp; <span style="color:var(--accent)">${{'admin':'Administrador','collaborator':'Colaborador','viewer':'Visualizador'}[user.role]||user.role}</span></div>
-      </div>
+    <div>
+      <div style="font-size:22px;font-weight:800;color:var(--text);font-family:var(--font-head),sans-serif;letter-spacing:.01em">Hola, ${firstName}</div>
+      <div style="font-size:12.5px;color:var(--text2);margin-top:3px">${dateStr}</div>
     </div>
     <button onclick="openModal()" class="btn btn-accent btn-sm" style="display:flex;align-items:center;gap:6px;padding:8px 16px">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -12973,211 +12988,94 @@ function renderInicio() {
     </button>
   </div>
 
-  <!-- ── PROGRESS BANNER ── -->
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:20px">
-    <!-- Circular progress -->
-    <div style="position:relative;width:54px;height:54px;flex-shrink:0">
-      <svg width="54" height="54" viewBox="0 0 54 54">
-        <circle cx="27" cy="27" r="22" fill="none" stroke="var(--bg3)" stroke-width="5"/>
-        <circle cx="27" cy="27" r="22" fill="none" stroke="var(--accent)" stroke-width="5"
-          stroke-dasharray="${Math.round(2*3.14159*22)}"
-          stroke-dashoffset="${Math.round(2*3.14159*22*(1-pct/100))}"
-          stroke-linecap="round" transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .6s ease"/>
-        <text x="27" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="'Sora',sans-serif">${pct}%</text>
-      </svg>
+  <!-- ── BANNER MI DÍA ── -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-left:5px solid var(--accent);border-radius:14px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg>
+    <div style="flex:1;min-width:200px">
+      <div style="font-family:var(--font-head),sans-serif;font-size:14px;font-weight:700;color:var(--text)">Mi Día</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${urgentCount} tarea(s) urgente(s) · ${reunionesHoyCount} reunión(es) hoy · ${cumplimiento}% de cumplimiento</div>
     </div>
-    <div style="flex:1">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Mi progreso esta semana</div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
-        ${[
-          {v:myActs.length,  l:'Total',      c:'var(--text2)'},
-          {v:inProgress.length, l:'En curso', c:'var(--accent)'},
-          {v:overdue.length, l:'Vencidas',   c:'var(--red)'},
-          {v:done.length,    l:'Finalizadas', c:'var(--green)'},
-        ].map(k=>`<div style="text-align:center">
-          <div style="font-size:18px;font-weight:700;color:${k.c};font-family:var(--font-head),sans-serif">${k.v}</div>
-          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">${k.l}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-    ${unread.length>0?`<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px 14px;text-align:center;flex-shrink:0">
-      <div style="font-size:20px;font-weight:700;color:var(--red);font-family:var(--font-head),sans-serif">${unread.length}</div>
-      <div style="font-size:9px;color:var(--text2);text-transform:uppercase">Sin leer</div>
-    </div>`:''}
+    <button class="btn btn-accent btn-sm" style="display:flex;align-items:center;gap:6px" onclick="goPage('mis-tareas',document.querySelector('[onclick*=mis-tareas]'))">
+      Abrir Mi Día
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
   </div>
 
-  <!-- ── 3-COLUMN LAYOUT ── -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 300px;gap:14px;align-items:start">
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
 
-    <!-- COL 1: Mis tareas activas (ASANA style list) -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,11 12,14 22,4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Mis tareas activas
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+
+      <!-- ── KPI ROW ── -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Avance Global</div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-top:4px">${avanceGlobal}%</div>
         </div>
-        <span style="font-size:10px;color:var(--text2);background:var(--bg3);padding:2px 8px;border-radius:10px">${inProgress.length + planned.length}</span>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Cumplimiento</div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:800;color:var(--green);margin-top:4px">${cumplimiento}%</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Vencidas</div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:800;color:var(--red);margin-top:4px">${overdue.length}</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:10.5px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Reuniones Hoy</div>
+          <div style="font-family:var(--font-head),sans-serif;font-size:22px;font-weight:800;color:var(--accent);margin-top:4px">${reunionesHoyCount}</div>
+        </div>
       </div>
-      <!-- Overdue section -->
-      ${overdue.length?`<div style="padding:8px 16px 4px;background:rgba(239,68,68,.04)">
-        <div style="font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⚠ Vencidas · ${overdue.length}</div>
-        ${overdue.slice(0,4).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(239,68,68,.1);cursor:pointer" onclick="openActDr('${r._id}')">
-          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--red);flex-shrink:0;display:flex;align-items:center;justify-content:center"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
-            <div style="font-size:10px;color:var(--red)">${r.PROYECTO||''} · Venció ${fmtD(fechaEfectiva(r))}</div>
-          </div>
-          <span style="font-size:10px;font-weight:700;color:var(--red);flex-shrink:0">-${Math.floor((TODAY-new Date(fechaEfectiva(r)+'T00:00:00'))/86400000)}d</span>
-        </div>`).join('')}
-      </div>`:''}
-      <!-- Due soon -->
-      ${upcoming.length?`<div style="padding:8px 16px 4px">
-        <div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⏰ Próximas · ${upcoming.length}</div>
-        ${upcoming.slice(0,4).map(r=>{
-          const diff=Math.ceil((new Date(fechaEfectiva(r)+'T00:00:00')-TODAY)/86400000);
-          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
-            <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;transition:border-color .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
-              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${fmtD(r['FECHA FIN'])}</div>
+
+      <!-- ── MÓDULOS ── -->
+      <div>
+        <div style="font-family:var(--font-head),sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">Módulos</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+          ${modStats.length===0?'<div style="font-size:12px;color:var(--text2)">Sin módulos visibles</div>':modStats.map(m=>`
+          <div onclick="inicioGoModule('${m.key}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/></svg>
+              <span style="font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
             </div>
-            <span style="font-size:10px;font-weight:700;color:${diff<=1?'var(--red)':diff<=3?'var(--orange)':'var(--yellow)'};flex-shrink:0">${diff}d</span>
-          </div>`;
-        }).join('')}
-      </div>`:''}
-      <!-- In progress -->
-      ${inProgress.length?`<div style="padding:8px 16px 4px">
-        <div style="font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">▶ En curso · ${inProgress.length}</div>
-        ${inProgress.slice(0,5).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
-          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--accent);flex-shrink:0"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
-            <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${r.AVANCE}%</div>
-          </div>
-          <div style="width:40px;flex-shrink:0">
-            <div style="height:3px;background:var(--bg3);border-radius:99px;overflow:hidden">
-              <div style="height:100%;background:var(--accent);width:${r.AVANCE}%;border-radius:99px"></div>
-            </div>
-          </div>
-        </div>`).join('')}
-      </div>`:''}
-      <!-- Planned -->
-      ${planned.length?`<div style="padding:8px 16px 10px">
-        <div style="font-size:9px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">📌 Planificadas · ${planned.length}</div>
-        ${planned.slice(0,4).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openActDr('${r._id}')">
-          <div style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ACTIVIDAD||'—'}</div>
-            <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${r['FECHA FIN']?fmtD(r['FECHA FIN']):'Sin fecha'}</div>
-          </div>
-        </div>`).join('')}
-        ${planned.length>4?`<div style="padding:6px 0;font-size:11px;color:var(--accent);cursor:pointer" onclick="goPage('mis-tareas',document.querySelector('[onclick*=mis-tareas]'))">+ ${planned.length-4} más →</div>`:''}
-      </div>`:''}
-      ${!myActs.length?`<div style="padding:32px;text-align:center;color:var(--text2)">
-        <div style="font-size:32px;margin-bottom:10px">🎉</div>
-        <div style="font-size:13px;font-weight:600">Sin tareas asignadas</div>
-        <div style="font-size:11px;margin-top:4px">¡Todo al día!</div>
-      </div>`:''}
+            <div style="margin-top:10px;height:6px;background:var(--bg3);border-radius:999px;overflow:hidden"><div style="width:${m.avance}%;height:100%;background:var(--accent2)"></div></div>
+            <div style="margin-top:6px;font-size:11px;color:var(--text2)">${m.avance}% avance · ${m.count} actividades</div>
+          </div>`).join('')}
+        </div>
+      </div>
+
     </div>
 
-    <!-- COL 2: Proyectos + finalizadas recientes -->
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <!-- My projects -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
-            Mis proyectos
-          </div>
-        </div>
-        <div style="padding:8px 0">
-          ${(() => {
-            const myProjs = [...new Set(myActs.map(r=>r.PROYECTO).filter(Boolean))];
-            if (!myProjs.length) return '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin proyectos asignados</div>';
-            return myProjs.slice(0,6).map(p => {
-              const pa = myActs.filter(r=>r.PROYECTO===p);
-              const pc = pa.length?Math.round(pa.filter(r=>r.ESTADO==='REALIZADA').length/pa.length*100):0;
-              const col = pcol(p);
-              return `<div style="display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;transition:background .15s" onclick="openProjDr('${esc(p)}')" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
-                <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</div>
-                  <div style="height:3px;background:var(--bg3);border-radius:99px;margin-top:4px;overflow:hidden"><div style="height:100%;background:${col};width:${pc}%;border-radius:99px;transition:width .5s"></div></div>
-                </div>
-                <span style="font-size:10px;font-weight:700;color:${pc>=70?'var(--green)':pc>=40?'var(--orange)':'var(--red)'};flex-shrink:0">${pc}%</span>
-              </div>`;
-            }).join('');
-          })()}
-        </div>
+    <!-- ── ASIDE ── -->
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+      <!-- Próxima reunión -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Próxima Reunión</div>
+        ${proximaReunion?`
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(proximaReunion.titulo||'')}</div>
+          <div style="font-size:11.5px;color:var(--text2);margin-top:3px">${proximaReunion.fecha===today?'Hoy':fmtD(proximaReunion.fecha)}${proximaReunion.hora?' · '+String(proximaReunion.hora).substring(0,5):''}${proximaReunion.sala_o_link?' · '+esc(proximaReunion.sala_o_link):''}</div>
+        `:`<div style="font-size:12px;color:var(--text2)">Sin reuniones agendadas</div>`}
       </div>
 
-      <!-- Recently completed -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
-            Finalizadas recientes
-          </div>
-        </div>
-        <div style="padding:8px 0">
-          ${done.length ? done.slice(0,5).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;opacity:.75;transition:opacity .15s" onclick="openActDr('${r._id}')" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.75'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20,6 9,17 4,12"/></svg>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through">${r.ACTIVIDAD||'—'}</div>
-              <div style="font-size:10px;color:var(--text2)">${r.PROYECTO||''} · ${fmtD(r['FECHA COMPLETADA'])||'—'}</div>
-            </div>
-          </div>`).join('') : '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text2)">Sin tareas finalizadas</div>'}
-        </div>
-      </div>
-    </div>
-
-    <!-- COL 3: Inbox + mentions -->
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <!-- Inbox -->
+      <!-- Actividad reciente -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 16,12 14,15 10,15 8,12 2,12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-            Bandeja
-            ${unread.length?`<span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px">${unread.length}</span>`:''}
-          </div>
-          ${unread.length?`<button onclick="markAllRead();renderInicio()" style="font-size:9px;color:var(--accent);background:transparent;border:none;cursor:pointer">Limpiar</button>`:''}
+          <div style="font-family:var(--font-head),sans-serif;font-size:12px;font-weight:700;color:var(--text)">Actividad Reciente</div>
+          ${unreadCount?`<button onclick="markAllRead();renderInicio()" style="font-size:9.5px;color:var(--accent);background:transparent;border:none;cursor:pointer">Marcar leídas</button>`:''}
         </div>
-        <div style="max-height:260px;overflow-y:auto">
-          ${unread.length ? unread.slice(0,10).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(56,189,248,.05)'" onmouseout="this.style.background=''">
-            <span style="font-size:15px;flex-shrink:0;margin-top:1px">${n.icon}</span>
+        <div style="max-height:320px;overflow-y:auto">
+          ${recent.length ? recent.map(n=>`<div style="display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+            <span style="font-size:14px;flex-shrink:0;margin-top:1px">${n.icon}</span>
             <div style="flex:1;min-width:0">
-              <div style="font-size:11px;color:var(--text);word-break:break-word;white-space:normal;line-height:1.4">${n.text}</div>
+              <div style="font-size:11.5px;color:var(--text);word-break:break-word;white-space:normal;line-height:1.4">${n.text}</div>
               <div style="font-size:9px;color:var(--text2);margin-top:3px">${n.time}</div>
             </div>
-            <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>
+            ${!n.read?`<div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></div>`:''}
           </div>`).join('') : `<div style="padding:24px;text-align:center;font-size:11px;color:var(--text2)">
-            <div style="font-size:24px;margin-bottom:8px">📭</div>Sin mensajes
+            <div style="font-size:24px;margin-bottom:8px">📭</div>Sin actividad reciente
           </div>`}
         </div>
       </div>
 
-      <!-- Mentions -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px">
-            <div style="width:18px;height:18px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">@</div>
-            Menciones
-            ${mentions.length?`<span style="background:var(--purple);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px">${mentions.length}</span>`:''}
-          </div>
-        </div>
-        <div style="max-height:180px;overflow-y:auto">
-          ${mentions.length ? mentions.slice(0,6).map(n=>`<div style="display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="readNotif('${n.id}'${n.actId?`,'${n.actId}'`:''})" onmouseover="this.style.background='rgba(168,85,247,.05)'" onmouseout="this.style.background=''">
-            <span style="font-size:12px;flex-shrink:0;margin-top:1px">@</span>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:11px;color:var(--text);word-break:break-word;white-space:normal;line-height:1.4">${n.text}</div>
-              <div style="font-size:9px;color:var(--text2);margin-top:3px">${n.time}</div>
-            </div>
-          </div>`).join('') : `<div style="padding:20px;text-align:center;font-size:11px;color:var(--text2)">Sin menciones</div>`}
-        </div>
-      </div>
     </div>
-
   </div>`;
 }
 
