@@ -2754,8 +2754,16 @@ async function miDiaLoadReuniones() {
 }
 function miDiaReunionRow(m) {
   const canDel = m.creado_por === CURRENT_USER?.id || ['developer','admin'].includes(CURRENT_USER?.role);
+  let fechaTxt = '';
+  if (m.fecha) {
+    const dw = new Date(m.fecha + 'T00:00:00').toLocaleDateString('es-BO', { weekday: 'short' }).replace('.', '');
+    fechaTxt = dw.charAt(0).toUpperCase() + dw.slice(1) + ' ' + fmtD(m.fecha);
+  }
   return `<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
-    <div style="font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0;min-width:44px">${(m.hora||'').substring(0,5)||'—'}</div>
+    <div style="flex-shrink:0;min-width:74px">
+      <div style="font-size:11px;font-weight:700;color:var(--accent)">${(m.hora||'').substring(0,5)||'—'}</div>
+      ${fechaTxt?`<div style="font-size:9.5px;color:var(--text2);margin-top:1px;white-space:nowrap">${fechaTxt}</div>`:''}
+    </div>
     <div style="flex:1;min-width:0">
       <div style="font-size:12px;font-weight:600">${esc(m.titulo||'')}</div>
       ${m.sala_o_link?`<div style="font-size:10px;color:var(--text2);margin-top:2px">📍 ${esc(m.sala_o_link)}</div>`:''}
