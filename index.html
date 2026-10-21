@@ -1865,8 +1865,50 @@ function resetPwd() {
 // ═══════════════════════════════════════════════════════════
 const SB_URL = 'https://qvefghpqlzcmuitrrhtj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2ZWZnaHBxbHpjbXVpdHJyaHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDI5MTAsImV4cCI6MjA5MTAxODkxMH0.tPobkYZe3angsGqsW_tU5kKHruAWH5vmZASWlhSEgd8';
-const _sb = window.supabase.createClient(SB_URL, SB_KEY);
+// ── Guardia de sesión ─────────────────────────────────────────────
+// Si el refresh token se revoca (p.ej. otro equipo cerró sesión) supabase-js
+// sigue enviando peticiones con la anon key: RLS filtra 0 filas, PostgREST
+// responde 204/200 vacío y la app creía que guardó / mostraba todo en 0.
+// Esta guardia corta esas peticiones y obliga a reingresar.
+let _SESSION_LOST = false;
+let _LOGGING_OUT = false;
+function _sgAuthHeader(opts) {
+  try { return new Headers((opts && opts.headers) || {}).get('Authorization') || ''; } catch (_) { return ''; }
+}
+async function _sgFetch(url, opts) {
+  const u = String(url || '');
+  const isData = u.includes('/rest/v1/') || u.includes('/storage/v1/');
+  if (isData && CURRENT_USER && !_LOGGING_OUT) {
+    const auth = _sgAuthHeader(opts);
+    if (!auth || auth === 'Bearer ' + SB_KEY) {
+      _onSessionLost();
+      return new Response(JSON.stringify({ code: 'SESSION_EXPIRED', message: 'Sesión expirada: vuelve a iniciar sesión. El cambio NO se guardó.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+  return fetch(url, opts);
+}
+const _sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+  global: { fetch: _sgFetch }
+});
 let CURRENT_USER = null;
+function _onSessionLost() {
+  if (_SESSION_LOST || _LOGGING_OUT || !CURRENT_USER) return;
+  _SESSION_LOST = true;
+  try { unsubscribeRealtime(); } catch (_) {}
+  const ov = document.createElement('div');
+  ov.id = 'session-lost-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div style="max-width:420px;background:var(--bg2,#161b22);border:1px solid var(--border,#30363d);border-radius:12px;padding:22px;color:var(--text,#e6edf3);font-family:Barlow,sans-serif">'
+    + '<div style="font-size:16px;font-weight:700;margin-bottom:8px">Tu sesión se cerró</div>'
+    + '<div style="font-size:13px;color:var(--text2,#8b949e);line-height:1.5;margin-bottom:16px">La sesión expiró o se cerró desde otro equipo. Los cambios hechos desde ese momento <b>no se guardaron</b>. Vuelve a ingresar y revisa tu último cambio.</div>'
+    + '<button onclick="location.reload()" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent,#38bdf8);color:#0d1117;font-weight:700;cursor:pointer">Volver a ingresar</button></div>';
+  document.body.appendChild(ov);
+}
+_sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' && CURRENT_USER && !_LOGGING_OUT) _onSessionLost();
+});
 
 // ═══════════════════════════════════════════════════════════
 // DATA  — injected from Python via .replace()
@@ -7968,6 +8010,8 @@ async function doLogin() {
 }
 
 async function initSession(authUser) {
+  _LOGGING_OUT = false; _SESSION_LOST = false;
+  document.getElementById('session-lost-ov')?.remove();
   const lgBtn = document.getElementById('lg-btn');
   const lgErr = document.getElementById('login-err');
 
@@ -7978,7 +8022,7 @@ async function initSession(authUser) {
 
     if (!profile) {
       if (lgErr) { lgErr.textContent='Usuario sin perfil asignado. Contacta al administrador.'; lgErr.style.display='block'; }
-      await _sb.auth.signOut();
+      await _sb.auth.signOut({ scope: 'local' });
       return;
     }
 
@@ -8089,7 +8133,7 @@ async function initSession(authUser) {
     console.error('initSession fatal error:', e);
     if (lgErr) { lgErr.textContent = 'Error al iniciar sesión: ' + e.message; lgErr.style.display = 'block'; }
     // Try to recover — sign out cleanly
-    try { await _sb.auth.signOut(); } catch(_) {}
+    try { await _sb.auth.signOut({ scope: 'local' }); } catch(_) {}
   }
 }
 
@@ -8111,8 +8155,9 @@ function _navigateToInicio() {
 
 async function doLogout() {
   if (!confirm('¿Cerrar sesión?')) return;
+  _LOGGING_OUT = true;
   unsubscribeRealtime();
-  await _sb.auth.signOut();
+  await _sb.auth.signOut({ scope: 'local' });
   // Limpiar PINes desbloqueados de esta sesión
   _pinClearAll();
   CURRENT_USER = null; SB_PROFILES = [];
@@ -8254,7 +8299,8 @@ async function loadModFromDB(key) {
 
   if (error) {
     notify('⚠ Error cargando actividades: ' + error.message, true);
-    MS[key].acts = [];
+    if (!Array.isArray(MS[key].acts)) MS[key].acts = [];
+    if (error.code === 'SESSION_EXPIRED') return; // no re-renderizar con datos vacíos
   } else {
     MS[key].acts = (data || []).map((r) => mapActRow(r, key));
   }
@@ -8853,7 +8899,17 @@ function subscribeRealtime() {
       // For UPDATE events: do a surgical in-memory patch instead of full reload
       // This prevents the store from being rebuilt while other operations are in flight
       if (payload.eventType === 'UPDATE' && payload.new) {
-        const updated = payload.new;
+        let updated = payload.new;
+        // Postgres no envía en el WAL las columnas grandes (TOAST) que no cambiaron,
+        // y Realtime recorta registros muy grandes. Si falta alguna, se relee la fila completa
+        // para no dejar OBSERVACIONES vacías en memoria (que luego se guardaban y borraban imágenes).
+        const _bigCols = ['observaciones','subtasks','attachments','custom_fields','historial_reprog','detalle_reprog'];
+        if (_bigCols.some(k => !(k in updated)) || (payload.errors && payload.errors.length)) {
+          try {
+            const { data: full } = await _sb.from('actividades').select('*').eq('id', updated.id).maybeSingle();
+            if (full) updated = full; else return;
+          } catch (e) { return; }
+        }
         const acts = MS[ACTIVE]?.acts || [];
         const idx = acts.findIndex(a => a._dbid === updated.id);
         if (idx >= 0) {
@@ -8880,9 +8936,9 @@ function subscribeRealtime() {
           a['FECHA INICIO'] = updated.fecha_inicio;
           a['FECHA FIN']    = updated.fecha_fin;
           a['FECHA COMPLETADA'] = updated.fecha_completada;
-          a['OBSERVACIONES'] = updated.observaciones;
+          if (updated.observaciones !== undefined) a['OBSERVACIONES'] = updated.observaciones;
           a['CANTIDAD DE REPROGRAMACIONES'] = updated.cant_reprog;
-          a['DETALLE DE REPROGRAMACION'] = updated.detalle_reprog;
+          if (updated.detalle_reprog !== undefined) a['DETALLE DE REPROGRAMACION'] = updated.detalle_reprog;
           a['NUEVA FECHA DE CIERRE'] = updated.nueva_fecha_cierre;
           a['HISTORIAL REPROGRAMACIONES'] = updated.historial_reprog || [];
           a.reprogJustificada = updated.reprog_justificada;
@@ -9410,6 +9466,21 @@ async function saveAct() {
     subtasks: [...tmpST], comments: [...tmpCmt], attachments: [...tmpAtt]
   };
 
+  // Guardia anti-borrado: si las observaciones quedarían vacías, verificar lo que hay en la BD
+  if (existing && existing._dbid) {
+    const _obsNew = String(obj['OBSERVACIONES'] || '');
+    const _obsVacia = !/<img/i.test(_obsNew) && !_obsNew.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (_obsVacia) {
+      const { data: _cur, error: _curErr } = await _sb.from('actividades').select('observaciones').eq('id', existing._dbid).maybeSingle();
+      if (_curErr) { notify('⚠ No se pudo verificar la actividad: ' + _curErr.message, true); return; }
+      const _obsDB = String(_cur?.observaciones || '');
+      if (_obsDB.replace(/<[^>]*>/g, '').trim() || /<img/i.test(_obsDB)) {
+        if (!confirm('Esta actividad tiene observaciones' + (/<img/i.test(_obsDB) ? ' con imágenes' : '') + ' guardadas y quedarían VACÍAS.\n\n¿Borrarlas de verdad?\n(Cancelar = conservar las observaciones actuales)')) {
+          obj['OBSERVACIONES'] = _obsDB;
+        }
+      }
+    }
+  }
   notify('💾 Guardando...', false);
   const saved = await saveActToDB(obj, existing?._dbid);
   if (!saved) return;
@@ -9548,6 +9619,7 @@ async function duplicateProject(proj) {
   if (!acts.length) { notify('⚠ El proyecto no tiene actividades', true); return; }
   const newName = prompt('Nombre del proyecto duplicado:', proj + ' (copia)');
   if (!newName || !newName.trim()) return;
+  if (_projNameTaken(newName, null)) { notify('⚠ Ya existe un proyecto con ese nombre. Usa otro nombre para la copia.', true); return; }
   notify('⏳ Duplicando ' + acts.length + ' actividades...', false);
   const now = new Date().toISOString();
   // Deep-copy activities including subtasks (reset IDs to avoid collisions)
@@ -9605,6 +9677,14 @@ async function duplicateProject(proj) {
   }
 }
 
+function _projNameTaken(name, exceptName) {
+  const n = String(name || '').trim().toUpperCase();
+  return get().some(r => {
+    const p = String(r.PROYECTO || '');
+    return p !== exceptName && !p.startsWith('_deleted_proj_') && p.trim().toUpperCase() === n;
+  });
+}
+
 async function deleteProject(proj) {
   if (CURRENT_USER?.role !== 'developer' && CURRENT_USER?.perms?.can_delete !== true) { notify('⚠ No tienes permiso para eliminar proyectos', true); return; }
   const acts = get().filter(r => r.PROYECTO === proj);
@@ -9614,10 +9694,15 @@ async function deleteProject(proj) {
   const ids = acts.map(a => a._dbid).filter(Boolean);
   if (ids.length) {
     const deletedProj = '_deleted_proj_' + Date.now() + '_' + proj;
-    const { error } = await _sb.from('actividades')
+    const { data: _upd, error } = await _sb.from('actividades')
       .update({ proyecto: deletedProj, updated_at: new Date().toISOString() })
-      .in('id', ids);
+      .in('id', ids).select('id');
     if (error) { notify('⚠ Error: ' + error.message, true); return; }
+    if (!_upd || _upd.length !== ids.length) {
+      notify('⚠ No se pudo eliminar el proyecto (' + (_upd?.length || 0) + ' de ' + ids.length + ' actividades). Recarga la página e intenta de nuevo.', true);
+      await loadModFromDB(ACTIVE);
+      return;
+    }
     // Track in session for quick recovery
     DELETED_MODS.push({ key: '_proj_' + proj, name: '📁 Proyecto: ' + proj, acts: [...acts], deletedAt: tsNow(), _projRestore: { ids, origProj: proj } });
   }
@@ -12979,7 +13064,7 @@ async function showDeletedProjects() {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
             <div>
               <span style="font-size:12px;font-weight:700;color:var(--text)">${origProj}</span>
-              <span style="font-size:10px;color:var(--text2);margin-left:8px">${acts.length} acts · ${mod}</span>
+              <span style="font-size:10px;color:var(--text2);margin-left:8px">${acts.length} acts · ${mod}${(() => { const m = deletedKey.match(/^_deleted_proj_(\d+)_/); return m ? ' · eliminado ' + new Date(+m[1]).toLocaleString('es-BO') : ''; })()}</span>
             </div>
             <div style="display:flex;gap:6px">
               <button onmousedown="_papl('${rk}')" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:var(--green);font-size:10px;font-weight:700;cursor:pointer">↩ Restaurar</button>
@@ -14004,12 +14089,17 @@ async function editProjectName(el, oldName) {
   async function save() {
     const newName = input.value.trim();
     if (!newName || newName === oldName) { openProjDr(oldName); return; }
+    if (_projNameTaken(newName, oldName)) {
+      notify('⚠ Ya existe un proyecto llamado "' + newName.substring(0,40) + '". Renombrarlo así fusionaría ambos proyectos. Usa otro nombre.', true);
+      openProjDr(oldName); return;
+    }
     // Update all activities with this project name
     const acts = get().filter(r => r.PROYECTO === oldName);
     const ids = acts.map(a => a._dbid).filter(Boolean);
     if (ids.length) {
-      const { error } = await _sb.from('actividades').update({ proyecto: newName, updated_at: new Date().toISOString() }).in('id', ids);
+      const { data: _upd, error } = await _sb.from('actividades').update({ proyecto: newName, updated_at: new Date().toISOString() }).in('id', ids).select('id');
       if (error) { notify('⚠ Error: ' + error.message, true); return; }
+      if (!_upd || _upd.length !== ids.length) { notify('⚠ El renombre no se guardó completo (' + (_upd?.length || 0) + '/' + ids.length + '). Recarga la página.', true); await loadModFromDB(ACTIVE); return; }
     }
     // Update local data
     acts.forEach(a => { a.PROYECTO = newName; });
